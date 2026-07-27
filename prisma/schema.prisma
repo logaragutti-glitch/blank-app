@@ -203,6 +203,13 @@ enum InterviewSessionStatus {
 model InterviewSession {
   id        String                  @id @default(cuid())
   status    InterviewSessionStatus  @default(IN_PROGRESS)
+  // Marca se o ponto de extensão de IA (src/modules/interview/ai.ts) já foi
+  // chamado — mesmo quando a IA não propõe pergunta nenhuma, não tentamos de
+  // novo a cada request (custo/latência). Ver docs/ARCHITECTURE.md "IA como copiloto".
+  aiClarifyAttempted Boolean         @default(false)
+  // Pergunta proposta pela IA (se houver) — guardada aqui, não como
+  // InterviewAnswer, porque ainda não tem resposta do usuário.
+  aiClarifyQuestion  String?
   createdAt DateTime                @default(now())
   updatedAt DateTime                @updatedAt
 

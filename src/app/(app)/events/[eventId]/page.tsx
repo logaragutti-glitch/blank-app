@@ -1,11 +1,15 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireActiveSession } from "@/lib/session";
 import { getEvent } from "@/modules/events/service";
 import { NotFoundError } from "@/lib/api";
 import { EVENT_STATUS_BADGE, EVENT_STATUS_LABEL } from "@/modules/events/labels";
+import { estimateProgress, type InterviewAnswers } from "@/modules/interview/questions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function EventDetailPage({ params }: { params: { eventId: string } }) {
@@ -62,12 +66,7 @@ export default async function EventDetailPage({ params }: { params: { eventId: s
                 />
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-5 text-sm text-muted-foreground">
-                A Entrevista Inteligente (Sprint 3) preenche o restante do DNA do Evento a
-                partir daqui.
-              </CardContent>
-            </Card>
+            <InterviewStatusCard eventId={event.id} interviewSession={event.interviewSession} />
           </div>
         </TabsContent>
 
@@ -139,6 +138,72 @@ function EmptyDocTab({ label, sprint }: { label: string; sprint: string }) {
       <CardContent className="py-10 text-center text-sm text-muted-foreground">
         {label} é gerado pela IA a partir da Entrevista Inteligente — ver docs/ROADMAP.md (
         {sprint}).
+      </CardContent>
+    </Card>
+  );
+}
+
+interface InterviewSessionSummary {
+  status: "IN_PROGRESS" | "COMPLETED";
+  answers: { questionKey: string; questionText: string; answerValue: unknown }[];
+}
+
+function InterviewStatusCard({
+  eventId,
+  interviewSession,
+}: {
+  eventId: string;
+  interviewSession: InterviewSessionSummary | null;
+}) {
+  if (!interviewSession) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-start gap-3 pt-5 text-sm">
+          <p className="text-muted-foreground">
+            A Entrevista Inteligente monta o DNA do Evento a partir de algumas perguntas.
+          </p>
+          <Button asChild size="sm">
+            <Link href={`/events/${eventId}/interview`}>Iniciar entrevista</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const answersMap: InterviewAnswers = Object.fromEntries(
+    interviewSession.answers.map((a) => [a.questionKey, a.answerValue as string | number]),
+  );
+
+  if (interviewSession.status === "IN_PROGRESS") {
+    return (
+      <Card>
+        <CardContent className="flex flex-col gap-3 pt-5 text-sm">
+          <p className="text-muted-foreground">Entrevista em andamento.</p>
+          <Progress value={estimateProgress(answersMap)} />
+          <Button asChild size="sm" className="self-start">
+            <Link href={`/events/${eventId}/interview`}>Continuar entrevista</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3 pt-5 text-sm">
+        <p className="font-medium">Entrevista concluída</p>
+        {interviewSession.answers
+          .filter((a) => a.answerValue !== "")
+          .slice(0, 4)
+          .map((a) => (
+            <div key={a.questionKey} className="flex flex-col">
+              <span className="text-muted-foreground">{a.questionText}</span>
+              <span className="font-medium">{String(a.answerValue)}</span>
+            </div>
+          ))}
+        <p className="mt-1 text-xs text-muted-foreground">
+          Geração automática dos documentos MEM chega na Sprint 4.
+        </p>
       </CardContent>
     </Card>
   );

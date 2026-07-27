@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { UnauthorizedError } from "@/lib/session";
+import { InvalidAnswerError } from "@/modules/interview/schema";
 
 /** Ver docs/API_SPEC.md "convenção de resposta de erro". */
 export function apiError(code: string, message: string, status: number) {
@@ -23,6 +24,9 @@ export function handleApiError(error: unknown) {
   }
   if (error instanceof ForbiddenError) {
     return apiError("FORBIDDEN", error.message, 403);
+  }
+  if (error instanceof InvalidAnswerError) {
+    return apiError("VALIDATION_ERROR", error.message, 400);
   }
   console.error(error);
   return apiError("INTERNAL_ERROR", "Erro interno", 500);

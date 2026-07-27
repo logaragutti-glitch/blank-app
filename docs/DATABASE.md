@@ -53,6 +53,14 @@ efetivamente exibida, já que ela é dinâmica) e `answerValue` (JSON, pois o ti
 varia: texto, número, seleção, multi-seleção). Isso é o que permite ao motor de entrevista
 decidir a próxima pergunta com base nas anteriores sem precisar de uma tabela por pergunta.
 
+`InterviewSession.aiClarifyAttempted` e `aiClarifyQuestion` (Sprint 3) guardam o resultado
+do ponto de extensão de IA (`src/modules/interview/ai.ts`): a pergunta que a IA propõe (se
+propõe) fica aqui, não como `InterviewAnswer`, porque ainda não tem resposta do usuário — só
+vira `InterviewAnswer` (com `questionKey = "ai_clarify"`) quando respondida ou pulada. Isso
+também evita chamar o provedor de IA de novo a cada carregamento de página: a chamada
+acontece uma única vez, dentro do mesmo `submitAnswer` que esgotou a árvore de regras, nunca
+durante uma leitura.
+
 ### Document
 Um documento gerado (`DNA_EVENTO`, `MAPA_EMOCAO`, `JORNADA_MEMORAVEL`, `LINHA_DO_TEMPO`,
 `PLANO_OPERACIONAL`, `CHECKLIST`, `PLANO_FINANCEIRO`, `PLANO_B`, `MEM_SCORE`,

@@ -18,7 +18,7 @@ módulos de produto serem construídos em cima sem retrabalho.
 **Critério de pronto:** projeto roda localmente, tela de login funciona contra o banco,
 dashboard shell renderiza com dados mockados usando os componentes do design system.
 
-## Sprint 2 — Eventos, Clientes e Dashboard (ESTE ENTREGÁVEL)
+## Sprint 2 — Eventos, Clientes e Dashboard
 - [x] CRUD de `Event` e `Client` (services + rotas de API + UI) — criação e listagem
   completas; edição de campos e exclusão ficam para quando a Entrevista (Sprint 3) e a
   geração de documentos (Sprint 4) derem mais motivo para editar um evento existente
@@ -41,13 +41,33 @@ dashboard shell renderiza com dados mockados usando os componentes do design sys
 cadastro cria organização, cliente e evento são criados e aparecem no dashboard com dados
 reais, convite de membro é aceito automaticamente no cadastro do convidado.
 
-## Sprint 3 — Entrevista Inteligente + integração inicial com IA
-- `InterviewSession`/`InterviewAnswer` persistidos
-- Motor de entrevista: árvore de decisão inicial (regras) + ponto de extensão para IA
-  decidir a próxima pergunta com base no histórico
-- Tela "uma pergunta por vez" (mobile first) com voltar/editar
-- Primeira chamada real ao `AiProvider` (OpenAI) para sugerir a próxima pergunta
-- Tela de revisão das respostas antes de gerar o projeto
+## Sprint 3 — Entrevista Inteligente + integração inicial com IA (ESTE ENTREGÁVEL)
+- [x] `InterviewSession`/`InterviewAnswer` persistidos (`src/modules/interview/service.ts`),
+  com sessão criada sob demanda (`getOrCreateSession`) e evento transicionando
+  `DRAFT → INTERVIEW` automaticamente ao começar
+- [x] Motor de entrevista por regras (`src/modules/interview/questions.ts`): perguntas
+  base, ramos específicos por tipo de evento (casamento/corporativo) e perguntas comuns —
+  a sequência é recalculada a cada resposta, não fixa
+- [x] Ponto de extensão de IA (`src/modules/interview/ai.ts`): depois que a árvore de
+  regras se esgota, uma chamada real ao `AiProvider` (OpenAI) pode propor UMA pergunta de
+  esclarecimento extra; sem `OPENAI_API_KEY` ou em caso de erro, a entrevista segue sem
+  bloquear (IA como copiloto, nunca dependência dura) — chamada logada em `AiGenerationLog`
+- [x] Tela "uma pergunta por vez" (mobile first), com opções de seleção como botões grandes
+  (avançam sozinhos, sem passo extra de "confirmar"), pular perguntas opcionais, e
+  editar qualquer resposta anterior a partir da revisão
+- [x] Editar uma resposta invalida **apenas o que dependia dela** (ex.: trocar o tipo do
+  evento descarta as perguntas do ramo antigo, mas preserva `objective`/`guest_count`/etc.)
+  — corrigido depois de um teste E2E expor que a primeira versão invalidava a entrevista
+  inteira ao editar a primeira pergunta
+- [x] Tela de revisão com todas as respostas e edição inline antes de gerar o projeto
+- [x] Ao concluir, a entrevista sincroniza os campos estruturados do `Event` (tipo, local,
+  convidados, orçamento, data) — sem isso a aba "Visão geral" ficaria vazia mesmo com a
+  entrevista completa
+
+**Critério de pronto:** validado via Playwright contra Postgres real, incluindo o caso que
+quebrou na primeira implementação — editar a primeira pergunta (tipo do evento) no meio da
+revisão, confirmando que só as perguntas do ramo antigo são descartadas e a entrevista
+segue corretamente pelo novo ramo até a geração do projeto.
 
 ## Sprint 4 — Geração dos documentos MEM
 - Orchestrator de geração (`src/modules/documents`) disparando os 7 documentos base

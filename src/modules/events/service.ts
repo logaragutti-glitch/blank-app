@@ -29,6 +29,9 @@ export async function getEvent(organizationId: string, eventId: string) {
         budgetLines: { orderBy: { order: "asc" } },
         timelineItems: { orderBy: { order: "asc" } },
         documents: { orderBy: { createdAt: "desc" } },
+        interviewSession: {
+          include: { answers: { orderBy: { order: "asc" } } },
+        },
       },
     });
     if (!event) throw new NotFoundError("Evento não encontrado");

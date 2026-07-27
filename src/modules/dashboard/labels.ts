@@ -15,6 +15,8 @@ export function describeActivity(activity: ActivityLike): string {
       return `${actorName} gerou ${metadata.documentType ?? "um documento"} para "${metadata.eventName ?? ""}"`;
     case "member.invited":
       return `${actorName} convidou ${metadata.email ?? "um novo membro"}`;
+    case "interview.completed":
+      return `${actorName} concluiu a entrevista de "${metadata.eventName ?? ""}"`;
     default:
       return `${actorName}: ${activity.action}`;
   }

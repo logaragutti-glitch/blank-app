@@ -64,7 +64,7 @@ export default async function EventsPage({
       {events.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Crie o primeiro evento para iniciar a Entrevista Inteligente (Sprint 3).
+            Crie o primeiro evento para iniciar a Entrevista Inteligente.
           </CardContent>
         </Card>
       ) : (

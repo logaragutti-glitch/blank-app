@@ -40,17 +40,29 @@ integrações externas/futuras (mobile, automações) e são o contrato testáve
 
 Mesmo padrão dos Eventos: `src/modules/clients/service.ts` + Server Action para a UI.
 
-## Entrevista — Sprint 3
+## Entrevista — Sprint 3 ✅ implementado
 
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/interview/:eventId` | Retorna sessão atual + próxima pergunta calculada |
-| POST | `/api/interview/:eventId/answer` | Envia resposta à pergunta atual, retorna a próxima |
-| POST | `/api/interview/:eventId/back` | Volta e invalida perguntas dependentes da resposta editada |
+| GET | `/api/interview/:eventId` | Cria a sessão se não existir e retorna estado + próxima pergunta |
+| POST | `/api/interview/:eventId/answer` | Envia resposta (`{ questionKey, rawValue }`), retorna o novo estado |
 
-`POST /answer` — request: `{ questionKey: string, value: unknown }`.
-Response: `{ nextQuestion: Question | null, progressEstimate: number }`.
-`nextQuestion: null` sinaliza que a entrevista está pronta para revisão.
+`POST /answer` — request: `{ questionKey: string, rawValue: string }` (sempre string — o
+formulário nunca envia tipos ricos, `src/modules/interview/schema.ts` converte e valida
+conforme o tipo da pergunta). Response: o `InterviewState` completo (`session`, `answers`,
+`nextQuestion`, `progress`, `readyToComplete`).
+
+**Sem rota `/back` separada** (diferente do que a Sprint 1 havia especulado): "voltar e
+editar" é só reenviar uma resposta para uma `questionKey` já respondida — o próprio
+`submitAnswer` detecta que já existe uma resposta para aquela chave e invalida somente as
+respostas que dependiam dela (ex.: mudar `event_type` descarta as perguntas do ramo antigo,
+não a entrevista inteira). Uma rota dedicada seria um endpoint a mais fazendo a mesma coisa
+com um nome diferente — simplicidade acima de complexidade.
+
+Não há endpoint para "concluir": `completeInterviewAction` (Server Action) é a única forma,
+porque a conclusão sempre precisa redirecionar para `/events/:eventId` no mesmo request —
+um cliente HTTP externo que precise disso ganha uma rota própria quando esse caso de uso
+existir de verdade.
 
 ## IA / Geração de documentos — Sprint 4
 
