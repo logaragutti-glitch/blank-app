@@ -1,0 +1,366 @@
+// MEM Architect — modelo de dados
+// Ver docs/DATABASE.md para o porquê de cada entidade e decisão de modelagem.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Tenancy & Identidade ───────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships     Membership[]
+  clients         Client[]
+  events          Event[]
+  templates       Template[]
+  activities      Activity[]
+  aiGenerationLog AiGenerationLog[]
+
+  @@map("organizations")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  role           Role         @default(MEMBER)
+  createdAt      DateTime     @default(now())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String?
+  email         String       @unique
+  emailVerified DateTime?
+  image         String?
+  // Autenticação por credenciais (email + senha) no MVP. Substituível/complementável
+  // por magic link ou OAuth depois sem mudar o modelo de Membership/Organization.
+  passwordHash  String?
+  createdAt     DateTime     @default(now())
+
+  accounts    Account[]
+  sessions    Session[]
+  memberships Membership[]
+  activities  Activity[]
+
+  @@map("users")
+}
+
+// Modelos padrão do Auth.js (Prisma Adapter)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── CRM ─────────────────────────────────────────────────────────────────
+
+model Client {
+  id             String       @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events         Event[]
+
+  @@index([organizationId])
+  @@map("clients")
+}
+
+// ─── Eventos ─────────────────────────────────────────────────────────────
+
+enum EventStatus {
+  DRAFT
+  INTERVIEW
+  GENERATING
+  REVIEW
+  READY
+  ARCHIVED
+}
+
+model Event {
+  id             String       @id @default(cuid())
+  name           String
+  type           String? // ex.: "casamento", "corporativo" — livre no MVP, catálogo depois
+  status         EventStatus  @default(DRAFT)
+  eventDate      DateTime?
+  location       String?
+  guestCount     Int?
+  targetBudget   Decimal?     @db.Decimal(12, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId       String?
+  client         Client?      @relation(fields: [clientId], references: [id])
+
+  interviewSession InterviewSession?
+  documents        Document[]
+  checklistItems   ChecklistItem[]
+  budgetLines      BudgetLine[]
+  timelineItems    TimelineItem[]
+  memScore         MemScore?
+  activities       Activity[]
+
+  @@index([organizationId, status])
+  @@map("events")
+}
+
+// ─── Entrevista Inteligente ──────────────────────────────────────────────
+
+enum InterviewSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+model InterviewSession {
+  id        String                  @id @default(cuid())
+  status    InterviewSessionStatus  @default(IN_PROGRESS)
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  eventId String @unique
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  answers InterviewAnswer[]
+
+  @@map("interview_sessions")
+}
+
+model InterviewAnswer {
+  id           String   @id @default(cuid())
+  questionKey  String // identifica a pergunta de forma estável (ex.: "event_type")
+  questionText String // texto exibido ao usuário no momento da resposta (a entrevista é dinâmica)
+  answerValue  Json // forma varia por pergunta: string, number, string[]
+  order        Int // ordem de exibição dentro da sessão
+  createdAt    DateTime @default(now())
+
+  interviewSessionId String
+  interviewSession    InterviewSession @relation(fields: [interviewSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([interviewSessionId, questionKey])
+  @@index([interviewSessionId, order])
+  @@map("interview_answers")
+}
+
+// ─── Documentos gerados ──────────────────────────────────────────────────
+
+enum DocumentType {
+  DNA_EVENTO
+  MAPA_EMOCAO
+  JORNADA_MEMORAVEL
+  LINHA_DO_TEMPO
+  PLANO_OPERACIONAL
+  CHECKLIST
+  PLANO_FINANCEIRO
+  PLANO_B
+  MEM_SCORE
+  RESUMO_EXECUTIVO
+}
+
+enum DocumentStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+model Document {
+  id        String         @id @default(cuid())
+  type      DocumentType
+  status    DocumentStatus @default(PENDING)
+  content   Json? // conteúdo estruturado, forma depende de `type`
+  version   Int            @default(1)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, type, version])
+  @@index([eventId, type])
+  @@map("documents")
+}
+
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  title     String
+  done      Boolean  @default(false)
+  dueDate   DateTime?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("checklist_items")
+}
+
+model BudgetLine {
+  id          String   @id @default(cuid())
+  category    String
+  description String
+  amount      Decimal  @db.Decimal(12, 2)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("budget_lines")
+}
+
+model TimelineItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("timeline_items")
+}
+
+model MemScore {
+  id        String   @id @default(cuid())
+  score     Int // 0-100
+  breakdown Json // ex.: { completude: 90, orcamento: 70, riscos: 60 }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventId String @unique
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("mem_scores")
+}
+
+// ─── Biblioteca de templates ─────────────────────────────────────────────
+
+enum TemplateType {
+  INTERVIEW_QUESTION_SET
+  CHECKLIST
+  BUDGET_STRUCTURE
+}
+
+model Template {
+  id        String       @id @default(cuid())
+  type      TemplateType
+  name      String
+  content   Json
+  isGlobal  Boolean      @default(false) // seed da plataforma, disponível a todas as orgs
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("templates")
+}
+
+// ─── Atividade e auditoria de IA ─────────────────────────────────────────
+
+model Activity {
+  id        String   @id @default(cuid())
+  action    String // ex.: "event.created", "document.generated"
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  eventId        String?
+  event          Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@map("activities")
+}
+
+model AiGenerationLog {
+  id             String   @id @default(cuid())
+  provider       String // ex.: "openai"
+  model          String
+  module         String // ex.: "interview", "documents.dna_evento"
+  promptSummary  String
+  inputTokens    Int?
+  outputTokens   Int?
+  estimatedCost  Decimal? @db.Decimal(10, 4)
+  createdAt      DateTime @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("ai_generation_logs")
+}
