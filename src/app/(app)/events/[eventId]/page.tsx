@@ -6,11 +6,28 @@ import { getEvent } from "@/modules/events/service";
 import { NotFoundError } from "@/lib/api";
 import { EVENT_STATUS_BADGE, EVENT_STATUS_LABEL } from "@/modules/events/labels";
 import { estimateProgress, type InterviewAnswers } from "@/modules/interview/questions";
+import { pickLatestPerType } from "@/modules/documents/service";
+import { DOCUMENT_REGISTRY } from "@/modules/documents/registry";
+import type { GeneratableDocumentType } from "@/modules/documents/schemas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DocumentPanel } from "@/components/documents/document-panel";
+import { GenerateDocumentsButton } from "@/components/documents/generate-documents-button";
+
+const TABS: { value: string; label: string; type: GeneratableDocumentType }[] = [
+  { value: "dna", label: "DNA", type: "DNA_EVENTO" },
+  { value: "emocao", label: "Emoção", type: "MAPA_EMOCAO" },
+  { value: "jornada", label: "Jornada", type: "JORNADA_MEMORAVEL" },
+  { value: "timeline", label: "Timeline", type: "LINHA_DO_TEMPO" },
+  { value: "operacional", label: "Operacional", type: "PLANO_OPERACIONAL" },
+  { value: "checklist", label: "Checklist", type: "CHECKLIST" },
+  { value: "financeiro", label: "Financeiro", type: "PLANO_FINANCEIRO" },
+  { value: "planob", label: "Plano B", type: "PLANO_B" },
+  { value: "resumo", label: "Resumo", type: "RESUMO_EXECUTIVO" },
+];
 
 export default async function EventDetailPage({ params }: { params: { eventId: string } }) {
   const { organization } = await requireActiveSession();
@@ -21,6 +38,13 @@ export default async function EventDetailPage({ params }: { params: { eventId: s
   });
 
   if (!event) notFound();
+
+  const latestDocuments = pickLatestPerType(event.documents).map((d) => ({
+    id: d.id,
+    type: d.type as GeneratableDocumentType,
+    status: d.status,
+    content: d.content,
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,12 +69,11 @@ export default async function EventDetailPage({ params }: { params: { eventId: s
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Visão geral</TabsTrigger>
-          <TabsTrigger value="dna">DNA</TabsTrigger>
-          <TabsTrigger value="journey">Jornada</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="checklist">Checklist</TabsTrigger>
-          <TabsTrigger value="budget">Financeiro</TabsTrigger>
-          <TabsTrigger value="summary">Resumo</TabsTrigger>
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="overview">
@@ -66,58 +89,23 @@ export default async function EventDetailPage({ params }: { params: { eventId: s
                 />
               </CardContent>
             </Card>
-            <InterviewStatusCard eventId={event.id} interviewSession={event.interviewSession} />
+            <InterviewStatusCard
+              eventId={event.id}
+              interviewSession={event.interviewSession}
+              latestDocuments={latestDocuments}
+            />
           </div>
         </TabsContent>
 
-        <TabsContent value="dna">
-          <EmptyDocTab label="DNA do Evento™" sprint="Sprint 4" />
-        </TabsContent>
-        <TabsContent value="journey">
-          <EmptyDocTab label="Jornada Memorável™" sprint="Sprint 4" />
-        </TabsContent>
-        <TabsContent value="timeline">
-          {event.timelineItems.length === 0 ? (
-            <EmptyDocTab label="Linha do Tempo MEM™" sprint="Sprint 4" />
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {event.timelineItems.map((item) => (
-                <li key={item.id} className="text-sm">
-                  {item.title}
-                </li>
-              ))}
-            </ul>
-          )}
-        </TabsContent>
-        <TabsContent value="checklist">
-          {event.checklistItems.length === 0 ? (
-            <EmptyDocTab label="Checklist" sprint="Sprint 4" />
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {event.checklistItems.map((item) => (
-                <li key={item.id} className="text-sm">
-                  {item.title}
-                </li>
-              ))}
-            </ul>
-          )}
-        </TabsContent>
-        <TabsContent value="budget">
-          {event.budgetLines.length === 0 ? (
-            <EmptyDocTab label="Plano Financeiro" sprint="Sprint 4" />
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {event.budgetLines.map((line) => (
-                <li key={line.id} className="text-sm">
-                  {line.description} — R$ {line.amount.toString()}
-                </li>
-              ))}
-            </ul>
-          )}
-        </TabsContent>
-        <TabsContent value="summary">
-          <EmptyDocTab label="Resumo Executivo" sprint="Sprint 4" />
-        </TabsContent>
+        {TABS.map((tab) => (
+          <TabsContent key={tab.value} value={tab.value}>
+            <DocumentPanel
+              eventId={event.id}
+              label={DOCUMENT_REGISTRY.find((d) => d.type === tab.type)?.label ?? tab.label}
+              document={latestDocuments.find((d) => d.type === tab.type) ?? null}
+            />
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
@@ -132,28 +120,24 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyDocTab({ label, sprint }: { label: string; sprint: string }) {
-  return (
-    <Card>
-      <CardContent className="py-10 text-center text-sm text-muted-foreground">
-        {label} é gerado pela IA a partir da Entrevista Inteligente — ver docs/ROADMAP.md (
-        {sprint}).
-      </CardContent>
-    </Card>
-  );
-}
-
 interface InterviewSessionSummary {
   status: "IN_PROGRESS" | "COMPLETED";
   answers: { questionKey: string; questionText: string; answerValue: unknown }[];
 }
 
+interface LatestDocumentSummary {
+  type: string;
+  status: "PENDING" | "GENERATING" | "READY" | "FAILED";
+}
+
 function InterviewStatusCard({
   eventId,
   interviewSession,
+  latestDocuments,
 }: {
   eventId: string;
   interviewSession: InterviewSessionSummary | null;
+  latestDocuments: LatestDocumentSummary[];
 }) {
   if (!interviewSession) {
     return (
@@ -188,22 +172,38 @@ function InterviewStatusCard({
     );
   }
 
+  if (latestDocuments.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col gap-3 pt-5 text-sm">
+          <p className="font-medium">Entrevista concluída</p>
+          {interviewSession.answers
+            .filter((a) => a.answerValue !== "")
+            .slice(0, 4)
+            .map((a) => (
+              <div key={a.questionKey} className="flex flex-col">
+                <span className="text-muted-foreground">{a.questionText}</span>
+                <span className="font-medium">{String(a.answerValue)}</span>
+              </div>
+            ))}
+          <GenerateDocumentsButton eventId={eventId} label="Gerar documentos" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const readyCount = latestDocuments.filter((d) => d.status === "READY").length;
+  const failedCount = latestDocuments.filter((d) => d.status === "FAILED").length;
+
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 pt-5 text-sm">
-        <p className="font-medium">Entrevista concluída</p>
-        {interviewSession.answers
-          .filter((a) => a.answerValue !== "")
-          .slice(0, 4)
-          .map((a) => (
-            <div key={a.questionKey} className="flex flex-col">
-              <span className="text-muted-foreground">{a.questionText}</span>
-              <span className="font-medium">{String(a.answerValue)}</span>
-            </div>
-          ))}
-        <p className="mt-1 text-xs text-muted-foreground">
-          Geração automática dos documentos MEM chega na Sprint 4.
+        <p className="font-medium">Documentos MEM</p>
+        <p className="text-muted-foreground">
+          {readyCount} de {latestDocuments.length} prontos
+          {failedCount > 0 && ` · ${failedCount} com falha`}
         </p>
+        <GenerateDocumentsButton eventId={eventId} label="Gerar tudo novamente" />
       </CardContent>
     </Card>
   );

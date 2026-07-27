@@ -64,18 +64,32 @@ porque a conclusão sempre precisa redirecionar para `/events/:eventId` no mesmo
 um cliente HTTP externo que precise disso ganha uma rota própria quando esse caso de uso
 existir de verdade.
 
-## IA / Geração de documentos — Sprint 4
+## IA / Geração de documentos — Sprint 4 ✅ implementado
 
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/ai/generate/:eventId` | Dispara geração de todos os documentos do evento |
-| GET | `/api/ai/generate/:eventId/status` | Status por tipo de documento (polling leve) |
+| POST | `/api/ai/generate/:eventId` | Dispara e aguarda a geração dos 9 documentos do evento |
 | POST | `/api/documents/:documentId/regenerate` | Regenera um único documento (nova versão) |
 | PATCH | `/api/documents/:documentId` | Edição manual do conteúdo (também cria versão) |
 
-`POST /generate/:eventId` é assíncrono: retorna `202 Accepted` imediatamente e a UI faz
-polling de `/status` (ou usa Server-Sent Events na revisão pós-MVP) para atualizar o
-estado pendente/gerando/pronto por documento.
+**Sem endpoint de status/polling** (diferente do que a Sprint 1 havia especulado):
+`POST /generate/:eventId` (`src/modules/documents/orchestrator.ts`) roda os 9 geradores em
+paralelo via `Promise.all` e só responde quando todos terminam — a UI (Server Action
+`generateDocumentsAction`) fica com o botão em estado "pendente" durante a chamada, sem
+precisar de um segundo endpoint só para consultar progresso. Justificativa: os 9 geradores
+rodando em paralelo terminam em segundos, não minutos; um endpoint de polling faria sentido
+se a geração virasse uma fila assíncrona de verdade (ver `docs/BACKLOG.md` #34, gatilho
+para isso é volume real de uso, não uma preocupação teórica de MVP).
+
+Cada resultado é individual: um documento pode falhar (ex.: `OPENAI_API_KEY` não
+configurada) sem impedir os outros de serem gerados — a resposta sempre inclui os 9
+resultados com `status: "READY" | "FAILED"` por tipo. `PATCH /documents/:documentId` valida
+o `content` enviado contra o mesmo schema Zod usado para validar a resposta da IA
+(`src/modules/documents/schemas.ts`) — edição manual e geração por IA nunca podem divergir
+de forma (nunca gravam um formato que a UI não sabe renderizar).
+
+Toda geração/regeneração bem-sucedida recalcula o `MemScore` do evento
+(`recalculateMemScore`) — inclusive uma edição manual isolada, não só a geração em lote.
 
 ## Exportação — Sprint 5
 

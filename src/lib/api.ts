@@ -28,6 +28,9 @@ export function handleApiError(error: unknown) {
   if (error instanceof InvalidAnswerError) {
     return apiError("VALIDATION_ERROR", error.message, 400);
   }
+  if (error instanceof UnsupportedDocumentTypeError) {
+    return apiError("VALIDATION_ERROR", error.message, 400);
+  }
   console.error(error);
   return apiError("INTERNAL_ERROR", "Erro interno", 500);
 }
@@ -35,3 +38,4 @@ export function handleApiError(error: unknown) {
 export class NotFoundError extends Error {}
 export class ConflictError extends Error {}
 export class ForbiddenError extends Error {}
+export class UnsupportedDocumentTypeError extends Error {}

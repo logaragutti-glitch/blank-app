@@ -16,6 +16,16 @@ export interface QuestionDef {
 
 export type InterviewAnswers = Record<string, string | number>;
 
+export function toAnswersMap(
+  answers: { questionKey: string; answerValue: unknown }[],
+): InterviewAnswers {
+  const map: InterviewAnswers = {};
+  for (const answer of answers) {
+    map[answer.questionKey] = answer.answerValue as string | number;
+  }
+  return map;
+}
+
 const BASE_QUESTIONS: QuestionDef[] = [
   {
     key: "event_type",

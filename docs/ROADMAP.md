@@ -41,7 +41,7 @@ dashboard shell renderiza com dados mockados usando os componentes do design sys
 cadastro cria organização, cliente e evento são criados e aparecem no dashboard com dados
 reais, convite de membro é aceito automaticamente no cadastro do convidado.
 
-## Sprint 3 — Entrevista Inteligente + integração inicial com IA (ESTE ENTREGÁVEL)
+## Sprint 3 — Entrevista Inteligente + integração inicial com IA
 - [x] `InterviewSession`/`InterviewAnswer` persistidos (`src/modules/interview/service.ts`),
   com sessão criada sob demanda (`getOrCreateSession`) e evento transicionando
   `DRAFT → INTERVIEW` automaticamente ao começar
@@ -69,12 +69,34 @@ quebrou na primeira implementação — editar a primeira pergunta (tipo do even
 revisão, confirmando que só as perguntas do ramo antigo são descartadas e a entrevista
 segue corretamente pelo novo ramo até a geração do projeto.
 
-## Sprint 4 — Geração dos documentos MEM
-- Orchestrator de geração (`src/modules/documents`) disparando os 7 documentos base
-- Persistência versionada em `Document` + cálculo do `MemScore`
-- Editor inline por documento (edição manual sobrescreve, mantém histórico de versão)
-- Estado de progresso por documento na UI (pendente/gerando/pronto)
-- `AiGenerationLog` funcionando (auditoria de custo/tokens)
+## Sprint 4 — Geração dos documentos MEM (ESTE ENTREGÁVEL)
+- [x] Orchestrator de geração (`src/modules/documents/orchestrator.ts`) disparando os 9
+  documentos com conteúdo (DNA do Evento™, Mapa da Emoção™, Jornada Memorável™, Linha do
+  Tempo MEM™, Plano Operacional™, Checklist, Plano Financeiro, Plano B, Resumo Executivo)
+  em paralelo — as chamadas de IA acontecem fora de transação de banco, só o resultado é
+  persistido dentro de uma transação
+- [x] Persistência versionada em `Document` (`regenerateDocument`/`editDocument` criam
+  versão nova, nunca sobrescrevem) + `MemScore` calculado por regras determinísticas (não
+  por IA — completude, aderência ao orçamento, riscos identificados), documentado e
+  recalculado a cada geração, regeneração **ou edição manual** — não só na geração em lote
+- [x] Checklist, Plano Financeiro e Linha do Tempo também sincronizam para as tabelas
+  relacionais (`ChecklistItem`/`BudgetLine`/`TimelineItem`) já modeladas na Sprint 1, além
+  do snapshot em `Document`
+- [x] Editor inline por documento: JSON validado contra o mesmo schema Zod da IA, com um
+  esqueleto pré-preenchido (`DOCUMENT_SKELETONS`) quando não há conteúdo ainda — funciona
+  tanto para corrigir um documento pronto quanto para preencher manualmente um que falhou
+  (sem `OPENAI_API_KEY`, é o único caminho até a chave ser configurada)
+- [x] Estado por documento na UI: pendente/gerando/pronto/falhou, com "tentar novamente" e
+  edição manual disponíveis mesmo em falha
+- [x] `AiGenerationLog` gravado a cada geração/regeneração bem-sucedida (auditoria de
+  custo/tokens); chamadas que falham (ex.: sem chave configurada) não geram log, só o
+  `Document.status = FAILED`
+
+**Critério de pronto:** validado via Playwright contra Postgres real, incluindo o caminho
+sem `OPENAI_API_KEY` configurada (o cenário real deste ambiente) — geração completa falha
+graciosamente nos 9 documentos, o evento ainda transiciona para "Revisão", e a edição
+manual preenche um documento do zero e recalcula o MEM Score corretamente (confirmado
+subindo de 27 para 30 após uma única edição).
 
 ## Sprint 5 — Exportação, testes e preparação para produção
 - Geração de PDF executivo a partir dos documentos do evento

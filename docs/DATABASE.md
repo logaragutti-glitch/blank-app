@@ -63,20 +63,41 @@ durante uma leitura.
 
 ### Document
 Um documento gerado (`DNA_EVENTO`, `MAPA_EMOCAO`, `JORNADA_MEMORAVEL`, `LINHA_DO_TEMPO`,
-`PLANO_OPERACIONAL`, `CHECKLIST`, `PLANO_FINANCEIRO`, `PLANO_B`, `MEM_SCORE`,
-`RESUMO_EXECUTIVO`). Guardado como `content: Json` + `version: Int` porque cada tipo de
-documento tem uma forma diferente e evolui de forma independente; versionar em vez de
-sobrescrever permite "desfazer" uma regeneração por IA. `ChecklistItem`, `BudgetLine` e
-`TimelineItem` existem como tabelas relacionais **além** do `Document` JSON correspondente
-porque essas três precisam ser editadas item a item na UI (marcar concluído, reordenar,
-editar valor) — o JSON no `Document` é o snapshot "gerado pela IA", as tabelas relacionais
-são o estado "editável pelo usuário" depois da geração.
+`PLANO_OPERACIONAL`, `CHECKLIST`, `PLANO_FINANCEIRO`, `PLANO_B`, `RESUMO_EXECUTIVO` — 9 tipos
+gerados de fato, ver `src/modules/documents/schemas.ts`; `MEM_SCORE` continua no enum como
+reserva para uma futura narrativa explicando o score, mas o número em si vive só em
+`MemScore`, nunca como `Document`). Guardado como `content: Json` + `version: Int` porque
+cada tipo de documento tem uma forma diferente e evolui de forma independente; versionar em
+vez de sobrescrever permite "desfazer" uma regeneração por IA ou uma edição manual ruim —
+`regenerateDocument`/`editDocument` (Sprint 4) sempre criam uma linha nova, nunca fazem
+`UPDATE` sobre o `content` existente.
+
+`ChecklistItem`, `BudgetLine` e `TimelineItem` existem como tabelas relacionais **além** do
+`Document` JSON correspondente e são sincronizadas automaticamente toda vez que
+`CHECKLIST`/`PLANO_FINANCEIRO`/`LINHA_DO_TEMPO` são gerados, regenerados ou editados
+(`orchestrator.ts` `syncChecklist`/`syncBudget`/`syncTimeline` — apaga e recria as linhas do
+evento a cada sincronização, já que a fonte de verdade é sempre o `Document` mais recente).
+A Sprint 4 sincroniza essas tabelas mas a UI ainda renderiza o snapshot do `Document`
+uniformemente para todos os tipos (edição via JSON) — edição item a item direto nas tabelas
+relacionais (marcar checklist concluído com um clique, reordenar linha de orçamento) fica
+para depois do MVP (`docs/BACKLOG.md` #33); as tabelas já existirem e estarem sincronizadas
+é o que permite adicionar essa UI depois sem tocar no modelo de dados.
+
+`TimelineItem.startsAt` é opcional (`DateTime?`) e existe ao lado de `timeLabel` (texto
+livre, ex.: `"18h00"`): a Linha do Tempo nasce da entrevista/IA, que devolve horários em
+texto, não um `<input type="time">` estruturado. Combinar `timeLabel` com a data do evento
+para obter um `startsAt` preciso fica para quando houver um caso de uso real que precise
+disso (ex.: uma visão de calendário).
 
 ### MemScore
-Nota consolidada do evento (0–100) com `breakdown: Json` (ex.: completude do briefing,
-aderência ao orçamento, riscos identificados). Separado de `Document` porque é recalculado
-com frequência (toda edição relevante) e é lido pelo Dashboard de forma agregada — não
-faz sentido tratá-lo como "mais um documento".
+Nota consolidada do evento (0–100) com `breakdown: Json` (`completude`, `orcamento`,
+`riscos` — ver `src/modules/documents/score.ts`). Calculado por **regras determinísticas,
+não por IA**: completude é a proporção de documentos com `status = READY`; aderência ao
+orçamento compara a soma do Plano Financeiro com `Event.targetBudget`; riscos usa a
+quantidade de riscos identificados no Plano B. Um score explicável por regras simples é mais
+confiável do que pedir para a IA "se autoavaliar". Recalculado em toda geração, regeneração
+**ou edição manual** de documento (`recalculateMemScore`), não só na geração em lote — sem
+isso o score ficaria desatualizado assim que o usuário corrigisse um documento à mão.
 
 ### Activity
 Feed de auditoria/atividade recente por evento e por organização, usado no widget

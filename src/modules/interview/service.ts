@@ -5,21 +5,13 @@ import {
   findQuestionByKey,
   getNextRuleQuestion,
   ruleQuestionSequence,
-  type InterviewAnswers,
+  toAnswersMap,
   type QuestionDef,
 } from "./questions";
 import { InvalidAnswerError, parseAnswerValue } from "./schema";
 import { getAiClarifyingQuestion } from "./ai";
 
 const AI_CLARIFY_KEY = "ai_clarify";
-
-function toAnswersMap(answers: { questionKey: string; answerValue: unknown }[]): InterviewAnswers {
-  const map: InterviewAnswers = {};
-  for (const answer of answers) {
-    map[answer.questionKey] = answer.answerValue as string | number;
-  }
-  return map;
-}
 
 export interface InterviewState {
   session: { id: string; status: "IN_PROGRESS" | "COMPLETED" };
