@@ -13,11 +13,12 @@ import { NewEventDialog } from "@/components/events/new-event-dialog";
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: Promise<{ status?: string }>;
 }) {
   const { organization } = await requireActiveSession();
-  const statusFilter = EVENT_STATUS_ORDER.includes(searchParams.status as EventStatus)
-    ? (searchParams.status as EventStatus)
+  const { status } = await searchParams;
+  const statusFilter = EVENT_STATUS_ORDER.includes(status as EventStatus)
+    ? (status as EventStatus)
     : undefined;
 
   const [events, clients] = await Promise.all([

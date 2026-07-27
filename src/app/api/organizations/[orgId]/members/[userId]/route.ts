@@ -9,15 +9,16 @@ const patchSchema = z.object({ role: z.enum(["OWNER", "ADMIN", "MEMBER"]) });
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { orgId: string; userId: string } },
+  { params }: { params: Promise<{ orgId: string; userId: string }> },
 ) {
   try {
     const { organization } = await requireActiveSession();
-    if (organization.id !== params.orgId) {
+    const { orgId, userId } = await params;
+    if (organization.id !== orgId) {
       return NextResponse.json({ error: { code: "FORBIDDEN", message: "Organização inválida" } }, { status: 403 });
     }
     const { role } = patchSchema.parse(await req.json());
-    const membership = await updateMemberRole(organization.id, organization.role, params.userId, role);
+    const membership = await updateMemberRole(organization.id, organization.role, userId, role);
     return NextResponse.json({ membership });
   } catch (error) {
     return handleApiError(error);

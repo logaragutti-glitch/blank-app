@@ -14,26 +14,26 @@ export default async function InterviewPage({
   params,
   searchParams,
 }: {
-  params: { eventId: string };
-  searchParams: { edit?: string };
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ edit?: string }>;
 }) {
   const { organization } = await requireActiveSession();
+  const { eventId } = await params;
+  const { edit } = await searchParams;
 
-  const state = await getOrCreateSession(organization.id, params.eventId).catch((error) => {
+  const state = await getOrCreateSession(organization.id, eventId).catch((error) => {
     if (error instanceof NotFoundError) return null;
     throw error;
   });
 
   if (!state) notFound();
-  if (state.session.status === "COMPLETED") redirect(`/events/${params.eventId}`);
+  if (state.session.status === "COMPLETED") redirect(`/events/${eventId}`);
 
   const answersMap: InterviewAnswers = Object.fromEntries(
     state.answers.map((a) => [a.questionKey, a.answerValue]),
   );
 
-  const editAnswer = searchParams.edit
-    ? state.answers.find((a) => a.questionKey === searchParams.edit)
-    : undefined;
+  const editAnswer = edit ? state.answers.find((a) => a.questionKey === edit) : undefined;
 
   let question: QuestionDef | undefined;
   let defaultValue: string | undefined;
@@ -50,7 +50,7 @@ export default async function InterviewPage({
   }
 
   if (!question) {
-    return <InterviewReview eventId={params.eventId} answers={state.answers} />;
+    return <InterviewReview eventId={eventId} answers={state.answers} />;
   }
 
   const lastAnswer = state.answers[state.answers.length - 1];
@@ -69,7 +69,7 @@ export default async function InterviewPage({
       </div>
 
       <QuestionForm
-        eventId={params.eventId}
+        eventId={eventId}
         question={question}
         defaultValue={defaultValue}
         isEditing={isEditing}
@@ -77,7 +77,7 @@ export default async function InterviewPage({
 
       {!isEditing && lastAnswer && (
         <Link
-          href={`/events/${params.eventId}/interview?edit=${lastAnswer.questionKey}`}
+          href={`/events/${eventId}/interview?edit=${lastAnswer.questionKey}`}
           className="flex items-center gap-1 self-center text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -86,7 +86,7 @@ export default async function InterviewPage({
       )}
       {isEditing && (
         <Link
-          href={`/events/${params.eventId}/interview`}
+          href={`/events/${eventId}/interview`}
           className="self-center text-sm text-muted-foreground hover:text-foreground"
         >
           Cancelar edição

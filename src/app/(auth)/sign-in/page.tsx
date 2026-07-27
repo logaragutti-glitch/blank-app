@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function SignInPage({
+export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: { from?: string; error?: string };
+  searchParams: Promise<{ from?: string; error?: string }>;
 }) {
+  const { from, error: loginError } = await searchParams;
+
   async function authenticate(formData: FormData) {
     "use server";
 
@@ -19,7 +21,7 @@ export default function SignInPage({
       await signIn("credentials", {
         email: formData.get("email"),
         password: formData.get("password"),
-        redirectTo: searchParams.from ?? "/dashboard",
+        redirectTo: from ?? "/dashboard",
       });
     } catch (error) {
       if (error instanceof AuthError) {
@@ -40,9 +42,7 @@ export default function SignInPage({
           <form action={authenticate} className="flex flex-col gap-3">
             <Input name="email" type="email" placeholder="voce@empresa.com" required />
             <Input name="password" type="password" placeholder="Senha" required minLength={8} />
-            {searchParams.error && (
-              <p className="text-xs text-destructive">E-mail ou senha inválidos.</p>
-            )}
+            {loginError && <p className="text-xs text-destructive">E-mail ou senha inválidos.</p>}
             <Button type="submit" className="mt-1 w-full">
               Entrar
             </Button>

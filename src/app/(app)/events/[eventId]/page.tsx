@@ -29,10 +29,15 @@ const TABS: { value: string; label: string; type: GeneratableDocumentType }[] = 
   { value: "resumo", label: "Resumo", type: "RESUMO_EXECUTIVO" },
 ];
 
-export default async function EventDetailPage({ params }: { params: { eventId: string } }) {
+export default async function EventDetailPage({
+  params,
+}: {
+  params: Promise<{ eventId: string }>;
+}) {
   const { organization } = await requireActiveSession();
+  const { eventId } = await params;
 
-  const event = await getEvent(organization.id, params.eventId).catch((error) => {
+  const event = await getEvent(organization.id, eventId).catch((error) => {
     if (error instanceof NotFoundError) return null;
     throw error;
   });

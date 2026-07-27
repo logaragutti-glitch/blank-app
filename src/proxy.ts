@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 
 import { authConfig } from "@/lib/auth.config";
 
-// Instância separada da config completa (src/lib/auth.ts): o middleware roda em
-// Edge Runtime e authConfig não carrega Prisma/bcryptjs, que exigem Node APIs.
+// Instância separada da config completa (src/lib/auth.ts): o proxy (middleware
+// antes do Next.js 16) roda em Edge Runtime e authConfig não carrega
+// Prisma/bcryptjs, que exigem Node APIs.
 const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {

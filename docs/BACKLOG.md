@@ -41,7 +41,8 @@ pós-MVP.
 | 35 | Testes unitários dos módulos de domínio (Vitest) | Qualidade | 5 ✅ |
 | 36 | Verificação automatizada de isolamento RLS (`scripts/verify-rls.sh`) | Segurança | 5 ✅ |
 | 37 | Revisão de segurança formal (`docs/SECURITY.md`) + upgrade do next-auth (3 vulnerabilidades críticas/altas corrigidas) | Segurança | 5 ✅ |
-| 38 | Upgrade do Next.js 14 → 16 (corrige vulnerabilidades altas restantes — DoS, SSRF, cache poisoning) — não feito na Sprint 5 por exigir sessão dedicada de teste, ver `docs/SECURITY.md` §6 | Plataforma | — |
+| 38 | Upgrade do Next.js 14 → 16 (corrige vulnerabilidades altas restantes — DoS, SSRF, cache poisoning) | Plataforma | 5 ✅ |
+| 39 | Atualizar `postcss`/`sharp` vendorizados dentro de `next/node_modules` quando o Next.js 16.x liberar uma patch — risco residual de baixo impacto (build-time / `next/image` sem fontes remotas), ver `docs/SECURITY.md` §6 | Plataforma | — |
 
 ## P2 — Pós-MVP
 

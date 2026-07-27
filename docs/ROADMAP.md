@@ -123,17 +123,36 @@ nenhuma credencial externa, ao contrário da Parte 2 abaixo.
   críticas/altas reais no `next-auth` (não só transitivas decorativas), revalidando toda a
   suite depois do upgrade
 
-**Parte 2 — Exportação e deploy (não feita nesta entrega, depende de credenciais externas
+**Parte 2a — Upgrade do Next.js 14 → 16 (FEITO, sessão dedicada de teste):**
+
+- [x] Mapeamento da superfície de breaking changes (async `params`/`searchParams`,
+  Turbopack como default, `middleware.ts` → `proxy.ts`, remoção de `next lint`)
+- [x] `params`/`searchParams` convertidos para `Promise<T>` e `await`ados nos 10 route
+  handlers dinâmicos e nas 5 páginas afetadas do App Router
+- [x] `src/middleware.ts` renomeado para `src/proxy.ts` (nova convenção do Next 16)
+- [x] Migração para ESLint 9 flat config (`eslint.config.mjs`, `eslint-config-next/core-web-vitals`
+  importado direto); script `lint` trocado de `next lint` para `eslint .`
+- [x] Correção de um bug real de React descoberto pela nova regra `react-hooks/set-state-in-effect`
+  nos 4 dialogs de formulário — a primeira tentativa de correção introduziu um erro de
+  runtime ("Cannot update a component while rendering a different component"), pego pelos
+  testes E2E, não pelo lint/tsc; corrigido de vez com `useFormState` isolado num componente
+  filho que desmonta ao fechar o dialog + `useEffect` para notificar o pai
+  (`src/hooks/use-close-on-success.ts`)
+- [x] Revalidação completa: build (Turbopack), lint, typecheck, 42 testes unitários,
+  `test:rls`, 4 fluxos E2E — todos passando
+- [x] `docs/SECURITY.md` §6 atualizado com o resultado, incluindo avaliação honesta do
+  risco residual (`postcss`/`sharp` vendorizados dentro de `next/node_modules`, baixo
+  impacto, sem correção disponível que não seja downgrade nonsense do Next)
+
+**Parte 2b — Exportação e deploy (não feita nesta entrega, depende de credenciais externas
 que este ambiente não tem):**
 - Geração de PDF executivo a partir dos documentos do evento
 - Upload para Supabase Storage + link de compartilhamento
 - Deploy de produção (Vercel + Supabase) com variáveis de ambiente e monitoramento básico
-- Upgrade do Next.js 14 → 16 (corrige as vulnerabilidades altas restantes — ver
-  `docs/SECURITY.md` §6), feito isoladamente com uma sessão dedicada de teste
 
-**Critério de pronto (Parte 1):** `npm test`, `npm run test:e2e` e `npm run test:rls`
+**Critério de pronto (Parte 1 + 2a):** `npm test`, `npm run test:e2e` e `npm run test:rls`
 passam limpos contra Postgres real; `npm run build`/`lint`/`typecheck` sem erros depois do
-upgrade de segurança do next-auth.
+upgrade de segurança do next-auth e do upgrade do Next.js 14 → 16.
 
 ## Depois do MVP (não neste roadmap, apenas registrado)
 - Módulo `/templates` completo (biblioteca compartilhável entre organizações)

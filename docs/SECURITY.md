@@ -88,27 +88,65 @@ resposta da IA — nunca podem divergir de formato.
 
 ## 6. Dependências
 
-**Status: ⚠️ parcialmente corrigido — um risco real permanece registrado, não escondido.**
+**Status: ✅ corrigido — as vulnerabilidades diretas conhecidas foram resolvidas; resta um
+risco residual de baixo impacto, documentado abaixo, não escondido.**
 
-`npm audit` encontrou vulnerabilidades reais em dependências que tocam autenticação
-diretamente, não só transitivas decorativas:
+`npm audit` encontrou vulnerabilidades reais em dependências que tocam autenticação e
+build diretamente, não só transitivas decorativas:
 
-- **Corrigido nesta revisão:** `next-auth` estava em `5.0.0-beta.22`, com 3 vulnerabilidades
-  **críticas/altas** conhecidas no Auth.js — `getToken()` lançava exceção não tratada com
-  headers `Authorization: Bearer` malformados, o normalizador de e-mail validava antes da
-  normalização Unicode (permitindo bypass por homóglifo), e cookies de estado/nonce/PKCE do
-  OAuth não eram vinculados ao provedor que os criou. Atualizado para `5.0.0-beta.32`
-  (última beta da série 5, resolve as três) — build, typecheck, lint, os 42 testes
-  unitários e os 4 fluxos E2E (que exercitam sign-up/sign-in pesadamente) revalidados depois
-  do bump, todos passando.
-- **Não corrigido, registrado como risco conhecido:** o Next.js instalado (`14.2.x`) tem
-  vulnerabilidades altas (DoS, SSRF, cache poisoning, XSS em cenários específicos) cuja
-  correção exige subir para `next@16`, uma mudança de major version com risco real de quebra
-  (App Router, Server Actions e o pipeline de build mudaram entre 14 e 16). Decisão desta
-  revisão: **não** forçar essa migração sem uma sessão dedicada a testá-la — um upgrade malfeito
-  sob pressão de "revisão de segurança" é pior do que documentar o risco e agendar
-  corretamente. Recomendação: tratar como item P0 antes de produção (`docs/BACKLOG.md`),
-  feito de forma isolada, com o build e os testes revalidados a cada passo intermediário.
+- **Corrigido (revisão anterior):** `next-auth` estava em `5.0.0-beta.22`, com 3
+  vulnerabilidades **críticas/altas** conhecidas no Auth.js — `getToken()` lançava exceção
+  não tratada com headers `Authorization: Bearer` malformados, o normalizador de e-mail
+  validava antes da normalização Unicode (permitindo bypass por homóglifo), e cookies de
+  estado/nonce/PKCE do OAuth não eram vinculados ao provedor que os criou. Atualizado para
+  `5.0.0-beta.32` (última beta da série 5, resolve as três).
+- **Corrigido nesta revisão (sessão dedicada, conforme planejado):** upgrade do Next.js
+  `14.2.15` → `16.2.12`, resolvendo as vulnerabilidades altas então registradas (DoS, SSRF,
+  cache poisoning, XSS em cenários específicos). Mudanças exigidas pela nova major version:
+  - `params`/`searchParams` agora são `Promise<T>` em toda rota de API dinâmica e página do
+    App Router — todos os 10 route handlers e as 5 páginas afetadas foram atualizados para
+    `await` antes de usar.
+  - `src/middleware.ts` renomeado para `src/proxy.ts` (nova convenção do Next 16); nenhuma
+    mudança de lógica, só o arquivo.
+  - Migração para ESLint 9 (flat config): `.eslintrc.json` removido, `eslint.config.mjs`
+    criado importando `eslint-config-next/core-web-vitals` diretamente (já é um array de
+    flat config nativo na v16, não precisa de `FlatCompat`). Script `lint` trocado de
+    `next lint` (removido do CLI do Next 16) para `eslint .`.
+  - A nova regra `react-hooks/set-state-in-effect` (eslint-plugin-react-hooks 7) pegou um
+    padrão usado nos 4 dialogs de formulário (`new-client-dialog`, `new-event-dialog`,
+    `invite-member-dialog`, `edit-document-dialog`): fechavam o dialog chamando `setOpen`
+    a partir de um `useEffect` depois de `useFormState` reportar sucesso. A correção não foi
+    só silenciar o lint — a primeira tentativa (ajustar estado durante a renderização em vez
+    de usar efeito) **introduziu um bug real**, confirmado em runtime pelos testes E2E
+    (React: "Cannot update a component while rendering a different component" — atualizar o
+    estado de um componente PAI a partir do filho durante a renderização não é seguro,
+    diferente de ajustar o próprio estado). Correção final: `useFormState` foi movido para um
+    componente filho renderizado só dentro de `DialogContent`, que desmonta ao fechar o
+    dialog (comportamento padrão do Radix) — isso reseta o estado do hook a cada abertura —
+    combinado com `useEffect` (hook `useCloseOnSuccess`, `src/hooks/use-close-on-success.ts`)
+    para notificar o pai, que é o padrão correto para esse caso.
+  - React mantido em `18.3.1` (não subiu para 19) — Next 16 aceita `^18.2.0` como peer e
+    `next-auth` também, então o bump de major do React ficou fora do escopo deliberadamente.
+  - Revalidação completa depois do upgrade: `tsc --noEmit` limpo, `npm run build`
+    (Turbopack) limpo, `npm run lint` limpo, os 42 testes unitários (Vitest), `npm run
+    test:rls` (3 checagens) e os 4 fluxos E2E (Playwright) — todos passando. Único aviso
+    remanescente: `ReactDOM.useFormState` deprecado em favor de `React.useActionState`
+    (existe só no React 19) — deixado de propósito para um eventual upgrade futuro do React,
+    fora do escopo de "upgrade do Next.js".
+- **Risco residual, registrado como conhecido (não bloqueia produção):** `npm audit
+  --omit=dev` ainda relata 4 vulnerabilidades (1 moderada, 3 altas) em `postcss` e `sharp`
+  — mas ambas são dependências **vendorizadas dentro de `node_modules/next/node_modules/`**,
+  escolhidas e fixadas pelo próprio time do Next.js, não algo que este projeto declara ou
+  controla diretamente. `npm audit fix --force` "resolveria" isso rebaixando `next` para
+  `9.3.3` — um artefato do resolvedor do npm (tentando achar qualquer versão de `next` cujo
+  `package-lock` não referencie essas versões vulneráveis das transitivas), não uma correção
+  real; downgrade de 16→9 quebraria a aplicação inteira. Avaliação de risco: `sharp` é usado
+  pelo Next só no pipeline de otimização de `next/image`, que este projeto **não usa** com
+  fontes remotas não confiáveis (nenhum `next/image` com `remotePatterns` de terceiros
+  configurado); `postcss` roda só em build-time (processamento do Tailwind), nunca recebe
+  entrada de usuário em runtime. Superfície de exploração real, portanto, é baixa. Ação:
+  acompanhar a próxima patch do Next.js 16.x que atualize essas transitivas internamente
+  (não depende de mudança neste repositório) — registrado em `docs/BACKLOG.md`.
 
 ## 7. Testes automatizados
 
@@ -129,6 +167,7 @@ diretamente, não só transitivas decorativas:
   manuais; a integração com CI (GitHub Actions ou equivalente) é um passo de
   infraestrutura que depende de credenciais de deploy, fora do que este ambiente consegue
   configurar sozinho.
-- Upgrade do Next.js 14 → 16 (corrige as vulnerabilidades altas restantes, ver §6) —
-  registrado como P0 antes de produção, não feito nesta revisão por exigir uma sessão
-  dedicada de teste, não um bump apressado no meio de uma revisão de segurança.
+- Vulnerabilidades vendorizadas dentro de `next/node_modules/{postcss,sharp}` (ver §6) —
+  baixo risco (build-time / `next/image` não usado com fontes remotas), sem correção
+  disponível que não seja um downgrade nonsense do Next; acompanhar próxima patch do
+  Next.js 16.x.

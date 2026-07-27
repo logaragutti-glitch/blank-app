@@ -11,7 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function SignUpPage({ searchParams }: { searchParams: { error?: string } }) {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error: signUpError } = await searchParams;
+
   async function register(formData: FormData) {
     "use server";
 
@@ -81,9 +87,7 @@ export default function SignUpPage({ searchParams }: { searchParams: { error?: s
               <Label htmlFor="password">Senha</Label>
               <Input id="password" name="password" type="password" required minLength={8} />
             </div>
-            {searchParams.error && (
-              <p className="text-xs text-destructive">{searchParams.error}</p>
-            )}
+            {signUpError && <p className="text-xs text-destructive">{signUpError}</p>}
             <Button type="submit" className="mt-1 w-full">
               Criar conta
             </Button>

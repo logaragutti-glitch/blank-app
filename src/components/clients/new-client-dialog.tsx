@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Plus } from "lucide-react";
 
@@ -16,6 +16,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useCloseOnSuccess } from "@/hooks/use-close-on-success";
 import { createClientAction, type ClientFormState } from "@/modules/clients/actions";
 
 const initialState: ClientFormState = {};
@@ -29,17 +30,39 @@ function SubmitButton() {
   );
 }
 
+// Componente à parte, filho de DialogContent: desmonta quando o dialog fecha
+// (Radix), então cada abertura recomeça com useFormState do zero — é o que
+// permite fechar no sucesso sem useEffect (ver useCloseOnSuccess).
+function ClientForm({ onClose }: { onClose: () => void }) {
+  const [state, formAction] = useFormState(createClientAction, initialState);
+  useCloseOnSuccess(state.success, onClose);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="name">Nome</Label>
+        <Input id="name" name="name" required placeholder="Ana & Rui" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="email">E-mail</Label>
+        <Input id="email" name="email" type="email" placeholder="contato@cliente.com" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="phone">Telefone</Label>
+        <Input id="phone" name="phone" placeholder="(11) 99999-0000" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="notes">Notas</Label>
+        <Textarea id="notes" name="notes" placeholder="Preferências, contexto…" />
+      </div>
+      {state.error && <p className="text-xs text-destructive">{state.error}</p>}
+      <SubmitButton />
+    </form>
+  );
+}
+
 export function NewClientDialog() {
   const [open, setOpen] = useState(false);
-  const [state, formAction] = useFormState(createClientAction, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.success) {
-      formRef.current?.reset();
-      setOpen(false);
-    }
-  }, [state.success]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -54,26 +77,7 @@ export function NewClientDialog() {
           <DialogTitle>Novo cliente</DialogTitle>
           <DialogDescription>Quem vai contratar o evento.</DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={formAction} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="name">Nome</Label>
-            <Input id="name" name="name" required placeholder="Ana & Rui" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" name="email" type="email" placeholder="contato@cliente.com" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="phone">Telefone</Label>
-            <Input id="phone" name="phone" placeholder="(11) 99999-0000" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="notes">Notas</Label>
-            <Textarea id="notes" name="notes" placeholder="Preferências, contexto…" />
-          </div>
-          {state.error && <p className="text-xs text-destructive">{state.error}</p>}
-          <SubmitButton />
-        </form>
+        <ClientForm onClose={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

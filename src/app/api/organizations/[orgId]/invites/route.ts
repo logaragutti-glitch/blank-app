@@ -5,10 +5,11 @@ import { handleApiError } from "@/lib/api";
 import { inviteMemberSchema } from "@/modules/organizations/schema";
 import { inviteMember } from "@/modules/organizations/service";
 
-export async function POST(req: NextRequest, { params }: { params: { orgId: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     const { organization, userId } = await requireActiveSession();
-    if (organization.id !== params.orgId) {
+    const { orgId } = await params;
+    if (organization.id !== orgId) {
       return NextResponse.json({ error: { code: "FORBIDDEN", message: "Organização inválida" } }, { status: 403 });
     }
     const body = inviteMemberSchema.parse(await req.json());
