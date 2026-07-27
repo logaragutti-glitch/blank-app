@@ -26,6 +26,7 @@ model Organization {
   templates       Template[]
   activities      Activity[]
   aiGenerationLog AiGenerationLog[]
+  invitations     Invitation[]
 
   @@map("organizations")
 }
@@ -48,6 +49,32 @@ model Membership {
   @@unique([userId, organizationId])
   @@index([organizationId])
   @@map("memberships")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+// Convite de membro por e-mail. Sem infraestrutura de envio de e-mail no MVP
+// (ver docs/BACKLOG.md P2): se o e-mail convidado já pertence a um User, a
+// Membership é criada imediatamente; caso contrário o convite fica PENDING e é
+// resolvido automaticamente quando esse e-mail se cadastra (ver src/app/(auth)/sign-up).
+model Invitation {
+  id        String           @id @default(cuid())
+  email     String
+  role      Role             @default(MEMBER)
+  status    InvitationStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedByUserId String?
+
+  @@unique([organizationId, email])
+  @@index([email, status])
+  @@map("invitations")
 }
 
 model User {

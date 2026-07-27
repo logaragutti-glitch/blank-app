@@ -9,7 +9,8 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isAuthenticated = !!req.auth;
-  const isAuthRoute = req.nextUrl.pathname.startsWith("/sign-in");
+  const isAuthRoute =
+    req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up");
 
   if (!isAuthenticated && !isAuthRoute) {
     const signInUrl = new URL("/sign-in", req.nextUrl.origin);

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 
@@ -46,6 +47,12 @@ export default function SignInPage({
               Entrar
             </Button>
           </form>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Ainda não tem conta?{" "}
+            <Link href="/sign-up" className="text-accent hover:underline">
+              Criar organização
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>

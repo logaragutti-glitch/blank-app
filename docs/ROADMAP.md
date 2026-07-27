@@ -3,7 +3,7 @@
 Cada sprint entrega algo demonstrável de ponta a ponta. Nenhuma sprint começa "código"
 sem que a anterior tenha fechado o raciocínio de produto/arquitetura correspondente.
 
-## Sprint 1 — Fundação (ESTE ENTREGÁVEL)
+## Sprint 1 — Fundação
 **Objetivo:** arquitetura, banco de dados, autenticação e design system prontos para os
 módulos de produto serem construídos em cima sem retrabalho.
 
@@ -18,12 +18,28 @@ módulos de produto serem construídos em cima sem retrabalho.
 **Critério de pronto:** projeto roda localmente, tela de login funciona contra o banco,
 dashboard shell renderiza com dados mockados usando os componentes do design system.
 
-## Sprint 2 — Eventos, Clientes e Dashboard
-- CRUD completo de `Event` e `Client` (API + UI)
-- Dashboard com dados reais (contagem de eventos por status, pendências agregadas)
-- Página de detalhe do evento (shell de tabs, ainda sem documentos gerados)
-- Convite de membros e papéis (`Membership`) funcionando ponta a ponta
-- RLS do Postgres ativado e testado por tenant
+## Sprint 2 — Eventos, Clientes e Dashboard (ESTE ENTREGÁVEL)
+- [x] CRUD de `Event` e `Client` (services + rotas de API + UI) — criação e listagem
+  completas; edição de campos e exclusão ficam para quando a Entrevista (Sprint 3) e a
+  geração de documentos (Sprint 4) derem mais motivo para editar um evento existente
+- [x] Dashboard com dados reais (`src/modules/dashboard/service.ts`): eventos ativos, MEM
+  Score médio, pendências, checklist prioritário, atividades recentes, eventos recentes
+- [x] Página de detalhe do evento (tabs reais com Radix: Visão geral/DNA/Jornada/
+  Timeline/Checklist/Financeiro/Resumo; as abas de documento mostram estado vazio até a
+  Sprint 4 gerar conteúdo)
+- [x] Fluxo de cadastro (`/sign-up`) — Sprint 1 só tinha `/sign-in`; sem ele não havia como
+  testar convite de membros de ponta a ponta
+- [x] Convite de membros e papéis funcionando ponta a ponta: e-mail já cadastrado ganha
+  acesso na hora, e-mail novo fica como `Invitation` pendente e é aceito automaticamente
+  no cadastro (validado via Playwright: segundo usuário se cadastra e entra na organização
+  do convite, não cria uma nova)
+- [x] RLS do Postgres ativada (`prisma/rls.sql`) e validada manualmente com uma role
+  não-owner: sem `app.org_id` setado a query não retorna linhas, com `app.org_id` setado
+  só retorna linhas do tenant correspondente (ver `docs/DATABASE.md`)
+
+**Critério de pronto:** validado de ponta a ponta contra Postgres real (não só build) —
+cadastro cria organização, cliente e evento são criados e aparecem no dashboard com dados
+reais, convite de membro é aceito automaticamente no cadastro do convidado.
 
 ## Sprint 3 — Entrevista Inteligente + integração inicial com IA
 - `InterviewSession`/`InterviewAnswer` persistidos

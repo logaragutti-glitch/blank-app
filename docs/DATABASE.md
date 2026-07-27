@@ -82,6 +82,23 @@ Perguntas, checklists e estruturas de orçamento reutilizáveis — o conteúdo 
 Toda chamada a um provedor de IA é logada (módulo, prompt resumido, tokens, custo estimado,
 provider). Necessário para o módulo `/analytics` e para controle de custo desde o dia 1.
 
+### Invitation
+Convite de membro por e-mail (Sprint 2). Sem infraestrutura de envio de e-mail no MVP: se o
+e-mail convidado já pertence a um `User`, a `Membership` é criada na hora; caso contrário o
+convite fica `PENDING` e é resolvido automaticamente quando esse e-mail se cadastra (ver
+`src/modules/auth/service.ts`). Existe como tabela separada de `Membership` porque um convite
+pode nunca ser aceito — não faz sentido modelar isso como uma Membership "incompleta".
+
+## Row Level Security — validado
+
+As policies de `prisma/rls.sql` foram testadas manualmente: com uma role de banco que **não**
+é dona das tabelas (cenário de produção — a role de deploy/migração nunca deve ser a mesma
+usada pela aplicação), uma query em `clients` sem `app.org_id` setado retorna 0 linhas, e com
+`app.org_id` setado retorna exclusivamente as linhas da organização correspondente. O dono da
+tabela (ex.: `postgres`, usado localmente para migrar) ignora RLS por padrão — isso é
+comportamento nativo do Postgres, não uma falha das policies, e é o motivo de `rls.sql`
+insistir para a aplicação nunca se conectar com a role de migração.
+
 ## Decisões de modelagem
 
 - **JSONB para conteúdo gerado por IA, tabelas relacionais para o que o usuário edita

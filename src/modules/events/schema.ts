@@ -7,8 +7,8 @@ import { z } from "zod";
  */
 export const createEventSchema = z.object({
   name: z.string().min(2).max(120),
-  clientId: z.string().cuid().optional(),
-  type: z.string().max(60).optional(),
+  clientId: z.string().cuid().optional().or(z.literal("")),
+  type: z.string().max(60).optional().or(z.literal("")),
   eventDate: z.coerce.date().optional(),
 });
 

@@ -42,12 +42,26 @@ Tokens vivem em `src/app/globals.css` como CSS variables e são consumidos pelo
 | `Sidebar` | Navegação principal (desktop) / tab bar (mobile) | layout próprio |
 | `Topbar` | Busca, command palette trigger, avatar | layout próprio |
 
-## Inventário futuro (Sprints 2+)
+## Inventário de componentes (Sprint 2)
+
+Adicionados sob demanda dos formulários de criação de Evento/Cliente e do detalhe do
+evento — não construídos especulativamente na Sprint 1 porque não havia caso de uso real
+ainda (ver princípio "Simplicidade acima de complexidade").
+
+| Componente | Papel | Base |
+|---|---|---|
+| `Dialog` | Modal de criação (Novo evento, Novo cliente, Convidar membro) | Radix Dialog |
+| `Tabs` | Navegação dentro da página de evento (DNA, Jornada, Checklist…) | Radix Tabs |
+| `Label` | Rótulo acessível de campo de formulário | Radix Label |
+| `Select` | Seleção simples (cliente do evento, papel do convite) | nativo estilizado |
+| `Textarea` | Campos de texto longo (notas do cliente) | nativo estilizado |
+
+## Inventário futuro (Sprint 3+)
 
 `Timeline`, `Wizard` (motor da entrevista), `CommandPalette` (funcional, hoje é só
-visual/atalho reservado), `Modal`, `Drawer`, `AI Chat`, `Kanban`, `Calendar` — desenhados
-quando os módulos correspondentes (`/interview`, `/documents`) forem implementados, para
-evitar componentes genéricos demais que não encaixam no caso de uso real.
+visual/atalho reservado), `Drawer`, `AI Chat`, `Kanban`, `Calendar` — desenhados quando os
+módulos correspondentes (`/interview`, `/documents`) forem implementados, para evitar
+componentes genéricos demais que não encaixam no caso de uso real.
 
 ## Onde ver funcionando
 

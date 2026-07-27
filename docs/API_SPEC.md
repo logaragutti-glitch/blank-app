@@ -14,7 +14,7 @@ HTTP correspondente (`400` validação, `401` não autenticado, `403` fora do te
 Gerenciado pelo Auth.js (`[...nextauth]`). Não é uma API de domínio; expõe
 `signin`, `signout`, `session`, `csrf` conforme convenção do framework.
 
-## Eventos — Sprint 2
+## Eventos — Sprint 2 ✅ implementado
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -24,13 +24,21 @@ Gerenciado pelo Auth.js (`[...nextauth]`). Não é uma API de domínio; expõe
 | PATCH | `/api/events/:eventId` | Atualiza campos do evento |
 | DELETE | `/api/events/:eventId` | Arquiva o evento (`status = ARCHIVED`) |
 
-## Clientes — Sprint 2
+Lógica em `src/modules/events/service.ts`. As telas de criação (`/events`, dialog "Novo
+evento") chamam essa mesma camada de serviço via Server Action
+(`src/modules/events/actions.ts`), não fazem `fetch` para a rota HTTP — evita um round-trip
+de rede redundante dentro do próprio app. As rotas HTTP documentadas aqui existem para
+integrações externas/futuras (mobile, automações) e são o contrato testável formalmente.
+
+## Clientes — Sprint 2 ✅ implementado
 
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/api/clients` | Lista clientes da organização |
 | POST | `/api/clients` | Cria cliente |
 | PATCH | `/api/clients/:clientId` | Atualiza cliente |
+
+Mesmo padrão dos Eventos: `src/modules/clients/service.ts` + Server Action para a UI.
 
 ## Entrevista — Sprint 3
 
@@ -63,7 +71,7 @@ estado pendente/gerando/pronto por documento.
 |---|---|---|
 | POST | `/api/events/:eventId/export-pdf` | Gera PDF executivo e retorna URL assinada do Storage |
 
-## Configurações / Membros — Sprint 2
+## Configurações / Membros — Sprint 2 ✅ implementado
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -71,10 +79,19 @@ estado pendente/gerando/pronto por documento.
 | POST | `/api/organizations/:orgId/invites` | Convida membro por e-mail |
 | PATCH | `/api/organizations/:orgId/members/:userId` | Altera papel do membro |
 
+Lógica em `src/modules/organizations/service.ts`. Convite não tem rota HTTP própria de
+"aceitar" — um convite pendente é resolvido implicitamente no cadastro
+(`src/modules/auth/service.ts`, `signUp`), que varre `Invitation` por e-mail. Só
+`OWNER`/`ADMIN` podem convidar ou alterar papel (`assertCanManageMembers`); a UI
+(`/settings`) usa Server Action, as rotas HTTP acima existem para o mesmo caso de
+integrações externas descrito em Eventos/Clientes.
+
 ## Convenções transversais
 
-- Paginação: `?cursor=&limit=` (cursor-based) em toda rota de listagem — evita `OFFSET`
-  caro à medida que uma organização acumula eventos.
+- Paginação: `?cursor=&limit=` (cursor-based) é o padrão-alvo, mas **ainda não
+  implementada** nas rotas de listagem da Sprint 2 (`GET /events`, `GET /clients`) — o
+  volume de dados de uma organização em MVP não justifica a complexidade ainda; entra
+  quando a paginação simples (`findMany` sem cursor) começar a doer.
 - Toda rota de IA (`/api/ai/*`) passa por rate limiting por organização (ver
   `ARCHITECTURE.md` §6) e grava uma linha em `AiGenerationLog`.
 - Nenhuma rota aceita `organizationId` no body — ele vem sempre da sessão, nunca do
