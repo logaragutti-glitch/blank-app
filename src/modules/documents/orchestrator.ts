@@ -1,5 +1,6 @@
 import { withTenant } from "@/lib/tenant";
 import { NotFoundError } from "@/lib/api";
+import { enforceAiRateLimit } from "@/lib/rate-limit";
 import { toAnswersMap } from "@/modules/interview/questions";
 import { OpenAiProvider } from "@/modules/ai/openai-provider";
 import { DOCUMENT_REGISTRY, type DocumentSpec, type GenerationContext } from "./registry";
@@ -120,6 +121,8 @@ export async function syncTimeline(tx: Tx, eventId: string, result: GenerationRe
  * migrar isso para uma fila de workers, caso o volume justifique.
  */
 export async function generateDocuments(organizationId: string, eventId: string) {
+  await enforceAiRateLimit(organizationId, "documents.generate");
+
   const { eventName, context } = await withTenant(organizationId, async (tx) => {
     const event = await tx.event.findFirst({
       where: { id: eventId, organizationId },

@@ -35,9 +35,13 @@ pós-MVP.
 | 20 | Mapa da Emoção™ e Plano B | Documentos | 4 ✅ |
 | 21 | Resumo Executivo (documento consolidado) | Documentos | 4 ✅ |
 | 22 | `AiGenerationLog` (auditoria de custo/tokens) | IA/Analytics | 4 ✅ |
-| 23 | Testes E2E do fluxo crítico | Qualidade | 5 |
-| 24 | RLS por tenant no Postgres | Segurança | 2 |
-| 25 | Rate limiting nas rotas de IA | Segurança | 5 |
+| 23 | Testes E2E do fluxo crítico | Qualidade | 5 ✅ |
+| 24 | RLS por tenant no Postgres | Segurança | 2 ✅ |
+| 25 | Rate limiting nas rotas de IA | Segurança | 5 ✅ |
+| 35 | Testes unitários dos módulos de domínio (Vitest) | Qualidade | 5 ✅ |
+| 36 | Verificação automatizada de isolamento RLS (`scripts/verify-rls.sh`) | Segurança | 5 ✅ |
+| 37 | Revisão de segurança formal (`docs/SECURITY.md`) + upgrade do next-auth (3 vulnerabilidades críticas/altas corrigidas) | Segurança | 5 ✅ |
+| 38 | Upgrade do Next.js 14 → 16 (corrige vulnerabilidades altas restantes — DoS, SSRF, cache poisoning) — não feito na Sprint 5 por exigir sessão dedicada de teste, ver `docs/SECURITY.md` §6 | Plataforma | — |
 
 ## P2 — Pós-MVP
 

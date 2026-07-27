@@ -99,12 +99,41 @@ manual preenche um documento do zero e recalcula o MEM Score corretamente (confi
 subindo de 27 para 30 após uma única edição).
 
 ## Sprint 5 — Exportação, testes e preparação para produção
+
+**Parte 1 — Testes e revisão de segurança (ESTE ENTREGÁVEL):** feita sem depender de
+nenhuma credencial externa, ao contrário da Parte 2 abaixo.
+
+- [x] Suite de testes unitários (Vitest): 42 testes sobre lógica de domínio pura — motor de
+  entrevista (`questions.ts`, incluindo a regressão do bug de invalidação da Sprint 3),
+  validação de resposta (`schema.ts`), cálculo do MEM Score (`score.ts`), `slugify`/`cn`
+- [x] Suite de testes E2E (Playwright) formalizada em `e2e/` — os fluxos que antes eram
+  scripts manuais viraram testes commitados: cadastro→cliente→evento, convite de membro
+  aceito automaticamente no cadastro, edição de entrevista invalidando só o ramo antigo
+  (regressão), geração de documentos com falha graciosa + edição manual + recálculo do
+  MEM Score. `npm run test:e2e` sobe o próprio Next.js dev server contra um Postgres de
+  teste dedicado (`e2e/global-setup.ts` cuida de criar o banco/rodar migrations/RLS)
+- [x] Rate limiting nas rotas de IA (`src/lib/rate-limit.ts`), por organização: 10
+  gerações completas / 10 min, 30 regenerações ou chamadas de esclarecimento da
+  entrevista / 10 min — validado forçando o limite e confirmando o bloqueio na 11ª chamada
+- [x] Verificação automatizada de RLS (`scripts/verify-rls.sh`, `npm run test:rls`):
+  formaliza a checagem manual das sprints anteriores com uma role Postgres sem privilégio
+  de owner
+- [x] Revisão de segurança formal (`docs/SECURITY.md`): autorização por rota, validação de
+  entrada, segredos, e auditoria de dependências — encontrou e corrigiu 3 vulnerabilidades
+  críticas/altas reais no `next-auth` (não só transitivas decorativas), revalidando toda a
+  suite depois do upgrade
+
+**Parte 2 — Exportação e deploy (não feita nesta entrega, depende de credenciais externas
+que este ambiente não tem):**
 - Geração de PDF executivo a partir dos documentos do evento
 - Upload para Supabase Storage + link de compartilhamento
-- Suite de testes: unitário nos módulos de domínio, E2E no fluxo crítico
-  (criar evento → entrevista → gerar documentos → exportar PDF)
-- Revisão de segurança (checklist de RLS, rate limiting nas rotas de IA, secrets)
 - Deploy de produção (Vercel + Supabase) com variáveis de ambiente e monitoramento básico
+- Upgrade do Next.js 14 → 16 (corrige as vulnerabilidades altas restantes — ver
+  `docs/SECURITY.md` §6), feito isoladamente com uma sessão dedicada de teste
+
+**Critério de pronto (Parte 1):** `npm test`, `npm run test:e2e` e `npm run test:rls`
+passam limpos contra Postgres real; `npm run build`/`lint`/`typecheck` sem erros depois do
+upgrade de segurança do next-auth.
 
 ## Depois do MVP (não neste roadmap, apenas registrado)
 - Módulo `/templates` completo (biblioteca compartilhável entre organizações)

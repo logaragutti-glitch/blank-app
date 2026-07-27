@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { UnauthorizedError } from "@/lib/session";
+import { RateLimitError } from "@/lib/rate-limit";
 import { InvalidAnswerError } from "@/modules/interview/schema";
 
 /** Ver docs/API_SPEC.md "convenção de resposta de erro". */
@@ -30,6 +31,9 @@ export function handleApiError(error: unknown) {
   }
   if (error instanceof UnsupportedDocumentTypeError) {
     return apiError("VALIDATION_ERROR", error.message, 400);
+  }
+  if (error instanceof RateLimitError) {
+    return apiError("RATE_LIMITED", error.message, 429);
   }
   console.error(error);
   return apiError("INTERNAL_ERROR", "Erro interno", 500);

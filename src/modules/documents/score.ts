@@ -26,7 +26,9 @@ function orcamentoScore(context: GenerationContext, results: GenerationResult[])
     return 60; // neutro: não há dado suficiente para julgar aderência
   }
 
-  const content = financeiro.content as DocumentContent<"PLANO_FINANCEIRO">;
+  const content = financeiro.content as DocumentContent<"PLANO_FINANCEIRO"> | undefined;
+  if (!content?.lines?.length) return 60;
+
   const total = content.lines.reduce((sum, line) => sum + line.amount, 0);
   const deviation = Math.abs(total - targetBudget) / targetBudget;
 
@@ -40,8 +42,8 @@ function riscosScore(results: GenerationResult[]): number {
   const planoB = results.find((r) => r.type === "PLANO_B");
   if (planoB?.status !== "READY") return 20;
 
-  const content = planoB.content as DocumentContent<"PLANO_B">;
-  return Math.min(100, content.risks.length * 25);
+  const content = planoB.content as DocumentContent<"PLANO_B"> | undefined;
+  return Math.min(100, (content?.risks?.length ?? 0) * 25);
 }
 
 export function calculateMemScore(

@@ -1,22 +1,13 @@
 import { withTenant } from "@/lib/tenant";
 import { NotFoundError, UnsupportedDocumentTypeError } from "@/lib/api";
+import { enforceAiRateLimit } from "@/lib/rate-limit";
 import { toAnswersMap } from "@/modules/interview/questions";
 import { DOCUMENT_REGISTRY } from "./registry";
 import { DOCUMENT_SCHEMAS, type GeneratableDocumentType } from "./schemas";
 import { generateOne, recalculateMemScore, syncBudget, syncChecklist, syncTimeline } from "./orchestrator";
 import type { GenerationResult } from "./orchestrator-types";
 
-/** `getEvent` traz todas as versões (histórico); a UI só precisa da mais recente por tipo. */
-export function pickLatestPerType<T extends { type: string; version: number }>(documents: T[]): T[] {
-  const latestByType = new Map<string, T>();
-  for (const doc of documents) {
-    const current = latestByType.get(doc.type);
-    if (!current || doc.version > current.version) {
-      latestByType.set(doc.type, doc);
-    }
-  }
-  return Array.from(latestByType.values());
-}
+export { pickLatestPerType } from "./utils";
 
 async function syncRelational(
   tx: Parameters<Parameters<typeof withTenant>[1]>[0],
@@ -31,6 +22,8 @@ async function syncRelational(
 
 /** Regenera um único documento via IA, criando uma nova versão (a anterior fica no histórico). */
 export async function regenerateDocument(organizationId: string, documentId: string) {
+  await enforceAiRateLimit(organizationId, "documents.regenerate");
+
   const prepared = await withTenant(organizationId, async (tx) => {
     const document = await tx.document.findFirst({
       where: { id: documentId, event: { organizationId } },

@@ -27,6 +27,7 @@ model Organization {
   activities      Activity[]
   aiGenerationLog AiGenerationLog[]
   invitations     Invitation[]
+  aiRateLimitHits AiRateLimitHit[]
 
   @@map("organizations")
 }
@@ -402,4 +403,19 @@ model AiGenerationLog {
 
   @@index([organizationId, createdAt])
   @@map("ai_generation_logs")
+}
+
+// Registro mínimo para rate limiting por organização (docs/SECURITY.md). Separado
+// de AiGenerationLog porque conta TENTATIVAS (antes de saber se vai ter sucesso),
+// e separado de Activity porque não deve aparecer em "Atividades recentes" —
+// é contabilidade interna, não algo que o usuário precise ver.
+model AiRateLimitHit {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  route          String // ex.: "documents.generate", "interview.clarify"
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, route, createdAt])
+  @@map("ai_rate_limit_hits")
 }

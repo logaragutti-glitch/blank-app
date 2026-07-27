@@ -28,6 +28,7 @@ alter table "activities" enable row level security;
 alter table "ai_generation_logs" enable row level security;
 alter table "invitations" enable row level security;
 alter table "memberships" enable row level security;
+alter table "ai_rate_limit_hits" enable row level security;
 
 create policy tenant_isolation on "clients"
   using ("organizationId" = current_setting('app.org_id', true));
@@ -48,6 +49,9 @@ create policy tenant_isolation on "invitations"
   using ("organizationId" = current_setting('app.org_id', true));
 
 create policy tenant_isolation on "memberships"
+  using ("organizationId" = current_setting('app.org_id', true));
+
+create policy tenant_isolation on "ai_rate_limit_hits"
   using ("organizationId" = current_setting('app.org_id', true));
 
 -- ─── Tabelas filhas de Event (isolamento via join) ─────────────────────────

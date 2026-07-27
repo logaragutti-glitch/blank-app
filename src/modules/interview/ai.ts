@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { enforceAiRateLimit } from "@/lib/rate-limit";
 import { OpenAiProvider } from "@/modules/ai/openai-provider";
 import type { InterviewAnswers } from "./questions";
 
@@ -30,6 +31,11 @@ export async function getAiClarifyingQuestion(
     .join("\n");
 
   try {
+    // Chamada de IA, mesmo esta que é "opcional", conta para o limite por
+    // organização — a entrevista nunca depende dela (ver docstring acima),
+    // então um limite atingido aqui só cai no mesmo fallback de sempre.
+    await enforceAiRateLimit(organizationId, "interview.clarify");
+
     const { data, usage } = await provider.generateStructured({
       system:
         "Você é o Arquiteto MEM, copiloto de planejamento de eventos. Analise as respostas " +

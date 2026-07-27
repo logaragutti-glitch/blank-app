@@ -6,7 +6,7 @@ import { getEvent } from "@/modules/events/service";
 import { NotFoundError } from "@/lib/api";
 import { EVENT_STATUS_BADGE, EVENT_STATUS_LABEL } from "@/modules/events/labels";
 import { estimateProgress, type InterviewAnswers } from "@/modules/interview/questions";
-import { pickLatestPerType } from "@/modules/documents/service";
+import { pickLatestPerType } from "@/modules/documents/utils";
 import { DOCUMENT_REGISTRY } from "@/modules/documents/registry";
 import type { GeneratableDocumentType } from "@/modules/documents/schemas";
 import { Badge } from "@/components/ui/badge";
