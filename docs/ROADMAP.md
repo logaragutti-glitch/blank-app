@@ -170,6 +170,34 @@ funcionar de ponta a ponta):**
   bucket criado) para validar o upload/link assinado de verdade — bloqueado em você
   fornecer as credenciais
 
+**Nota sobre credenciais recebidas nesta sessão:** `OPENAI_API_KEY`, `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY` e a senha do Postgres de produção foram recebidas e salvas —
+`OPENAI_API_KEY`/Supabase (dev) em `.env.local`, as credenciais de produção completas
+(`DATABASE_URL`/`DIRECT_URL` já com a senha codificada corretamente, com `@` como `%40`)
+num `.env.production.local` separado, para não sobrescrever o Postgres local que os testes
+automatizados (RLS, E2E) já esperam. Ambos os arquivos são `.env*.local`, fora do controle
+de versão, nunca commitados.
+
+**Não foi possível validar nenhuma delas com uma chamada real, por dois motivos distintos:**
+
+1. **OpenAI e Supabase Storage (APIs HTTPS):** a política de rede deste ambiente (proxy de
+   saída, ver `/root/.ccr/README.md`) bloqueia por política de organização qualquer conexão
+   a `api.openai.com` e a `*.supabase.co` (confirmado via `$HTTPS_PROXY/__agentproxy/status`:
+   `403` classificado como "policy denial", não erro técnico — por isso não foi tentado
+   nenhum contorno).
+2. **Postgres de produção (conexão direta):** `db.<project-ref>.supabase.co` só resolve
+   endereço IPv6, e este container não tem stack de IPv6 configurado nem egress de TCP bruto
+   para host externo nenhum (testado e confirmado: `Address family not supported by
+   protocol` mesmo para um host IPv6 público conhecido; timeout numa tentativa de TCP puro
+   IPv4 para um host externo conhecido) — limitação do ambiente, não da credencial em si.
+   Isso reforça o ponto já registrado acima: a `DATABASE_URL` de produção real deve usar a
+   string de **"Connection pooling"** do Supabase (porta 6543, compatível com IPv4), não a
+   conexão direta — a Vercel também não tem IPv6 nativo.
+
+Conclusão prática: a validação de ponta a ponta da IA, do Storage e do banco de produção só
+é possível depois do deploy (Vercel), num ambiente sem essas restrições — não é algo que se
+resolve dentro desta sessão.
+
 **Parte 2c — Deploy de produção (não feita nesta entrega, depende de credenciais externas
 que este ambiente não tem):**
 - Projeto Vercel + projeto Supabase (Postgres de produção) com variáveis de ambiente e
