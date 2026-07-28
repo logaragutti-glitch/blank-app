@@ -147,6 +147,12 @@ build diretamente, não só transitivas decorativas:
   entrada de usuário em runtime. Superfície de exploração real, portanto, é baixa. Ação:
   acompanhar a próxima patch do Next.js 16.x que atualize essas transitivas internamente
   (não depende de mudança neste repositório) — registrado em `docs/BACKLOG.md`.
+- **Novas dependências (Sprint 5 Parte 2b, exportação em PDF):** `@react-pdf/renderer` e
+  `@supabase/supabase-js` foram adicionadas para a exportação em PDF (`docs/BACKLOG.md`
+  #16). `npm audit --omit=dev` depois da instalação continua nos mesmos 4 achados já
+  descritos acima — nenhuma das duas trouxe vulnerabilidade nova em produção. A chave de
+  serviço do Supabase (`SUPABASE_SERVICE_ROLE_KEY`) só é lida em `src/lib/storage.ts`, que
+  só roda no servidor (rota de API / Server Action) — nunca é exposta ao client.
 
 ## 7. Testes automatizados
 

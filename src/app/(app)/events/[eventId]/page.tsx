@@ -16,6 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentPanel } from "@/components/documents/document-panel";
 import { GenerateDocumentsButton } from "@/components/documents/generate-documents-button";
+import { ExportPdfButton } from "@/components/documents/export-pdf-button";
 
 const TABS: { value: string; label: string; type: GeneratableDocumentType }[] = [
   { value: "dna", label: "DNA", type: "DNA_EVENTO" },
@@ -68,6 +69,7 @@ export default async function EventDetailPage({
             </span>
           )}
           <Badge variant={EVENT_STATUS_BADGE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Badge>
+          <ExportPdfButton eventId={event.id} />
         </div>
       </div>
 

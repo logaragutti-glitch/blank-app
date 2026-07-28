@@ -23,7 +23,7 @@ pós-MVP.
 | 13 | Geração do Checklist | Documentos | 4 ✅ |
 | 14 | Geração do Orçamento/Plano Financeiro inicial | Documentos | 4 ✅ |
 | 15 | Cálculo do MEM Score™ | Documentos | 4 ✅ |
-| 16 | Exportação em PDF executivo | Documentos | 5 |
+| 16 | Exportação em PDF executivo | Documentos | 5 ⚠️ estrutura pronta, falta credencial Supabase |
 
 ## P1 — Essencial para o MVP, não bloqueia a primeira demo
 

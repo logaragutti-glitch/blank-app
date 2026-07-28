@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 
 import { UnauthorizedError } from "@/lib/session";
 import { RateLimitError } from "@/lib/rate-limit";
+import { StorageNotConfiguredError } from "@/lib/storage";
 import { InvalidAnswerError } from "@/modules/interview/schema";
 
 /** Ver docs/API_SPEC.md "convenção de resposta de erro". */
@@ -34,6 +35,9 @@ export function handleApiError(error: unknown) {
   }
   if (error instanceof RateLimitError) {
     return apiError("RATE_LIMITED", error.message, 429);
+  }
+  if (error instanceof StorageNotConfiguredError) {
+    return apiError("STORAGE_NOT_CONFIGURED", error.message, 503);
   }
   console.error(error);
   return apiError("INTERNAL_ERROR", "Erro interno", 500);

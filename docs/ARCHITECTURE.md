@@ -77,6 +77,14 @@ Mesmo provedor do Postgres gerenciado reduz a superfície de infraestrutura (um 
 dashboard, uma única cobrança, um único ponto de auditoria) e já resolve URLs assinadas
 para os PDFs executivos gerados por evento.
 
+**Status: estrutura implementada (Sprint 5 Parte 2), aguardando credenciais reais.**
+`src/lib/storage.ts` encapsula o `@supabase/supabase-js`; sem `SUPABASE_URL`/
+`SUPABASE_SERVICE_ROLE_KEY` configuradas, lança `StorageNotConfiguredError` de forma
+explícita (mesmo padrão do `AiProvider` sem `OPENAI_API_KEY`) em vez de falhar
+silenciosamente. Geração do PDF em si (`src/modules/documents/pdf.tsx`, via
+`@react-pdf/renderer`) não depende do Storage e já foi validada de ponta a ponta contra o
+Postgres local — só o upload final é que fica bloqueado até haver um projeto Supabase real.
+
 ### IA — OpenAI API atrás de uma interface `AiProvider`
 Nenhum código de produto chama a OpenAI diretamente. Tudo passa por
 `src/modules/ai/provider.ts`, uma interface mínima (`generateText`, `generateStructured`,

@@ -144,11 +144,36 @@ nenhuma credencial externa, ao contrário da Parte 2 abaixo.
   risco residual (`postcss`/`sharp` vendorizados dentro de `next/node_modules`, baixo
   impacto, sem correção disponível que não seja downgrade nonsense do Next)
 
-**Parte 2b — Exportação e deploy (não feita nesta entrega, depende de credenciais externas
+**Parte 2b — Exportação em PDF (estrutura FEITA; depende de credenciais externas para
+funcionar de ponta a ponta):**
+
+- [x] Escolha de lib: `@react-pdf/renderer` (gera o PDF em Node puro, sem browser —
+  mais leve que Puppeteer/Playwright numa function serverless da Vercel) e
+  `@supabase/supabase-js` para o Storage — nenhum dos dois trouxe vulnerabilidade nova
+  (`npm audit --omit=dev` continua nos mesmos 4 achados já documentados em
+  `docs/SECURITY.md` §6)
+- [x] Layout do PDF executivo (`src/modules/documents/pdf.tsx`): capa com dados do evento +
+  MEM Score, uma página por documento gerado (só os com status `READY`)
+- [x] Serviço de exportação (`src/modules/documents/export.ts`): busca o evento via
+  `withTenant` (RLS), renderiza o PDF, sobe para o Storage, registra `Activity`
+- [x] `src/lib/storage.ts`: wrapper do Supabase Storage com o mesmo padrão de falha
+  explícita do `AiProvider` sem `OPENAI_API_KEY` — sem `SUPABASE_URL`/
+  `SUPABASE_SERVICE_ROLE_KEY`, lança `StorageNotConfiguredError` (mapeado para `503`
+  `STORAGE_NOT_CONFIGURED` em `handleApiError`)
+- [x] Rota `POST /api/events/:eventId/export-pdf` + botão "Exportar PDF" na tela do evento
+  (Server Action com `useFormState`, mesmo padrão dos outros formulários)
+- [x] Validado sem credenciais reais do Supabase: script ad-hoc contra o Postgres local
+  confirmou que o fetch do evento, a geração do PDF (6 páginas para 5 documentos + capa,
+  verificado contando `/Type /Page` no PDF gerado) e o log de `Activity` funcionam — só o
+  upload final falha, do jeito esperado (`StorageNotConfiguredError`)
+- [ ] **Falta:** um projeto Supabase real (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` +
+  bucket criado) para validar o upload/link assinado de verdade — bloqueado em você
+  fornecer as credenciais
+
+**Parte 2c — Deploy de produção (não feita nesta entrega, depende de credenciais externas
 que este ambiente não tem):**
-- Geração de PDF executivo a partir dos documentos do evento
-- Upload para Supabase Storage + link de compartilhamento
-- Deploy de produção (Vercel + Supabase) com variáveis de ambiente e monitoramento básico
+- Projeto Vercel + projeto Supabase (Postgres de produção) com variáveis de ambiente e
+  monitoramento básico
 
 **Critério de pronto (Parte 1 + 2a):** `npm test`, `npm run test:e2e` e `npm run test:rls`
 passam limpos contra Postgres real; `npm run build`/`lint`/`typecheck` sem erros depois do

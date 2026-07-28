@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireActiveSession } from "@/lib/session";
 import { generateDocuments } from "./orchestrator";
 import { editDocument, regenerateDocument } from "./service";
+import { exportEventPdf } from "./export";
 
 export async function generateDocumentsAction(eventId: string) {
   const { organization } = await requireActiveSession();
@@ -47,4 +48,23 @@ export async function editDocumentAction(
 
   revalidatePath(`/events/${eventId}`);
   return { success: true };
+}
+
+export interface ExportPdfFormState {
+  url?: string;
+  error?: string;
+}
+
+export async function exportPdfAction(
+  eventId: string,
+  _prevState: ExportPdfFormState,
+): Promise<ExportPdfFormState> {
+  const { organization, userId } = await requireActiveSession();
+
+  try {
+    const { url } = await exportEventPdf(organization.id, eventId, userId);
+    return { url };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Não foi possível gerar o PDF" };
+  }
 }

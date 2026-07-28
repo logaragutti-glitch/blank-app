@@ -91,11 +91,24 @@ de forma (nunca gravam um formato que a UI não sabe renderizar).
 Toda geração/regeneração bem-sucedida recalcula o `MemScore` do evento
 (`recalculateMemScore`) — inclusive uma edição manual isolada, não só a geração em lote.
 
-## Exportação — Sprint 5
+## Exportação — Sprint 5 ✅ implementado (estrutura); depende de credenciais do Supabase Storage
 
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/api/events/:eventId/export-pdf` | Gera PDF executivo e retorna URL assinada do Storage |
+
+Resposta em sucesso: `{ "url": string }` (link assinado, expira em 7 dias). Lógica em
+`src/modules/documents/export.ts` (monta o PDF a partir da versão `READY` mais recente de
+cada documento, via `@react-pdf/renderer` — não usa browser/Puppeteer, roda em Node puro,
+mais leve numa function serverless da Vercel) + `src/lib/storage.ts` (upload para o
+Supabase Storage e geração do link assinado). Documento sem nenhum item `READY` ainda gera
+um PDF só com a capa (nome do evento, MEM Score se houver).
+
+**Sem `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` configuradas, a rota responde `503`** com
+`error.code = "STORAGE_NOT_CONFIGURED"` — o PDF chega a ser renderizado (essa parte foi
+testada de ponta a ponta contra o Postgres local), só o upload final falha, de forma
+explícita, igual ao padrão já usado para `OPENAI_API_KEY` ausente
+(`src/modules/ai/openai-provider.ts`).
 
 ## Configurações / Membros — Sprint 2 ✅ implementado
 
