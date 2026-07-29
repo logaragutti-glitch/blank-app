@@ -1,33 +1,23 @@
 {
-  "name": "Python 3.14",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/python:3-3.14-bookworm",
+  "name": "EVE OS (Node 20)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
   "customizations": {
     "codespaces": {
-      "openFiles": [
-        "README.md",
-        "streamlit_app.py"
-      ]
+      "openFiles": ["README.md"]
     },
     "vscode": {
       "settings": {},
-      "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance"
-      ]
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
     }
   },
-  "updateContentCommand": "if [ -f packages.txt ]; then sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y < packages.txt; fi; if ! command -v uv >/dev/null 2>&1; then curl -LsSf https://astral.sh/uv/install.sh | sh; fi; UV_BIN=$(command -v uv || echo \"$HOME/.local/bin/uv\"); UV_PROJECT_ENVIRONMENT=\"$HOME/.venvs/blank-app-template\" \"$UV_BIN\" sync",
-  "postAttachCommand": {
-    "server": "UV_BIN=$(command -v uv || echo \"$HOME/.local/bin/uv\"); UV_PROJECT_ENVIRONMENT=\"$HOME/.venvs/blank-app-template\" \"$UV_BIN\" run streamlit run streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false"
-  },
+  "updateContentCommand": "corepack enable && pnpm install",
   "portsAttributes": {
-    "8501": {
-      "label": "Application",
-      "onAutoForward": "openPreview"
-    }
+    "3000": { "label": "Web", "onAutoForward": "openPreview" },
+    "3001": { "label": "Admin", "onAutoForward": "notify" },
+    "4000": { "label": "API", "onAutoForward": "notify" }
   },
-  "forwardPorts": [
-    8501
-  ]
+  "forwardPorts": [3000, 3001, 4000, 5432, 6379, 5672, 15672, 9200]
 }

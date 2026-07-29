@@ -1,0 +1,5 @@
+if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+  pnpm turbo run lint typecheck --filter=...[HEAD^]
+else
+  pnpm turbo run lint typecheck
+fi

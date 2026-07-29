@@ -1,0 +1,19 @@
+{
+  "name": "@eve-os/config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "eslint-preset.cjs",
+    "tsconfig.base.json",
+    "tsconfig.nestjs.json",
+    "tsconfig.nextjs.json",
+    "tsconfig.react-library.json"
+  ],
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0"
+  }
+}
