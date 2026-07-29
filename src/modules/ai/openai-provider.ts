@@ -35,7 +35,8 @@ export class OpenAiProvider implements AiProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI request failed: ${response.status}`);
+      const body = await response.text().catch(() => "");
+      throw new Error(`OpenAI request failed: ${response.status} ${body}`.trim());
     }
 
     const data = await response.json();
