@@ -63,6 +63,7 @@ export async function generateOne(
     });
     return { type: spec.type, status: "READY", content: data, usage };
   } catch (error) {
+    console.error(`[documents.generate] ${spec.type} falhou:`, error);
     return {
       type: spec.type,
       status: "FAILED",
