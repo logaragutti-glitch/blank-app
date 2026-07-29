@@ -13,8 +13,13 @@ export async function withTenant<T>(
   organizationId: string,
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
-  return db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.org_id', ${organizationId}, true)`;
-    return fn(tx);
-  });
+  return db.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.org_id', ${organizationId}, true)`;
+      return fn(tx);
+    },
+    // Default é 5s — baixo demais quando a function roda numa região distante do banco
+    // (round-trip por query fica caro). 15s dá margem sem mascarar travamentos reais.
+    { timeout: 15_000, maxWait: 10_000 },
+  );
 }
