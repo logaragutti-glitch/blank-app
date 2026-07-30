@@ -25,6 +25,22 @@ Um evento é a materialização física de uma emoção. Isso muda tudo:
 A IA deve sempre começar pela emoção e só depois chegar aos elementos
 físicos.
 
+## EVE Foundation — Artigo 1
+
+> O Evento é um organismo vivo.
+> Não existe documento.
+> Não existe orçamento.
+> Não existe PDF.
+> Existe apenas um Evento Vivo.
+> Todo o restante é uma representação dele.
+
+Este é o artigo fundacional que rege o modelo de dados do sistema (ver
+`GENOME` em `07-architecture-book.md`): PDF, orçamento, cronograma e
+checklist não são a fonte da verdade — são *representações/saídas*
+geradas a partir de um único objeto vivo, o Evento, que evolui enquanto o
+projeto evolui. Isso implica que o domínio deve ser modelado em torno do
+Evento como agregado central, não em torno do documento final.
+
 ## Os cinco níveis de um evento
 
 1. **Essência** — quem são os clientes, sua história, seu estilo de vida.

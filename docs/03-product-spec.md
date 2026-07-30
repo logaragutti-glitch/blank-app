@@ -57,6 +57,24 @@ Você possui:
 1 reunião hoje
 ```
 
+## Escopo do MVP (5 telas para validar a ideia)
+
+Antes de qualquer vertical adicional (ver `07-architecture-book.md`) ou
+qualquer módulo avançado (Canvas do Evento completo, Modo Produção,
+renders automáticos), o MVP a validar primeiro é deliberadamente restrito
+a 5 telas:
+
+1. **Home** — resumo do dia (ver tom de voz em `06-ui-bible.md`).
+2. **Novo Projeto** — captura do briefing (conversa fluida).
+3. **Diagnóstico Criativo** — saída do Agente 1/Motor de Interpretação,
+   revisável internamente antes de virar proposta (ver `04-ai-bible.md`).
+4. **Editor do Projeto** — ajustes manuais sobre o que a IA gerou.
+5. **Gerar Proposta** — produção do artefato final (PDF/apresentação) a
+   partir dos componentes do Capítulo 7.
+
+Qualquer funcionalidade fora dessas 5 telas (Canvas do Evento interativo,
+Modo Produção, verticais EVE Kids/Destination/etc.) é pós-MVP.
+
 ## Componentes reutilizáveis de um projeto (Capítulo 7 da Constituição)
 
 Capa · História da Bia · História do casal (opcional) · Conceito criativo

@@ -19,8 +19,10 @@ o contrário.
 | [`04-ai-bible.md`](./04-ai-bible.md) | Modelo EVE, Diagnóstico Criativo, Motor de Interpretação, agentes de IA, WOW Score |
 | [`05-database-bible.md`](./05-database-bible.md) | Perfil do cliente (8 dimensões), Knowledge Graph, fichas técnicas, cadastro de espaços |
 | [`06-ui-bible.md`](./06-ui-bible.md) | Regras de interface, telas, tom de voz da IA |
-| [`07-architecture-book.md`](./07-architecture-book.md) | Stack técnico, arquitetura de software e dados |
+| [`07-architecture-book.md`](./07-architecture-book.md) | Stack técnico, camadas do sistema, GENOME, verticais de produto |
 | [`08-roadmap.md`](./08-roadmap.md) | Visão de longo prazo: Método Bia Azevedo®, EVE OS, Academia |
+| [`09-business-scale.md`](./09-business-scale.md) | Visão de negócio, ondas de expansão comercial, planos de assinatura |
+| [`10-master-blueprint.md`](./10-master-blueprint.md) | Estrutura oficial em 6 volumes da documentação, lacunas conhecidas |
 
 ## Origem
 

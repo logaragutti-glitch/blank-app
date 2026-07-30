@@ -1,6 +1,6 @@
 # EVE OS — Architecture Book
 
-## Diagrama lógico
+## Diagrama lógico (visão inicial)
 
 ```
           [ Front-end ] <---> [ API Gateway ]
@@ -21,12 +21,75 @@
   flores/materiais, espaços, fornecedores, compatibilidades e scores),
   descrita em detalhe em `05-database-bible.md`.
 
+## As camadas do sistema (numeração oficial das camadas)
+
+A documentação de produto refina o diagrama acima em camadas numeradas.
+As camadas 2, 4, 5 e 6 ainda não foram detalhadas nas sessões de
+planejamento registradas — permanecem como lacuna a preencher, não devem
+ser inventadas.
+
+```
+EVE OS
+Front-end  |  API
+--------------------------------------
+EVENT ENGINE
+Briefing Engine | Creative Engine | Knowledge Platform
+--------------------------------------
+AI ORCHESTRATOR
+```
+
+- **Camada 1 — Front-end.** Responsável apenas pela experiência. Ela não
+  "pensa", apenas apresenta. Funções: Dashboard, Projetos, Editor. Toda
+  lógica de domínio fica fora desta camada (`apps/web`, `apps/admin`,
+  `apps/mobile`).
+- **Camada 3 — Event Engine.** O núcleo do sistema — tudo é modelado como
+  evento (no sentido de "acontecimento", não confundir com o agregado
+  `Event`/GENOME). Composta por três serviços: Briefing Engine, Creative
+  Engine e Knowledge Platform (a camada de acesso ao Knowledge Graph).
+  Exemplo de fluxo interno: `Novo Projeto → Imagem enviada → Briefing
+  atualizado` — cada mudança de estado é um evento que outros
+  componentes podem reagir a ele (ver uso do RabbitMQ abaixo).
+- **Camada 7 — AI Orchestration.** Coordena os agentes de IA descritos em
+  `04-ai-bible.md`, incluindo o Rule Engine e o Event Impact Engine.
+  Provavelmente o componente mais importante do sistema — é aqui que o
+  aprendizado incremental (ex.: padrão Tulipas→Lisianthus) é aplicado.
+
 Este diagrama já corresponde ao scaffold do Sprint 0: `apps/api`
-(NestJS) é o API Gateway/orquestrador; o Knowledge Graph vive no
-Postgres (+ pgvector para busca semântica de referências visuais e
-estilos); Briefing/Creative Engine serão módulos de domínio dentro de
-`apps/api` (ou serviços dedicados, se a carga de IA justificar
-separá-los).
+(NestJS) é o API Gateway/orquestrador da Camada 1; o Knowledge Graph vive
+no Postgres (+ pgvector para busca semântica de referências visuais e
+estilos); Briefing/Creative Engine (Camada 3) serão módulos de domínio
+dentro de `apps/api` (ou serviços dedicados, se a carga de IA justificar
+separá-los); a Camada 7 (AI Orchestration) é o candidato natural a um
+serviço/módulo dedicado dado seu papel central.
+
+## Bancos de dados (dois bancos com propósitos distintos)
+
+- **Banco Operacional (PostgreSQL):** Clientes, Projetos, Agenda,
+  Financeiro — dados transacionais/relacionais do negócio.
+- **Banco Vetorial (pgvector, mesma instância Postgres):** Embeddings,
+  Referências, Imagens, Semântica, Busca Inteligente — usado pelo Agente
+  2 (Vision AI) e pelo Briefing Engine para interpretar inspirações
+  visuais por similaridade semântica.
+
+## Outras versões e verticais do produto
+
+O EVE OS nasce para casamentos (Tia Bia Festas), mas a arquitetura de
+domínio (GENOME, Knowledge Graph, agentes) é desenhada para se
+especializar em verticais adicionais no futuro, cada uma reaproveitando
+o mesmo núcleo (Camadas 1, 3 e 7) com um Knowledge Graph próprio:
+
+- **EVE Kids** — festas infantis.
+- **EVE Destination** — destination weddings.
+- **EVE Venue** — para espaços de eventos.
+- **EVE Hotel** — para hotéis e resorts.
+- **EVE Convention** — para centros de convenções.
+- **EVE Academy** — treinamento baseado na metodologia (Método Bia
+  Azevedo®), ver `08-roadmap.md`.
+
+Nenhuma dessas verticais está no escopo do MVP (ver `03-product-spec.md`)
+— são registradas aqui para que o modelo de domínio (ex.: `EventStyle`,
+`Venue`) não seja acidentalmente acoplado apenas ao caso de casamentos
+onde isso puder ser evitado sem custo extra de complexidade.
 
 ## Stack técnico (já implementado no Sprint 0 — ver raiz do monorepo)
 

@@ -84,18 +84,82 @@ Formalidade.......67%
 
 O sistema não deve ser um único prompt monolítico. É composto por agentes
 especializados, cada um com missão, entrada, saída, ferramentas e
-restrições próprias (ver Engineering Handbook para o contrato técnico):
+restrições próprias (ver Engineering Handbook para o contrato técnico).
+A numeração abaixo é a numeração de referência usada na documentação do
+produto — deve ser preservada em código/nomes de módulo para
+rastreabilidade entre docs e implementação:
 
-- **Briefing Engine / Agente de Interpretação** — lê o formulário e as
-  imagens de inspiração, produz o Diagnóstico Criativo.
-- **Creative Engine / Agente de Conceito** — a partir do Diagnóstico,
-  gera conceito nomeado, paleta, moodboard e seleção de componentes.
-- **Agente de Produção / Diretor de Produção** — traduz o conceito em
-  cronograma, lista de materiais e logística de montagem/desmontagem.
-- **Agente de Budget** — analisa custos, margens e sustentabilidade
-  econômica da proposta frente ao orçamento informado.
+- **Agente 1 — Briefing Engine / Agente de Interpretação** — lê o
+  formulário e as imagens de inspiração, produz o Diagnóstico Criativo.
+- **Agente 2 — Vision AI** — interpreta as imagens de inspiração
+  enviadas pelo cliente. Reconhece: flores, cadeiras, mesas, louças,
+  arquitetura, iluminação, tecidos, cores, estilos, tendências. Transforma
+  tudo isso em dados estruturados (não em texto livre) que alimentam o
+  Diagnóstico Criativo do Agente 1 e a consulta ao Knowledge Graph.
+- **Agente 3 — Creative Engine / Agente de Conceito** — a partir do
+  Diagnóstico, gera conceito nomeado, paleta, moodboard e seleção de
+  componentes.
+- **Agente 4 — Diretor de Produção** — recebe o projeto já aprovado pelo
+  cliente e protege a lucratividade do evento. Responde perguntas como:
+  - Esse projeto cabe no orçamento aprovado (ex.: R$ 30.000)?
+  - Qual margem teremos?
+  - Quanto gastar com flores?
+  - Qual fornecedor oferece melhor custo-benefício?
+  - Quanto custa montar? Quanto custa desmontar?
+
+  Também mapeia, evento a evento, para aprendizado contínuo: tempo de
+  montagem, quantidade de flores usadas, problemas, elogios, custos,
+  lucro, clima do dia, tempo de cerimônia, fotografias geradas. Com o
+  tempo, identifica padrões (ex.: qual fornecedor realmente entrega
+  melhor custo-benefício para determinado tipo de espaço).
 - **Agente de Projetos** — organiza o acompanhamento do projeto do
   fechamento até a execução (checklists, reuniões, aprovações).
+
+### Aprendizado incremental (exemplo de referência)
+
+> A Bia sempre troca Tulipas por Lisianthus.
+
+Depois de algumas ocorrências desse padrão em projetos aprovados, a IA
+deve entender que isso faz parte da identidade criativa da empresa (não
+uma coincidência) e passar a **priorizar essa escolha** proativamente em
+novos diagnósticos com perfil compatível — isto é, o sistema de
+aprendizado observa decisões humanas recorrentes e as promove a regras do
+Knowledge Graph (ver `05-database-bible.md`), fechando o ciclo descrito no
+Capítulo 9 da Constituição.
+
+## Rule Engine e Event Impact Engine
+
+Diferente de um gerador de texto que só produz a proposta uma vez, o EVE
+OS mantém o Evento como um objeto vivo (ver `EVE Foundation — Artigo 1`
+em `01-constitution.md`) e recalcula impactos em tempo real sempre que
+algo muda. Isso é responsabilidade de dois componentes do AI Orchestrator:
+
+- **Rule Engine** — aplica as regras de compatibilidade do Knowledge
+  Graph (estilo × material, espaço × estrutura, orçamento × escopo) a
+  cada alteração no projeto.
+- **Event Impact Engine** — a partir das regras aplicadas, calcula e
+  apresenta ao usuário as consequências em cascata de uma mudança,
+  instantaneamente.
+
+**Exemplo 1 — mudança de horário da cerimônia** (de 16h30 para 17h30):
+
+- ☀️ A luz natural será menor.
+- 📷 O fotógrafo precisará antecipar o making of.
+- 🍸 O coquetel deverá começar mais tarde.
+- 💡 Recomendação automática: reforçar a iluminação decorativa.
+
+**Exemplo 2 — troca de flor** (ex.: substituição por Lisianthus):
+
+- ✅ Economia estimada de R$ 8.500.
+- ✅ Disponibilidade aumenta para 100%.
+- ✅ Conceito Fine Art preservado.
+- ✅ Nenhuma alteração na narrativa.
+
+Essas duas saídas devem aparecer em menos de um segundo/instantaneamente
+do ponto de vista do usuário — ou seja, tecnicamente isso exige que as
+regras de compatibilidade estejam pré-computadas/indexadas (Knowledge
+Graph + pgvector/OpenSearch), não recalculadas via chamada de LLM síncrona
+a cada interação.
 
 ## Regras de ouro específicas da IA
 
