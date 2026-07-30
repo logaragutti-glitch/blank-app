@@ -7,12 +7,13 @@ import {
   NotFoundException,
   Param,
   Post,
-  Query,
   UploadedFile,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { ApiQuery, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { CurrentUser } from "../auth/current-user.decorator";
+import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
 import { StoragePort } from "../../infrastructure/storage/storage.port";
 import { VisionAnalysisPort } from "./ai/vision-analysis.port";
@@ -24,12 +25,8 @@ import { InspirationImageRepository } from "./repositories/inspiration-image.rep
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
-// NOTE: tenantId/organizationId are query params for now — same temporary
-// arrangement as KnowledgeGraphController, until auth/tenant-resolution
-// middleware exists.
 @ApiTags("briefing")
-@ApiQuery({ name: "tenantId", required: true })
-@ApiQuery({ name: "organizationId", required: true })
+@ApiBearerAuth()
 @Controller("briefing")
 export class BriefingController {
   constructor(
@@ -42,14 +39,10 @@ export class BriefingController {
   ) {}
 
   @Post()
-  async createBriefing(
-    @Query("tenantId") tenantId: string,
-    @Query("organizationId") organizationId: string,
-    @Body() dto: CreateBriefingDto,
-  ) {
+  async createBriefing(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateBriefingDto) {
     const client = await this.clients.create({
-      tenantId,
-      organizationId,
+      tenantId: user.tenantId,
+      organizationId: user.organizationId,
       partnerOneName: dto.partnerOneName,
       partnerTwoName: dto.partnerTwoName,
       partnerOneProfession: dto.partnerOneProfession,
@@ -70,8 +63,8 @@ export class BriefingController {
     });
 
     const event = await this.events.create({
-      tenantId,
-      organizationId,
+      tenantId: user.tenantId,
+      organizationId: user.organizationId,
       clientId: client.id,
       venueId: dto.venueId,
       type: dto.eventType,
@@ -86,8 +79,7 @@ export class BriefingController {
   @Post(":eventId/inspiration-images")
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: MAX_IMAGE_BYTES } }))
   async uploadInspirationImage(
-    @Query("tenantId") tenantId: string,
-    @Query("organizationId") organizationId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param("eventId") eventId: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
@@ -100,7 +92,7 @@ export class BriefingController {
       );
     }
 
-    const event = await this.events.findById(organizationId, eventId);
+    const event = await this.events.findById(user.organizationId, eventId);
     if (!event) throw new NotFoundException("Event not found");
 
     const storageKey = `inspiration/${eventId}/${randomUUID()}-${file.originalname}`;
@@ -109,8 +101,8 @@ export class BriefingController {
     // either step is recorded as a FAILED image with its error, instead of
     // an unhandled 500 that leaves no trace of the upload attempt.
     let image = await this.images.create({
-      tenantId,
-      organizationId,
+      tenantId: user.tenantId,
+      organizationId: user.organizationId,
       eventId,
       storageKey,
       originalFilename: file.originalname,
@@ -144,10 +136,7 @@ export class BriefingController {
   }
 
   @Get(":eventId/inspiration-images")
-  async listInspirationImages(
-    @Query("organizationId") organizationId: string,
-    @Param("eventId") eventId: string,
-  ) {
-    return this.images.findByEvent(organizationId, eventId);
+  async listInspirationImages(@CurrentUser() user: AuthenticatedUser, @Param("eventId") eventId: string) {
+    return this.images.findByEvent(user.organizationId, eventId);
   }
 }

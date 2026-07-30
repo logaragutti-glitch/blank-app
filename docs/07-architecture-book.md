@@ -155,6 +155,38 @@ estiver definida, o que derrubaria o boot inteiro do NestJS mesmo em
 ambientes sem as chaves configuradas (ex.: rodando só a parte de
 Knowledge Graph, sem nunca chamar o pipeline de briefing/imagens).
 
+## Autenticação e RBAC (`apps/api/src/modules/auth`)
+
+Preenche a lacuna citada acima: até este ponto, `tenantId`/`organizationId`
+eram passados como query params sem qualquer validação — qualquer chamador
+podia se declarar de qualquer organização. Isso foi substituído por
+autenticação real:
+
+- **Modelo `User`** (`schema.prisma`) — pessoa que opera o sistema (a Bia e
+  sua equipe), nunca o casal/cliente (`Client` continua sem login).
+  `role` é um enum simples (`OWNER`, `ADMIN`, `MEMBER`, `VIEWER`);
+  `passwordHash` nunca faz parte do tipo de domínio `User` compartilhado em
+  `@eve-os/types` — só existe na camada de repositório do módulo de auth.
+- **`POST /auth/register`** — auto-registro numa Organization já existente
+  (o provisionamento de Tenant/Organization em si continua sendo um fluxo
+  administrativo não implementado); todo usuário auto-registrado recebe o
+  papel padrão `MEMBER`. Senha com hash via bcrypt (10 rounds).
+- **`POST /auth/login`** — retorna um JWT (`@nestjs/jwt`, `HS256`,
+  `JWT_SECRET`, expiração de 24h) cujo payload (`sub`, `tenantId`,
+  `organizationId`, `role`, `email`) é exatamente o que vira `req.user`
+  depois de validado.
+- **`JwtAuthGuard`** — registrado globalmente (`APP_GUARD`, `AuthModule`);
+  toda rota exige um JWT válido por padrão. Use o decorator `@Public()`
+  para isentar uma rota (hoje: `/auth/register`, `/auth/login`, `/health`).
+- **`RolesGuard` + `@Roles(...)`** — também global; sem `@Roles()` numa
+  rota, qualquer usuário autenticado tem acesso. Existe como infraestrutura
+  pronta para restringir operações por papel assim que regras de negócio
+  específicas por papel forem definidas (nenhuma foi documentada ainda).
+- **`@CurrentUser()`** — decorator de parâmetro que lê `req.user`. Todos os
+  controllers de negócio (`BriefingController`, `KnowledgeGraphController`,
+  `CreativeController`) agora derivam `tenantId`/`organizationId` daqui, em
+  vez de aceitá-los como query params supridos pelo chamador.
+
 ## Uso do pgvector no domínio
 
 O banco vetorial existe especificamente para o Briefing Engine: embeddings

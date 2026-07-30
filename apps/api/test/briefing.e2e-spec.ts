@@ -7,9 +7,9 @@ import { StoragePort } from "../src/infrastructure/storage/storage.port";
 import { PrismaService } from "../src/infrastructure/prisma/prisma.service";
 import { EmbeddingPort } from "../src/infrastructure/ai/embedding.port";
 import { VisionAnalysisPort } from "../src/modules/briefing/ai/vision-analysis.port";
+import { authHeader, registerTestUser } from "./auth-test-helper";
 
 // Uses the Knowledge Graph seed data for a real venue (prisma/seed.ts).
-const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const ORGANIZATION_ID = "00000000-0000-0000-0000-000000000002";
 
 const FAKE_EMBEDDING = new Array(1536).fill(0).map((_, i) => (i % 7) / 7);
@@ -34,6 +34,7 @@ describe("Briefing (e2e)", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let venueId: string;
+  let auth: [string, string];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -54,6 +55,9 @@ describe("Briefing (e2e)", () => {
       where: { organizationId: ORGANIZATION_ID, name: "Villa Massari" },
     });
     venueId = venue.id;
+
+    const { accessToken } = await registerTestUser(app, ORGANIZATION_ID);
+    auth = authHeader(accessToken);
   });
 
   afterAll(async () => {
@@ -63,7 +67,7 @@ describe("Briefing (e2e)", () => {
   it("POST /briefing creates the client and event from the form", async () => {
     const response = await request(app.getHttpServer())
       .post("/briefing")
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .send({
         partnerOneName: "Ana",
         partnerTwoName: "Bruno",
@@ -81,9 +85,16 @@ describe("Briefing (e2e)", () => {
   it("rejects a briefing missing required fields", async () => {
     await request(app.getHttpServer())
       .post("/briefing")
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .send({ venueId: "not-a-uuid" })
       .expect(400);
+  });
+
+  it("rejects unauthenticated requests", async () => {
+    await request(app.getHttpServer())
+      .post("/briefing")
+      .send({ partnerOneName: "Ana", venueId })
+      .expect(401);
   });
 
   describe("inspiration image pipeline (Storage/Vision/Embedding mocked)", () => {
@@ -92,7 +103,7 @@ describe("Briefing (e2e)", () => {
     beforeAll(async () => {
       const response = await request(app.getHttpServer())
         .post("/briefing")
-        .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+        .set(...auth)
         .send({ partnerOneName: "Carla", partnerTwoName: "Diego", venueId })
         .expect(201);
       eventId = response.body.event.id;
@@ -101,7 +112,7 @@ describe("Briefing (e2e)", () => {
     it("uploads an image, analyzes it, and persists the embedding", async () => {
       const response = await request(app.getHttpServer())
         .post(`/briefing/${eventId}/inspiration-images`)
-        .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+        .set(...auth)
         .attach("file", Buffer.from("fake-png-bytes"), {
           filename: "inspiration.png",
           contentType: "image/png",
@@ -128,7 +139,7 @@ describe("Briefing (e2e)", () => {
     it("GET lists the uploaded image for the event", async () => {
       const response = await request(app.getHttpServer())
         .get(`/briefing/${eventId}/inspiration-images`)
-        .query({ organizationId: ORGANIZATION_ID })
+        .set(...auth)
         .expect(200);
 
       expect(response.body).toHaveLength(1);
@@ -138,7 +149,7 @@ describe("Briefing (e2e)", () => {
     it("returns 404 for an unknown event", async () => {
       await request(app.getHttpServer())
         .post("/briefing/00000000-0000-0000-0000-000000009999/inspiration-images")
-        .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+        .set(...auth)
         .attach("file", Buffer.from("fake-png-bytes"), {
           filename: "inspiration.png",
           contentType: "image/png",
@@ -151,7 +162,7 @@ describe("Briefing (e2e)", () => {
 
       const response = await request(app.getHttpServer())
         .post(`/briefing/${eventId}/inspiration-images`)
-        .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+        .set(...auth)
         .attach("file", Buffer.from("fake-png-bytes"), {
           filename: "inspiration.png",
           contentType: "image/png",

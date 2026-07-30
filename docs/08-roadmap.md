@@ -73,8 +73,14 @@ um produto comercial horizontal para:
   existe layout/UI de produto definido para renderizar contra; a
   responsabilidade de virar isso num PDF/apresentação fica com o frontend
   (ou com um Sprint futuro, quando o design existir).
+- **Auth/RBAC (concluído):** autenticação real via JWT (`POST
+  /auth/register`, `POST /auth/login`, ver `07-architecture-book.md`) e um
+  modelo `User` (papel via `UserRole`). Todos os controllers de negócio
+  agora exigem um Bearer token e derivam `tenantId`/`organizationId` do
+  usuário autenticado — os antigos query params `tenantId`/`organizationId`
+  supridos livremente pelo chamador foram removidos.
 - **Sprint 5+:** feedback pós-evento, renders conceituais,
-  módulos de produção/cronograma/checklist, auth/RBAC, UI do produto.
+  módulos de produção/cronograma/checklist, UI do produto.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.

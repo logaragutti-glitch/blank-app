@@ -6,11 +6,12 @@ import {
   NotFoundException,
   Param,
   Post,
-  Query,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { ApiQuery, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { EventStyle, InspirationImage } from "@eve-os/types";
+import { CurrentUser } from "../auth/current-user.decorator";
+import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
@@ -27,12 +28,8 @@ import { computeWowScore } from "./wow-score";
 
 const SEMANTIC_SEARCH_STYLE_LIMIT = 5;
 
-// NOTE: tenantId/organizationId are query params for now — same temporary
-// arrangement as the Briefing/Knowledge Graph controllers, until auth/
-// tenant-resolution middleware exists.
 @ApiTags("creative")
-@ApiQuery({ name: "tenantId", required: true })
-@ApiQuery({ name: "organizationId", required: true })
+@ApiBearerAuth()
 @Controller("creative")
 export class CreativeController {
   private readonly logger = new Logger(CreativeController.name);
@@ -53,10 +50,10 @@ export class CreativeController {
 
   @Post(":eventId/diagnostico-criativo")
   async generateDiagnosticoCriativo(
-    @Query("tenantId") tenantId: string,
-    @Query("organizationId") organizationId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param("eventId") eventId: string,
   ) {
+    const { organizationId } = user;
     const event = await this.events.findById(organizationId, eventId);
     if (!event) throw new NotFoundException("Event not found");
 
@@ -145,7 +142,7 @@ export class CreativeController {
       candidateStyles.find((style) => style.id === result.matchedEventStyleId)?.dimensionScores ?? null;
 
     return this.proposals.create({
-      tenantId,
+      tenantId: user.tenantId,
       organizationId,
       eventId,
       eventStyleId: result.matchedEventStyleId,
@@ -155,11 +152,8 @@ export class CreativeController {
   }
 
   @Get(":eventId/proposals")
-  async listProposals(
-    @Query("organizationId") organizationId: string,
-    @Param("eventId") eventId: string,
-  ) {
-    return this.proposals.findByEvent(organizationId, eventId);
+  async listProposals(@CurrentUser() user: AuthenticatedUser, @Param("eventId") eventId: string) {
+    return this.proposals.findByEvent(user.organizationId, eventId);
   }
 
   // Agente 3 / Creative Engine: generates the 18 reusable proposal
@@ -169,9 +163,10 @@ export class CreativeController {
   // to call again after the diagnosis or briefing data changes.
   @Post("proposals/:proposalId/components")
   async generateProposalComponents(
-    @Query("organizationId") organizationId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param("proposalId") proposalId: string,
   ) {
+    const { organizationId } = user;
     const proposal = await this.proposals.findById(organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
 
@@ -227,10 +222,10 @@ export class CreativeController {
 
   @Get("proposals/:proposalId/components")
   async listProposalComponents(
-    @Query("organizationId") organizationId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param("proposalId") proposalId: string,
   ) {
-    const proposal = await this.proposals.findById(organizationId, proposalId);
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
     return this.proposalComponents.findByProposal(proposalId);
   }
@@ -242,10 +237,10 @@ export class CreativeController {
   // file itself, since no product UI/layout exists yet to render against.
   @Get("proposals/:proposalId/document")
   async getProposalDocument(
-    @Query("organizationId") organizationId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param("proposalId") proposalId: string,
   ) {
-    const proposal = await this.proposals.findById(organizationId, proposalId);
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
 
     const components = await this.proposalComponents.findByProposal(proposalId);

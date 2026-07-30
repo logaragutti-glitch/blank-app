@@ -37,6 +37,7 @@ model Organization {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
+  users     User[]
   clients   Client[]
   venues    Venue[]
   suppliers Supplier[]
@@ -46,6 +47,43 @@ model Organization {
 
   @@index([tenantId])
   @@map("organizations")
+}
+
+// ---------------------------------------------------------------------------
+// User / Auth — não faz parte do GENOME nem do Knowledge Graph; é quem opera
+// o sistema (a Bia e sua equipe), não o casal (ver Client). RBAC simples por
+// papel — ver apps/api/src/modules/auth.
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model User {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(MEMBER)
+  isActive     Boolean  @default(true) @map("is_active")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("users")
 }
 
 // ---------------------------------------------------------------------------

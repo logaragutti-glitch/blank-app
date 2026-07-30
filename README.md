@@ -12,17 +12,19 @@ Specification, AI Bible, Database Bible, UI Bible, Architecture Book, and
 Roadmap. When in doubt about domain behavior, `docs/` is the source of
 truth — read it before adding product logic.
 
-> **Status**: Sprint 4 complete — the Creative Engine generates the
-> Diagnostico Criativo (Agente 1 / Motor de Interpretacao) from the
-> briefing, analyzed inspiration images (narrowed via real pgvector
-> semantic search), and the Knowledge Graph, persists it as a Proposal
-> with a computed WOW Score, then generates the 18 reusable proposal
-> components (Agente 3 / Creative Engine, Constitution Capitulo 7), and
-> assembles them into a structured proposal document
-> (`GET /creative/proposals/:proposalId/document`). Sprint 2 (Briefing
-> Engine: form capture + inspiration image ingestion), Sprint 1 (Knowledge
-> Graph domain + read API), and Sprint 0 (monorepo/tooling/infra) are
-> complete.
+> **Status**: Sprint 4 and real authentication/RBAC are complete — the
+> Creative Engine generates the Diagnostico Criativo (Agente 1 / Motor de
+> Interpretacao) from the briefing, analyzed inspiration images (narrowed
+> via real pgvector semantic search), and the Knowledge Graph, persists it
+> as a Proposal with a computed WOW Score, then generates the 18 reusable
+> proposal components (Agente 3 / Creative Engine, Constitution Capitulo
+> 7), and assembles them into a structured proposal document
+> (`GET /creative/proposals/:proposalId/document`). Every business endpoint
+> now requires a JWT (`POST /auth/register`, `POST /auth/login`) instead of
+> caller-supplied `tenantId`/`organizationId` query params — see
+> `docs/07-architecture-book.md`. Sprint 2 (Briefing Engine: form capture +
+> inspiration image ingestion), Sprint 1 (Knowledge Graph domain + read
+> API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
 ## Stack
 
@@ -156,8 +158,10 @@ Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
 Sprint 4 is complete: Diagnostico Criativo generation (with real pgvector
 semantic search narrowing the candidate styles and an automatically
 computed WOW Score), the 18 reusable proposal components (Capitulo 7),
-and the assembled proposal document endpoint are all implemented. Still
-missing: auth/RBAC, product UI, and turning the structured document into
-an actual PDF/presentation artifact (deferred until a product layout
-exists to render against). Subsequent work will implement those, per
-`docs/08-roadmap.md`.
+and the assembled proposal document endpoint are all implemented.
+Authentication/RBAC is also complete (see `docs/07-architecture-book.md`):
+every business endpoint requires a JWT and derives `tenantId`/
+`organizationId` from it. Still missing: product UI, and turning the
+structured document into an actual PDF/presentation artifact (deferred
+until a product layout exists to render against). Subsequent work will
+implement those, per `docs/08-roadmap.md`.

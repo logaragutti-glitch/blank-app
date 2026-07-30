@@ -3,6 +3,7 @@ import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/app.setup";
+import { authHeader, registerTestUser } from "./auth-test-helper";
 
 // Runs against the Knowledge Graph seed data (prisma/seed.ts), which must
 // have been applied to the database pointed at by DATABASE_URL before this
@@ -11,6 +12,7 @@ const SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000002";
 
 describe("Knowledge Graph (e2e)", () => {
   let app: INestApplication;
+  let auth: [string, string];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -20,16 +22,23 @@ describe("Knowledge Graph (e2e)", () => {
     app = moduleRef.createNestApplication();
     configureApp(app);
     await app.init();
+
+    const { accessToken } = await registerTestUser(app, SEEDED_ORGANIZATION_ID);
+    auth = authHeader(accessToken);
   });
 
   afterAll(async () => {
     await app.close();
   });
 
+  it("rejects unauthenticated requests", async () => {
+    await request(app.getHttpServer()).get("/knowledge-graph/styles").expect(401);
+  });
+
   it("GET /knowledge-graph/styles includes the seeded Garden Fine Art style", async () => {
     const response = await request(app.getHttpServer())
       .get("/knowledge-graph/styles")
-      .query({ organizationId: SEEDED_ORGANIZATION_ID })
+      .set(...auth)
       .expect(200);
 
     const gardenFineArt = response.body.find((style: { name: string }) => style.name === "Garden Fine Art");
@@ -41,7 +50,7 @@ describe("Knowledge Graph (e2e)", () => {
   it("GET /knowledge-graph/materials reflects Peonia's documented compatibility", async () => {
     const response = await request(app.getHttpServer())
       .get("/knowledge-graph/materials")
-      .query({ organizationId: SEEDED_ORGANIZATION_ID })
+      .set(...auth)
       .expect(200);
 
     const peonia = response.body.find((material: { name: string }) => material.name === "Peônia");
@@ -56,7 +65,7 @@ describe("Knowledge Graph (e2e)", () => {
   it("GET /knowledge-graph/venues includes Villa Massari with its recommendation notes", async () => {
     const response = await request(app.getHttpServer())
       .get("/knowledge-graph/venues")
-      .query({ organizationId: SEEDED_ORGANIZATION_ID })
+      .set(...auth)
       .expect(200);
 
     const villaMassari = response.body.find((venue: { name: string }) => venue.name === "Villa Massari");
@@ -69,7 +78,7 @@ describe("Knowledge Graph (e2e)", () => {
   it("GET /knowledge-graph/venues/:id -> 404 for an unknown id", async () => {
     await request(app.getHttpServer())
       .get("/knowledge-graph/venues/00000000-0000-0000-0000-000000009999")
-      .query({ organizationId: SEEDED_ORGANIZATION_ID })
+      .set(...auth)
       .expect(404);
   });
 });

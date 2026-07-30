@@ -7,6 +7,7 @@ import { PrismaService } from "../src/infrastructure/prisma/prisma.service";
 import { DiagnosticoCriativoPort } from "../src/modules/creative/ai/diagnostico-criativo.port";
 import { ProposalComponentsPort } from "../src/modules/creative/ai/proposal-components.port";
 import type { ProposalComponentsResult } from "../src/modules/creative/ai/proposal-components.port";
+import { authHeader, registerTestUser } from "./auth-test-helper";
 
 // Uses the Knowledge Graph seed data (prisma/seed.ts): Villa Massari venue,
 // Garden Fine Art style, Peonia material.
@@ -49,6 +50,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
   let app: INestApplication;
   let venueId: string;
   let gardenFineArtStyleId: string;
+  let auth: [string, string];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -71,6 +73,9 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
       where: { organizationId: ORGANIZATION_ID, name: "Garden Fine Art" },
     });
     gardenFineArtStyleId = style.id;
+
+    const { accessToken } = await registerTestUser(app, ORGANIZATION_ID);
+    auth = authHeader(accessToken);
   });
 
   afterAll(async () => {
@@ -80,7 +85,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
   it("returns 404 for an unknown event", async () => {
     await request(app.getHttpServer())
       .post("/creative/00000000-0000-0000-0000-000000009999/diagnostico-criativo")
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(404);
   });
 
@@ -103,7 +108,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
 
     const briefingResponse = await request(app.getHttpServer())
       .post("/briefing")
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .send({
         partnerOneName: "Elis",
         partnerTwoName: "Fábio",
@@ -115,7 +120,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
 
     const response = await request(app.getHttpServer())
       .post(`/creative/${eventId}/diagnostico-criativo`)
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(201);
 
     expect(response.body.eventStyleId).toBe(gardenFineArtStyleId);
@@ -125,7 +130,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
 
     const listResponse = await request(app.getHttpServer())
       .get(`/creative/${eventId}/proposals`)
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(200);
     expect(listResponse.body).toHaveLength(1);
     expect(listResponse.body[0].id).toBe(response.body.id);
@@ -150,7 +155,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
 
     const briefingResponse = await request(app.getHttpServer())
       .post("/briefing")
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .send({ partnerOneName: "Lia", partnerTwoName: "Theo", venueId })
       .expect(201);
     const eventId = briefingResponse.body.event.id;
@@ -168,7 +173,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
 
     const response = await request(app.getHttpServer())
       .post(`/creative/${eventId}/diagnostico-criativo`)
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(201);
 
     expect(typeof response.body.wowScore).toBe("number");
@@ -181,20 +186,20 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
 
     const briefingResponse = await request(app.getHttpServer())
       .post("/briefing")
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .send({ partnerOneName: "Gabi", partnerTwoName: "Hugo", venueId })
       .expect(201);
     const eventId = briefingResponse.body.event.id;
 
     const response = await request(app.getHttpServer())
       .post(`/creative/${eventId}/diagnostico-criativo`)
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(503);
     expect(response.body.message).toMatch(/simulated Anthropic outage/);
 
     const listResponse = await request(app.getHttpServer())
       .get(`/creative/${eventId}/proposals`)
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(200);
     expect(listResponse.body).toHaveLength(0);
   });
@@ -204,6 +209,8 @@ describe("Creative / Proposal Components (e2e)", () => {
   let app: INestApplication;
   let venueId: string;
   let proposalId: string;
+  let auth: [string, string];
+  let otherOrgAuth: [string, string];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -226,6 +233,18 @@ describe("Creative / Proposal Components (e2e)", () => {
       where: { organizationId: ORGANIZATION_ID, name: "Garden Fine Art" },
     });
 
+    const { accessToken } = await registerTestUser(app, ORGANIZATION_ID);
+    auth = authHeader(accessToken);
+
+    // A second Organization (same Tenant) to prove cross-tenant isolation:
+    // a user from another org must not be able to reach this proposal's
+    // components/document, even knowing its id.
+    const otherOrg = await prisma.organization.create({
+      data: { tenantId: TENANT_ID, name: "Other Org (e2e)" },
+    });
+    const { accessToken: otherAccessToken } = await registerTestUser(app, otherOrg.id);
+    otherOrgAuth = authHeader(otherAccessToken);
+
     diagnosticoCriativoMock.generate.mockResolvedValueOnce({
       diagnosis: {
         perfilCasal: "Romântico contemporâneo",
@@ -244,14 +263,14 @@ describe("Creative / Proposal Components (e2e)", () => {
 
     const briefingResponse = await request(app.getHttpServer())
       .post("/briefing")
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .send({ partnerOneName: "Iris", partnerTwoName: "João", venueId })
       .expect(201);
     const eventId = briefingResponse.body.event.id;
 
     const proposalResponse = await request(app.getHttpServer())
       .post(`/creative/${eventId}/diagnostico-criativo`)
-      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(201);
     proposalId = proposalResponse.body.id;
   });
@@ -263,14 +282,14 @@ describe("Creative / Proposal Components (e2e)", () => {
   it("returns 404 for an unknown proposal", async () => {
     await request(app.getHttpServer())
       .post("/creative/proposals/00000000-0000-0000-0000-000000009999/components")
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(404);
   });
 
   it("returns 400 for the document endpoint before any component has been generated", async () => {
     const response = await request(app.getHttpServer())
       .get(`/creative/proposals/${proposalId}/document`)
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(400);
     expect(response.body.message).toMatch(/no components yet/);
   });
@@ -280,7 +299,7 @@ describe("Creative / Proposal Components (e2e)", () => {
 
     const response = await request(app.getHttpServer())
       .post(`/creative/proposals/${proposalId}/components`)
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(201);
 
     expect(response.body).toHaveLength(18);
@@ -311,21 +330,21 @@ describe("Creative / Proposal Components (e2e)", () => {
 
     const listResponse = await request(app.getHttpServer())
       .get(`/creative/proposals/${proposalId}/components`)
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(200);
     expect(listResponse.body).toHaveLength(18);
 
-    const proposalsResponse = await request(app.getHttpServer())
+    const otherOrgResponse = await request(app.getHttpServer())
       .get(`/creative/proposals/${proposalId}/components`)
-      .query({ organizationId: "00000000-0000-0000-0000-000000000099" })
+      .set(...otherOrgAuth)
       .expect(404);
-    expect(proposalsResponse.body.message).toMatch(/Proposal not found/);
+    expect(otherOrgResponse.body.message).toMatch(/Proposal not found/);
   });
 
   it("returns the assembled document (Proposal + ordered components) once components exist", async () => {
     const response = await request(app.getHttpServer())
       .get(`/creative/proposals/${proposalId}/document`)
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(200);
 
     expect(response.body.proposal.id).toBe(proposalId);
@@ -336,7 +355,7 @@ describe("Creative / Proposal Components (e2e)", () => {
   it("returns 404 for the document endpoint when the proposal does not exist", async () => {
     await request(app.getHttpServer())
       .get("/creative/proposals/00000000-0000-0000-0000-000000009999/document")
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(404);
   });
 
@@ -345,7 +364,7 @@ describe("Creative / Proposal Components (e2e)", () => {
 
     const response = await request(app.getHttpServer())
       .post(`/creative/proposals/${proposalId}/components`)
-      .query({ organizationId: ORGANIZATION_ID })
+      .set(...auth)
       .expect(503);
     expect(response.body.message).toMatch(/simulated Anthropic outage/);
   });

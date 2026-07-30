@@ -5,6 +5,7 @@ import { HealthModule } from "./health/health.module";
 import { AiModule } from "./infrastructure/ai/ai.module";
 import { PrismaModule } from "./infrastructure/prisma/prisma.module";
 import { StorageModule } from "./infrastructure/storage/storage.module";
+import { AuthModule } from "./modules/auth/auth.module";
 import { BriefingModule } from "./modules/briefing/briefing.module";
 import { CreativeModule } from "./modules/creative/creative.module";
 import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.module";
@@ -25,6 +26,7 @@ import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.
     PrismaModule,
     StorageModule,
     AiModule,
+    AuthModule,
     HealthModule,
     KnowledgeGraphModule,
     BriefingModule,
