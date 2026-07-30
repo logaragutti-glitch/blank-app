@@ -1,9 +1,16 @@
 # EVE OS
 
-Enterprise platform monorepo. This repository is the implementation of the
-EVE OS product, built to the standards defined by the project's official
-documentation (Constitution, Product Specification, Architecture Book, AI
-Bible, UI Bible, Engineering Handbook, Database Bible, API Bible, Roadmap).
+Event Intelligence Operating System — a monorepo for the platform that
+turns a wedding/event brief and inspiration photos into a fully
+personalized creative proposal, built on the Tia Bia Festas / Método Bia
+Azevedo methodology.
+
+This repository is the implementation of the EVE OS product, built to the
+standards defined by the project's official documentation, which lives in
+[`docs/`](./docs/README.md): Constitution, Brand Bible, Product
+Specification, AI Bible, Database Bible, UI Bible, Architecture Book, and
+Roadmap. When in doubt about domain behavior, `docs/` is the source of
+truth — read it before adding product logic.
 
 > **Status**: Sprint 0 — monorepo, tooling, and local infrastructure
 > scaffolding. No product/domain logic has been implemented yet.
