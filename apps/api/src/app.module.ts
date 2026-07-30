@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { LoggerModule } from "nestjs-pino";
 import { HealthModule } from "./health/health.module";
+import { PrismaModule } from "./infrastructure/prisma/prisma.module";
+import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.module";
 
 @Module({
   imports: [
@@ -16,7 +18,9 @@ import { HealthModule } from "./health/health.module";
         redact: ["req.headers.authorization"],
       },
     }),
+    PrismaModule,
     HealthModule,
+    KnowledgeGraphModule,
   ],
 })
 export class AppModule {}

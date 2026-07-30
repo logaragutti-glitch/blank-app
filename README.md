@@ -12,8 +12,10 @@ Specification, AI Bible, Database Bible, UI Bible, Architecture Book, and
 Roadmap. When in doubt about domain behavior, `docs/` is the source of
 truth — read it before adding product logic.
 
-> **Status**: Sprint 0 — monorepo, tooling, and local infrastructure
-> scaffolding. No product/domain logic has been implemented yet.
+> **Status**: Sprint 1 — the Knowledge Graph domain (event styles,
+> materials, venues) is modeled in Postgres via Prisma migrations and
+> seeded with the examples from the Bibles, exposed through read-only API
+> endpoints. Sprint 0 (monorepo/tooling/infra) is complete.
 
 ## Stack
 
@@ -64,17 +66,19 @@ pnpm dev
 
 This runs `scripts/dev.sh`, which:
 
-1. Copies `.env.example` to `.env` on first run.
+1. Copies `.env.example` to `.env` on first run (root and `apps/api`).
 2. Starts Postgres (with pgvector), Redis, RabbitMQ, and OpenSearch via
    Docker Compose and waits for health checks.
 3. Installs dependencies with pnpm if `node_modules` is missing.
-4. Runs `turbo run dev`, starting the API, web, and admin apps in watch mode.
+4. Applies Prisma migrations and seeds the Knowledge Graph.
+5. Runs `turbo run dev`, starting the API, web, and admin apps in watch mode.
 
 Once running:
 
 - Web: http://localhost:3000
 - Admin: http://localhost:3001
-- API: http://localhost:4000 (Swagger docs at `/docs`, health check at `/health`)
+- API: http://localhost:4000 (Swagger docs at `/docs`, health check at
+  `/health`, Knowledge Graph reads at `/knowledge-graph/{styles,materials,venues}`)
 - RabbitMQ management UI: http://localhost:15672
 - OpenSearch: http://localhost:9200
 
@@ -95,16 +99,34 @@ docker compose --profile full up -d --build
 | `pnpm lint`           | Lint all apps/packages                        |
 | `pnpm typecheck`      | Type-check all apps/packages                  |
 | `pnpm test`           | Run unit tests across the monorepo            |
+| `pnpm test:e2e`       | Run e2e tests (needs a running Postgres, see below) |
 | `pnpm format`         | Format the repo with Prettier                 |
 | `pnpm infra:up`       | Start only the infra containers               |
 | `pnpm infra:down`     | Stop the infra containers                     |
+
+## Database (Prisma)
+
+The domain schema lives in `apps/api/prisma/schema.prisma`. Common commands
+(run from `apps/api`, with `DATABASE_URL` set — see `apps/api/.env.example`):
+
+| Command                              | Description                                |
+| ------------------------------------- | ------------------------------------------- |
+| `npx prisma migrate dev --name <x>`   | Create and apply a new migration (local dev) |
+| `npx prisma migrate deploy`           | Apply pending migrations (CI/production)     |
+| `npx prisma db seed`                  | Seed the Knowledge Graph (idempotent)        |
+| `npx prisma studio`                   | Browse the database in a local GUI           |
+
+Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
+`schema.prisma`, and `PrismaClient` requires a driver adapter
+(`@prisma/adapter-pg`) — see `src/infrastructure/prisma/prisma.service.ts`.
 
 ## Conventions
 
 - Conventional Commits, enforced by commitlint + Husky `commit-msg` hook.
 - Husky `pre-commit` hook runs lint/typecheck on affected packages.
-- CI (`.github/workflows/ci.yml`) runs install, lint, typecheck, test, build
-  on every push/PR to `main`.
+- CI (`.github/workflows/ci.yml`) runs install, lint, typecheck, test, build,
+  then applies migrations/seed against a Postgres+pgvector service
+  container and runs e2e tests, on every push/PR to `main`.
 - Database entities follow the Database Bible conventions: UUID primary
   keys, UTC timestamps, soft delete, audit trail, `tenant_id` /
   `organization_id`, optimistic-locking `version` column (see
@@ -112,7 +134,7 @@ docker compose --profile full up -d --build
 
 ## Next steps
 
-Sprint 0 covers tooling and infrastructure only. Subsequent sprints will
-implement the domain model, persistence layer (migrations), authentication/
-RBAC, the AI agent layer, and the product UI, per the Architecture Book and
-Roadmap.
+Sprint 1 covers the Knowledge Graph domain and read-only API only — no
+Briefing/Creative Engine, no auth/RBAC, no product UI yet. Subsequent
+sprints will implement briefing capture, the Diagnostico Criativo, the AI
+agent layer, and the product UI, per `docs/08-roadmap.md`.

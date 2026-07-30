@@ -22,5 +22,16 @@ if [ ! -d node_modules ]; then
   pnpm install
 fi
 
+if [ ! -f apps/api/.env ]; then
+  cp apps/api/.env.example apps/api/.env
+  echo "Created apps/api/.env from apps/api/.env.example"
+fi
+
+echo "Applying database migrations..."
+pnpm --filter @eve-os/api exec prisma migrate deploy
+
+echo "Seeding the Knowledge Graph..."
+pnpm --filter @eve-os/api exec prisma db seed
+
 echo "Starting apps (web:3000, admin:3001, api:4000)..."
 exec pnpm turbo run dev

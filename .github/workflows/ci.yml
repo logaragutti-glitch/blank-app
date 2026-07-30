@@ -14,6 +14,22 @@ jobs:
   build-test:
     name: Lint, Typecheck, Test, Build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: eve
+          POSTGRES_PASSWORD: eve
+          POSTGRES_DB: eve_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eve"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://eve:eve@localhost:5432/eve_os
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,3 +59,12 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build
+
+      - name: Apply database migrations
+        run: pnpm --filter @eve-os/api exec prisma migrate deploy
+
+      - name: Seed the database
+        run: pnpm --filter @eve-os/api exec prisma db seed
+
+      - name: Run e2e tests
+        run: pnpm turbo run test:e2e
