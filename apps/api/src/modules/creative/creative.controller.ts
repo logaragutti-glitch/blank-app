@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Logger,
   NotFoundException,
   Param,
   Post,
@@ -9,6 +10,8 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ApiQuery, ApiTags } from "@nestjs/swagger";
+import type { EventStyle, InspirationImage } from "@eve-os/types";
+import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
 import { InspirationImageRepository } from "../briefing/repositories/inspiration-image.repository";
@@ -18,6 +21,8 @@ import { VenueRepository } from "../knowledge-graph/repositories/venue.repositor
 import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
 import { ProposalRepository } from "./repositories/proposal.repository";
 
+const SEMANTIC_SEARCH_STYLE_LIMIT = 5;
+
 // NOTE: tenantId/organizationId are query params for now — same temporary
 // arrangement as the Briefing/Knowledge Graph controllers, until auth/
 // tenant-resolution middleware exists.
@@ -26,6 +31,8 @@ import { ProposalRepository } from "./repositories/proposal.repository";
 @ApiQuery({ name: "organizationId", required: true })
 @Controller("creative")
 export class CreativeController {
+  private readonly logger = new Logger(CreativeController.name);
+
   constructor(
     private readonly clients: ClientRepository,
     private readonly events: EventRepository,
@@ -35,6 +42,7 @@ export class CreativeController {
     private readonly materials: MaterialRepository,
     private readonly proposals: ProposalRepository,
     private readonly diagnosticoCriativo: DiagnosticoCriativoPort,
+    private readonly embeddings: EmbeddingPort,
   ) {}
 
   @Post(":eventId/diagnostico-criativo")
@@ -63,6 +71,7 @@ export class CreativeController {
     }
 
     const styleNameById = new Map(styles.map((style) => [style.id, style.name]));
+    const candidateStyles = await this.selectCandidateStyles(organizationId, allImages, styles);
 
     const diagnosticoCriativoInput = {
       client: {
@@ -92,7 +101,7 @@ export class CreativeController {
       inspirationImages: allImages
         .filter((image) => image.status === "ANALYZED")
         .map((image) => ({ visionTags: image.visionTags, visionDescription: image.visionDescription })),
-      candidateStyles: styles.map((style) => ({
+      candidateStyles: candidateStyles.map((style) => ({
         id: style.id,
         name: style.name,
         dimensionScores: style.dimensionScores,
@@ -141,5 +150,42 @@ export class CreativeController {
     @Param("eventId") eventId: string,
   ) {
     return this.proposals.findByEvent(organizationId, eventId);
+  }
+
+  // Narrows the Knowledge Graph styles offered to Agente 1 down to the ones
+  // that are semantically closest to this event's inspiration images (real
+  // pgvector similarity search — see 07-architecture-book.md), instead of
+  // always dumping the full style catalog into the prompt. Falls back to the
+  // full catalog whenever there is nothing to search with (no analyzed
+  // images, no styles with a backfilled embedding yet) or the embeddings
+  // provider itself fails (e.g. missing AI credentials) — semantic narrowing
+  // is a quality improvement, never a hard requirement for generating a
+  // diagnosis.
+  private async selectCandidateStyles(
+    organizationId: string,
+    images: InspirationImage[],
+    allStyles: EventStyle[],
+  ): Promise<EventStyle[]> {
+    const descriptions = images
+      .filter((image) => image.status === "ANALYZED" && image.visionDescription)
+      .map((image) => image.visionDescription as string);
+    if (descriptions.length === 0) return allStyles;
+
+    try {
+      const queryEmbedding = await this.embeddings.embed(descriptions.join(" "));
+      const similarStyles = await this.eventStyles.findSimilarByEmbedding(
+        organizationId,
+        queryEmbedding,
+        SEMANTIC_SEARCH_STYLE_LIMIT,
+      );
+      return similarStyles.length > 0 ? similarStyles : allStyles;
+    } catch (error) {
+      this.logger.warn(
+        `Semantic style search unavailable, falling back to the full catalog: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      );
+      return allStyles;
+    }
   }
 }

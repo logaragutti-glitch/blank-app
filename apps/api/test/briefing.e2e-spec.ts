@@ -5,7 +5,7 @@ import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/app.setup";
 import { StoragePort } from "../src/infrastructure/storage/storage.port";
 import { PrismaService } from "../src/infrastructure/prisma/prisma.service";
-import { EmbeddingPort } from "../src/modules/briefing/ai/embedding.port";
+import { EmbeddingPort } from "../src/infrastructure/ai/embedding.port";
 import { VisionAnalysisPort } from "../src/modules/briefing/ai/vision-analysis.port";
 
 // Uses the Knowledge Graph seed data for a real venue (prisma/seed.ts).
