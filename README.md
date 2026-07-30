@@ -12,10 +12,12 @@ Specification, AI Bible, Database Bible, UI Bible, Architecture Book, and
 Roadmap. When in doubt about domain behavior, `docs/` is the source of
 truth — read it before adding product logic.
 
-> **Status**: Sprint 2 — the Briefing Engine captures the client/event form
-> and ingests inspiration images (Agente 2 / Vision AI via Anthropic
-> Claude + OpenAI embeddings into pgvector). Sprint 1 (Knowledge Graph
-> domain + read API) and Sprint 0 (monorepo/tooling/infra) are complete.
+> **Status**: Sprint 3 (partial) — the Creative Engine generates the
+> Diagnostico Criativo (Agente 1 / Motor de Interpretacao) from the
+> briefing, analyzed inspiration images, and the Knowledge Graph, and
+> persists it as a Proposal. Sprint 2 (Briefing Engine: form capture +
+> inspiration image ingestion), Sprint 1 (Knowledge Graph domain + read
+> API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
 ## Stack
 
@@ -82,7 +84,8 @@ Once running:
 - API: http://localhost:4000 (Swagger docs at `/docs`, health check at
   `/health`, Knowledge Graph reads at `/knowledge-graph/{styles,materials,venues}`,
   briefing capture at `POST /briefing`, inspiration images at
-  `/briefing/:eventId/inspiration-images`)
+  `/briefing/:eventId/inspiration-images`, Diagnostico Criativo generation
+  at `POST /creative/:eventId/diagnostico-criativo`)
 - RabbitMQ management UI: http://localhost:15672
 - OpenSearch: http://localhost:9200
 - MinIO console: http://localhost:9001
@@ -145,8 +148,9 @@ Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
 
 ## Next steps
 
-Sprint 2 covers briefing capture and inspiration-image ingestion only — no
-Diagnostico Criativo generation, no semantic search over the stored
-embeddings, no auth/RBAC, no product UI yet. Subsequent sprints will
-implement the Creative Engine, the proposal generator, and the product UI,
-per `docs/08-roadmap.md`.
+Sprint 3 so far covers Diagnostico Criativo generation only — no proposal
+component selection (Capitulo 7), no semantic search over the stored
+embeddings (the diagnosis reasons over Knowledge Graph text, not a
+pgvector `<=>` similarity query yet), no auth/RBAC, no product UI yet.
+Subsequent work will implement the rest of the Creative Engine, the
+proposal generator, and the product UI, per `docs/08-roadmap.md`.

@@ -47,11 +47,16 @@ um produto comercial horizontal para:
 - **Sprint 2 (concluído):** Briefing Engine — captura de formulário/briefing
   (`POST /briefing`) + ingestão de imagens de inspiração com análise
   estruturada (Agente 2 / Vision AI via Anthropic Claude) e embeddings via
-  pgvector (OpenAI `text-embedding-3-small`). Ainda faltam: geração do
-  Diagnóstico Criativo em si (Agente 1) e busca semântica por similaridade
-  sobre os embeddings armazenados — ambos ficam para o Sprint 3.
-- **Sprint 3:** Creative Engine — geração do Diagnóstico Criativo e da
-  seleção de componentes a partir do Knowledge Graph.
+  pgvector (OpenAI `text-embedding-3-small`).
+- **Sprint 3 (parcial):** geração do Diagnóstico Criativo (Agente 1 / Motor
+  de Interpretação, via `POST /creative/:eventId/diagnostico-criativo`),
+  persistido como `Proposal`. Combina briefing + imagens analisadas +
+  estilos/materiais do Knowledge Graph, sempre grounded no catálogo real
+  (nunca inventa materiais fora dele, nunca sugere itens marcados como
+  "não recomendar"). Ainda faltam: seleção dos componentes reutilizáveis
+  do Capítulo 7 e busca semântica por similaridade sobre os embeddings de
+  imagem armazenados (hoje o Diagnóstico usa os estilos/materiais como
+  texto no prompt, não uma busca vetorial `<=>` de fato).
 - **Sprint 4:** geração da proposta comercial (componentes reutilizáveis
   do Capítulo 7, aplicando as regras de ouro de `02-brand-bible.md`).
 - **Sprint 5+:** WOW Score, feedback pós-evento, renders conceituais,

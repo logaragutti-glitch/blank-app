@@ -7,3 +7,5 @@ export * from "./venue";
 export * from "./client";
 export * from "./event";
 export * from "./inspiration-image";
+export * from "./diagnostico-criativo";
+export * from "./proposal";

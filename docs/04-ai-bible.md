@@ -37,6 +37,17 @@ e lisianthus, mobiliário em madeira clara e iluminação quente.
 Esse resumo interno já serve como base estruturada (não texto livre) para
 o restante do motor de geração.
 
+> **Implementação (Sprint 3):** `POST /creative/:eventId/diagnostico-criativo`
+> (`apps/api/src/modules/creative`) gera e persiste o Diagnóstico Criativo
+> como o campo `Proposal.diagnosticoCriativo`. O provider
+> (`AnthropicDiagnosticoCriativoProvider`) usa Claude com tool-use forçado
+> para saída estruturada; o prompt vive em
+> `ai/prompts/diagnostico-criativo.prompt.ts`, versionado
+> (`DIAGNOSTICO_CRIATIVO_PROMPT_VERSION`). O modelo é grounded no catálogo
+> real do Knowledge Graph — recebe a lista de `EventStyle`s candidatos e de
+> `Material`s (com a flag `neverRecommend`) e é instruído a nunca escolher
+> um estilo ou material fora dessas listas.
+
 ## O Motor de Interpretação
 
 A IA nunca responde apenas com base em uma foto isolada. Ela combina:
