@@ -89,6 +89,21 @@ qualidade/diferenciação usado internamente (por ex., para sinalizar
 propostas que precisam de revisão humana antes de serem enviadas), não um
 número exposto ao cliente.
 
+> **Implementação (Sprint 4):** `computeWowScore`
+> (`apps/api/src/modules/creative/wow-score.ts`) é uma heurística v1,
+> deliberadamente simples e documentada no próprio código-fonte — a
+> Constituição não define uma fórmula exata, apenas o conceito e um
+> exemplo de decomposição por dimensões emocionais. Combina duas partes:
+> **coerência** (o quão próximo `Event.dnaScores` está do
+> `EventStyle.dimensionScores` do estilo casado pelo Agente 1) e
+> **originalidade** (o desvio-padrão das dimensões emocionais do evento,
+> premiando uma assinatura emocional distintiva sobre um perfil plano e
+> genérico). É calculado automaticamente ao gerar o Diagnóstico Criativo
+> (`POST /creative/:eventId/diagnostico-criativo`) e persistido em
+> `Proposal.wowScore` — retorna `null` quando o evento ainda não tem
+> `dnaScores` capturados. Deve ser recalibrado com dados reais assim que
+> houver propostas suficientes para validar a fórmula.
+
 Exemplo de decomposição de score por evento (dimensões emocionais
 percentuais, usadas como insumo do WOW Score e da seleção de
 componentes):

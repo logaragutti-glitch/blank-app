@@ -17,6 +17,7 @@ export class PrismaProposalRepository implements ProposalRepository {
         eventId: input.eventId,
         eventStyleId: input.eventStyleId ?? undefined,
         conceptName: input.conceptName ?? undefined,
+        wowScore: input.wowScore ?? undefined,
         diagnosticoCriativo: input.diagnosticoCriativo as unknown as Prisma.InputJsonValue,
       },
     });

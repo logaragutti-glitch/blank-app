@@ -64,10 +64,17 @@ um produto comercial horizontal para:
   deterministicamente em código a partir de dados já conhecidos (Capa,
   História da Bia, Moodboard, Paleta, Cronograma, Investimento) — nunca
   requerem uma chamada de IA.
-- **Sprint 4:** produção do artefato final da proposta (PDF/apresentação a
-  partir dos `ProposalComponent`s), WOW Score computado automaticamente.
+- **Sprint 4 (concluído):** WOW Score (heurística v1, ver `04-ai-bible.md`)
+  computado automaticamente ao gerar o Diagnóstico Criativo e persistido em
+  `Proposal.wowScore`. Documento final da proposta via
+  `GET /creative/proposals/:proposalId/document`, que combina a `Proposal`
+  e seus 18 `ProposalComponent`s ordenados num único JSON estruturado —
+  deliberadamente não gera um arquivo binário (PDF), já que ainda não
+  existe layout/UI de produto definido para renderizar contra; a
+  responsabilidade de virar isso num PDF/apresentação fica com o frontend
+  (ou com um Sprint futuro, quando o design existir).
 - **Sprint 5+:** feedback pós-evento, renders conceituais,
-  módulos de produção/cronograma/checklist.
+  módulos de produção/cronograma/checklist, auth/RBAC, UI do produto.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.

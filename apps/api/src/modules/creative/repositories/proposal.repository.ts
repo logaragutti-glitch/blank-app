@@ -7,6 +7,8 @@ export interface CreateProposalInput {
   eventStyleId?: string | null;
   diagnosticoCriativo: DiagnosticoCriativo;
   conceptName?: string | null;
+  /** See wow-score.ts — null when there isn't enough data to compute it yet. */
+  wowScore?: number | null;
 }
 
 export abstract class ProposalRepository {

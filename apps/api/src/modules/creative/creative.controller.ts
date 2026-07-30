@@ -23,6 +23,7 @@ import { ProposalComponentsPort } from "./ai/proposal-components.port";
 import { buildProposalComponents } from "./proposal-component-builder";
 import { ProposalComponentRepository } from "./repositories/proposal-component.repository";
 import { ProposalRepository } from "./repositories/proposal.repository";
+import { computeWowScore } from "./wow-score";
 
 const SEMANTIC_SEARCH_STYLE_LIMIT = 5;
 
@@ -140,12 +141,16 @@ export class CreativeController {
       );
     }
 
+    const matchedStyleDimensionScores =
+      candidateStyles.find((style) => style.id === result.matchedEventStyleId)?.dimensionScores ?? null;
+
     return this.proposals.create({
       tenantId,
       organizationId,
       eventId,
       eventStyleId: result.matchedEventStyleId,
       diagnosticoCriativo: result.diagnosis,
+      wowScore: computeWowScore(event.dnaScores, matchedStyleDimensionScores),
     });
   }
 
@@ -228,6 +233,29 @@ export class CreativeController {
     const proposal = await this.proposals.findById(organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
     return this.proposalComponents.findByProposal(proposalId);
+  }
+
+  // The final proposal artifact (Sprint 4): the Proposal itself plus its 18
+  // ordered ProposalComponents in a single payload, ready for a frontend to
+  // render however it needs to (web page, print-to-PDF, presentation slide
+  // deck, etc.) — this endpoint deliberately does not generate a binary
+  // file itself, since no product UI/layout exists yet to render against.
+  @Get("proposals/:proposalId/document")
+  async getProposalDocument(
+    @Query("organizationId") organizationId: string,
+    @Param("proposalId") proposalId: string,
+  ) {
+    const proposal = await this.proposals.findById(organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+
+    const components = await this.proposalComponents.findByProposal(proposalId);
+    if (components.length === 0) {
+      throw new BadRequestException(
+        "This Proposal has no components yet — call POST /creative/proposals/:proposalId/components first.",
+      );
+    }
+
+    return { proposal, components };
   }
 
   // Narrows the Knowledge Graph styles offered to Agente 1 down to the ones
