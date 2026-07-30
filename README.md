@@ -12,12 +12,15 @@ Specification, AI Bible, Database Bible, UI Bible, Architecture Book, and
 Roadmap. When in doubt about domain behavior, `docs/` is the source of
 truth — read it before adding product logic.
 
-> **Status**: Sprint 3 (partial) — the Creative Engine generates the
+> **Status**: Sprint 3 complete — the Creative Engine generates the
 > Diagnostico Criativo (Agente 1 / Motor de Interpretacao) from the
-> briefing, analyzed inspiration images, and the Knowledge Graph, and
-> persists it as a Proposal. Sprint 2 (Briefing Engine: form capture +
-> inspiration image ingestion), Sprint 1 (Knowledge Graph domain + read
-> API), and Sprint 0 (monorepo/tooling/infra) are complete.
+> briefing, analyzed inspiration images (narrowed via real pgvector
+> semantic search), and the Knowledge Graph, persists it as a Proposal,
+> then generates the 18 reusable proposal components (Agente 3 / Creative
+> Engine, Constitution Capitulo 7) from that diagnosis. Sprint 2 (Briefing
+> Engine: form capture + inspiration image ingestion), Sprint 1 (Knowledge
+> Graph domain + read API), and Sprint 0 (monorepo/tooling/infra) are
+> complete.
 
 ## Stack
 
@@ -148,9 +151,9 @@ Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
 
 ## Next steps
 
-Sprint 3 so far covers Diagnostico Criativo generation only — no proposal
-component selection (Capitulo 7), no semantic search over the stored
-embeddings (the diagnosis reasons over Knowledge Graph text, not a
-pgvector `<=>` similarity query yet), no auth/RBAC, no product UI yet.
-Subsequent work will implement the rest of the Creative Engine, the
-proposal generator, and the product UI, per `docs/08-roadmap.md`.
+Sprint 3 is complete: Diagnostico Criativo generation (with real pgvector
+semantic search narrowing the candidate styles) and the 18 reusable
+proposal components (Capitulo 7) are both implemented. Still missing:
+auth/RBAC, product UI, the final proposal artifact (PDF/presentation) and
+WOW Score computation. Subsequent work will implement those, per
+`docs/08-roadmap.md`.
