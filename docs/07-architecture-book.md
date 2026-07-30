@@ -38,6 +38,22 @@ Briefing Engine | Creative Engine | Knowledge Platform
 AI ORCHESTRATOR
 ```
 
+> **Reconciliação de divergência:** este diagrama em blocos empilha
+> Front-end/API acima e AI Orchestrator abaixo do Event Engine, enquanto
+> o "Diagrama lógico" no topo deste documento desenha o AI Orchestrator
+> **entre** a API e os três motores (ou seja, no meio, não embaixo).
+> Tratamos isso como duas visualizações do mesmo grafo, não uma
+> contradição de fluxo: o diagrama em blocos é uma listagem de camadas
+> por responsabilidade (não codifica ordem de chamada), enquanto o
+> diagrama lógico é a visão autoritativa de fluxo de chamada real —
+> `Front-end → API Gateway → AI Orchestrator → {Briefing Engine,
+> Creative Engine, Knowledge Platform}`. Ou seja: o AI Orchestrator
+> recebe a requisição da API e é quem decide quais dos três serviços do
+> Event Engine acionar — ele não fica "abaixo" deles em nenhum sentido de
+> dependência. Esta é uma decisão editorial de reconciliação, não uma
+> confirmação vinda da sessão original; se houver uma ordem diferente na
+> intenção original, ela deve substituir esta nota.
+
 - **Camada 1 — Front-end.** Responsável apenas pela experiência. Ela não
   "pensa", apenas apresenta. Funções: Dashboard, Projetos, Editor. Toda
   lógica de domínio fica fora desta camada (`apps/web`, `apps/admin`,

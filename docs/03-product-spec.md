@@ -105,4 +105,7 @@ narrativo) e lacunas que o EVE OS deve resolver estruturalmente:
 
 O produto não se limita a casamentos: decoradores de casamento, eventos
 corporativos, festas infantis, destination weddings e hotéis que realizam
-eventos são todos clientes em potencial da plataforma.
+eventos são todos clientes em potencial da plataforma. A versão detalhada
+e sequenciada dessa expansão (ondas comerciais e verticais técnicas
+correspondentes) está em `09-business-scale.md` — este parágrafo é a
+visão resumida, aquele documento é a referência canônica de sequência.

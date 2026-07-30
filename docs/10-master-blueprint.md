@@ -27,12 +27,10 @@ foi inventado para preencher esses vazios.
   `04-ai-bible.md` — critérios de aceite formais (QA) ainda não foram
   escritos.
 
-## Nomenclatura alternativa de status observada na mesma sessão
+## Nomenclatura alternativa de status observada na mesma sessão (reconciliada)
 
 Em outro momento da mesma sessão de planejamento, o progresso da
-documentação foi reportado com uma nomenclatura diferente de volumes —
-provavelmente uma renomeação em progresso dos mesmos volumes, e não uma
-estrutura paralela:
+documentação foi reportado com uma nomenclatura diferente:
 
 ```
 Volume I – Inspirar: ✅
@@ -45,13 +43,30 @@ Rule Engine: ✅
 Event Impact Engine: ✅
 ```
 
-Esta tabela é preservada verbatim por fidelidade à sessão original, mas
-**diverge** do "Estrutura em seis volumes" acima (nomes e contagem
-diferentes — 5 volumes "Inspirar/Criar/Refinar/Encantar/Realizar" vs. 6
-volumes "Visão do Produto/Cinco Mundos/AI Platform/Data & APIs/UX/Business
-Rules"). Antes de tratar qualquer uma das duas como definitiva, isso
-precisa ser reconciliado com quem conduziu a sessão original — não
-escolha uma arbitrariamente ao planejar trabalho futuro.
+**Reconciliação adotada** (decisão editorial, não confirmação da sessão
+original — deve ser corrigida se alguém com acesso à intenção original
+disser o contrário): tratamos isso como o **mesmo conjunto de volumes**
+em nomenclatura de etapa/fase, não como uma estrutura paralela com
+contagem diferente. Mapeamento:
+
+| Nome de fase (2ª nomenclatura) | Volume correspondente (1ª nomenclatura) |
+| --- | --- |
+| Inspirar | Volume I — Visão do Produto e Negócio |
+| Criar (Cinco Mundos) | Volume II — Os Cinco Mundos |
+| Refinar | Volume III — AI Platform |
+| Encantar | Volume IV — Data & APIs |
+| Realizar | Volume V — UX & Interface |
+| *(sem nome de fase registrado)* | Volume VI — Business Rules & QA |
+
+`Digital Event Twin™`, `Rule Engine` e `Event Impact Engine` não são
+volumes — são **componentes transversais do sistema** (pertencem
+conceitualmente ao Volume III, AI Platform/`04-ai-bible.md`) que a sessão
+listou separadamente por serem marcos de progresso notáveis, não por
+serem um 7º/8º/9º volume.
+
+O Volume VI (Business Rules & QA) é o único sem par na nomenclatura de
+fase — o mapeamento acima assume que ele é uma adição posterior à
+estrutura de 5 fases, não uma omissão a ser questionada.
 
 ## Componentes nomeados sem especificação detalhada (lacunas conhecidas)
 

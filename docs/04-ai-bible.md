@@ -112,8 +112,13 @@ rastreabilidade entre docs e implementação:
   lucro, clima do dia, tempo de cerimônia, fotografias geradas. Com o
   tempo, identifica padrões (ex.: qual fornecedor realmente entrega
   melhor custo-benefício para determinado tipo de espaço).
-- **Agente de Projetos** — organiza o acompanhamento do projeto do
-  fechamento até a execução (checklists, reuniões, aprovações).
+- **Agente 5 — Agente de Projetos** — organiza o acompanhamento do
+  projeto do fechamento até a execução (checklists, reuniões,
+  aprovações). *(Nota de reconciliação: a sessão original citou este
+  agente sem numeração explícita; o número 5 foi atribuído aqui apenas
+  para manter a sequência de referência consistente com os Agentes 1–4,
+  que já são numerados — não representa uma ordem de execução ou
+  prioridade declarada na sessão.)*
 
 ### Aprendizado incremental (exemplo de referência)
 

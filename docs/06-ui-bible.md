@@ -52,8 +52,12 @@ da IA (nunca usar linguagem de erro/sucesso genérica de sistema):
   > "Agora vamos caminhar até a cerimônia..." *(a tela mostra a
   > cerimônia)*
 
-- **O Momento Mágico / Momento Eureka** — tela/estado que representa a
-  IA processando o briefing e as imagens de inspiração. Nunca mostra
+- **O Momento Mágico / Momento Eureka** — a sessão original usou os dois
+  nomes em momentos diferentes para descrever o mesmo estado de
+  carregamento da IA; tratamos como sinônimos do mesmo componente
+  (decisão editorial de reconciliação), não como duas telas distintas.
+  Tela/estado que representa a IA processando o briefing e as imagens de
+  inspiração. Nunca mostra
   "Carregando...". Mostra pensamentos contextuais em primeira pessoa, por
   exemplo:
 
