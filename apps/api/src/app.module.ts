@@ -8,6 +8,7 @@ import { StorageModule } from "./infrastructure/storage/storage.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BriefingModule } from "./modules/briefing/briefing.module";
 import { CreativeModule } from "./modules/creative/creative.module";
+import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.module";
 
 @Module({
@@ -31,6 +32,7 @@ import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.
     KnowledgeGraphModule,
     BriefingModule,
     CreativeModule,
+    FeedbackModule,
   ],
 })
 export class AppModule {}

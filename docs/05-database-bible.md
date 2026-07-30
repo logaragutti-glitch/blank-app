@@ -175,6 +175,17 @@ Esse feedback deve realimentar o Knowledge Graph (por exemplo, ajustando
 scores de compatibilidade ou promovendo/despromovendo fornecedores para
 determinado tipo de espaço).
 
+> **Implementação:** `POST /events/:eventId/feedback` (upsert — captura
+> incremental, cada chamada só sobrescreve os campos enviados, os demais
+> ficam como estavam) e `GET /events/:eventId/feedback`
+> (`apps/api/src/modules/feedback`). `supplierPerformance` é uma lista de
+> `{ supplierId, rating (1-5), notes? }` guardada como Json, já que o
+> Knowledge Graph ainda não tem um endpoint/repositório de `Supplier`
+> próprio para validar essa referência. A realimentação automática do
+> Knowledge Graph a partir desse feedback (ajustar scores, promover/
+> despromover fornecedores) continua sendo uma capacidade futura, ainda
+> não implementada — este endpoint só captura o dado estruturado.
+
 ## O GENOME — modelo canônico do agregado Evento
 
 Conforme o `EVE Foundation — Artigo 1` (`01-constitution.md`), o Evento é

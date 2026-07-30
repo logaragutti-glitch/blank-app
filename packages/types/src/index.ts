@@ -10,3 +10,4 @@ export * from "./inspiration-image";
 export * from "./diagnostico-criativo";
 export * from "./proposal";
 export * from "./proposal-component";
+export * from "./post-event-feedback";

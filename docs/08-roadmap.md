@@ -79,8 +79,14 @@ um produto comercial horizontal para:
   agora exigem um Bearer token e derivam `tenantId`/`organizationId` do
   usuário autenticado — os antigos query params `tenantId`/`organizationId`
   supridos livremente pelo chamador foram removidos.
-- **Sprint 5+:** feedback pós-evento, renders conceituais,
-  módulos de produção/cronograma/checklist, UI do produto.
+- **Feedback pós-evento (concluído):** captura estruturada via `POST` /
+  `GET /events/:eventId/feedback` (ver `05-database-bible.md`). Ainda não
+  implementada: a realimentação automática desse feedback no Knowledge
+  Graph (ajustar scores de compatibilidade, promover/despromover
+  fornecedores) — é uma capacidade futura distinta, esta entrega só
+  cobre a captura do dado.
+- **Sprint 5+:** renders conceituais, módulos de produção/cronograma/
+  checklist, UI do produto.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.

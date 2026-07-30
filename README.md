@@ -22,7 +22,9 @@ truth — read it before adding product logic.
 > (`GET /creative/proposals/:proposalId/document`). Every business endpoint
 > now requires a JWT (`POST /auth/register`, `POST /auth/login`) instead of
 > caller-supplied `tenantId`/`organizationId` query params — see
-> `docs/07-architecture-book.md`. Sprint 2 (Briefing Engine: form capture +
+> `docs/07-architecture-book.md`. Post-event feedback capture is also
+> implemented (`POST`/`GET /events/:eventId/feedback`, see
+> `docs/05-database-bible.md`). Sprint 2 (Briefing Engine: form capture +
 > inspiration image ingestion), Sprint 1 (Knowledge Graph domain + read
 > API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
@@ -161,7 +163,10 @@ computed WOW Score), the 18 reusable proposal components (Capitulo 7),
 and the assembled proposal document endpoint are all implemented.
 Authentication/RBAC is also complete (see `docs/07-architecture-book.md`):
 every business endpoint requires a JWT and derives `tenantId`/
-`organizationId` from it. Still missing: product UI, and turning the
-structured document into an actual PDF/presentation artifact (deferred
-until a product layout exists to render against). Subsequent work will
-implement those, per `docs/08-roadmap.md`.
+`organizationId` from it. Structured post-event feedback capture (see
+`docs/05-database-bible.md`) is implemented too. Still missing: product
+UI, turning the structured document into an actual PDF/presentation
+artifact (deferred until a product layout exists to render against), and
+feeding post-event feedback back into Knowledge Graph scores
+automatically. Subsequent work will implement those, per
+`docs/08-roadmap.md`.
