@@ -30,9 +30,29 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://eve:eve@localhost:5432/eve_os
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY: eve
+      S3_SECRET_KEY: eve12345
+      S3_BUCKET: eve-os-inspiration
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Start MinIO
+        # GitHub Actions `services:` cannot override a container's command,
+        # and MinIO's image needs `server /data` to actually run — so it's
+        # started as a plain docker run step instead of a service container.
+        run: |
+          docker run -d --name minio \
+            -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER=eve \
+            -e MINIO_ROOT_PASSWORD=eve12345 \
+            minio/minio server /data --console-address ":9001"
+          until curl -sf http://localhost:9000/minio/health/live; do sleep 1; done
+          docker run --rm --network host minio/mc:latest /bin/sh -c "
+            mc alias set local http://localhost:9000 eve eve12345 &&
+            mc mb --ignore-existing local/eve-os-inspiration
+          "
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

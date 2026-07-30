@@ -8,11 +8,11 @@ if [ ! -f .env ]; then
   echo "Created .env from .env.example"
 fi
 
-echo "Starting infra (postgres, redis, rabbitmq, opensearch)..."
-docker compose up -d postgres redis rabbitmq opensearch
+echo "Starting infra (postgres, redis, rabbitmq, opensearch, minio)..."
+docker compose up -d postgres redis rabbitmq opensearch minio minio-bucket-init
 
 echo "Waiting for infra health checks..."
-until [ "$(docker compose ps --format '{{.Health}}' postgres redis rabbitmq opensearch | grep -vc healthy)" -eq 0 ]; do
+until [ "$(docker compose ps --format '{{.Health}}' postgres redis rabbitmq opensearch minio | grep -vc healthy)" -eq 0 ]; do
   sleep 2
 done
 echo "Infra is healthy."

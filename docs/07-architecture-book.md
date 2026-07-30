@@ -119,8 +119,38 @@ onde isso puder ser evitado sem custo extra de complexidade.
 | Cache | Redis |
 | Busca | OpenSearch |
 | Mensageria | RabbitMQ |
-| Storage | Compatível com S3 |
+| Storage | Compatível com S3 (MinIO localmente, `apps/api/src/infrastructure/storage`) |
 | Infra | Docker / Docker Compose / Kubernetes |
+| Vision AI (Agente 2) | Anthropic Claude (vision), decisão tomada no Sprint 2 |
+| Embeddings | OpenAI `text-embedding-3-small` (1536 dims), decisão tomada no Sprint 2 |
+
+## Provedores de IA (decisão do Sprint 2)
+
+A Anthropic não oferece API de embeddings própria (parceria oficial dela é
+com a Voyage AI), então os dois provedores de IA do sistema são
+distintos e desacoplados via portas próprias, cada um com uma única
+responsabilidade:
+
+- **Agente 2 / Vision AI** (`src/modules/briefing/ai/vision-analysis.port.ts`)
+  — implementado por `AnthropicVisionAnalysisProvider`, usando a Messages
+  API da Anthropic com tool-use forçado (`tool_choice`) para garantir saída
+  estruturada, em vez de pedir "responda em JSON" em texto livre. O prompt
+  vive em `src/modules/briefing/ai/prompts/vision-analysis.prompt.ts` com
+  uma constante de versão (`VISION_ANALYSIS_PROMPT_VERSION`), nunca inline
+  no código do provider — conforme a regra de IA do prompt mestre do
+  projeto ("nenhum prompt pode ficar hardcoded, todos devem ser
+  versionados").
+- **Embeddings** (`src/modules/briefing/ai/embedding.port.ts`) — implementado
+  por `OpenAiEmbeddingProvider`, usando `text-embedding-3-small` com 1536
+  dimensões (exatamente a largura da coluna `vector(1536)` em
+  `InspirationImage.embedding`).
+
+Ambos os clientes de SDK são inicializados de forma preguiçosa (lazy) —
+não no construtor da classe, mas no primeiro uso real — porque o SDK da
+OpenAI lança exceção imediatamente na construção se `OPENAI_API_KEY` não
+estiver definida, o que derrubaria o boot inteiro do NestJS mesmo em
+ambientes sem as chaves configuradas (ex.: rodando só a parte de
+Knowledge Graph, sem nunca chamar o pipeline de briefing/imagens).
 
 ## Uso do pgvector no domínio
 
@@ -130,6 +160,15 @@ permitem buscar, por similaridade semântica, quais estilos/materiais
 catalogados mais se aproximam do que o cliente enviou como referência —
 essa é a ponte técnica entre "fotos soltas de inspiração" e "estilo
 predominante" no Motor de Interpretação.
+
+O campo `InspirationImage.embedding` é declarado como
+`Unsupported("vector(1536)")` no schema Prisma — o Prisma Client não
+consegue ler/escrever esse tipo de coluna pela API normal, então a escrita
+é feita via `$executeRaw` (ver `PrismaInspirationImageRepository.setEmbedding`),
+sempre parametrizado (nunca concatenação de string) para evitar SQL
+injection. A busca semântica em si (consultas usando o operador `<=>` do
+pgvector) ainda não foi implementada — é o próximo passo natural do
+Briefing/Creative Engine.
 
 ## Uso do RabbitMQ
 

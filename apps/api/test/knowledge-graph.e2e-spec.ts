@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
+import { configureApp } from "../src/app.setup";
 
 // Runs against the Knowledge Graph seed data (prisma/seed.ts), which must
 // have been applied to the database pointed at by DATABASE_URL before this
@@ -17,6 +18,7 @@ describe("Knowledge Graph (e2e)", () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    configureApp(app);
     await app.init();
   });
 

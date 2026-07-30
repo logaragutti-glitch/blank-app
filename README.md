@@ -12,10 +12,10 @@ Specification, AI Bible, Database Bible, UI Bible, Architecture Book, and
 Roadmap. When in doubt about domain behavior, `docs/` is the source of
 truth — read it before adding product logic.
 
-> **Status**: Sprint 1 — the Knowledge Graph domain (event styles,
-> materials, venues) is modeled in Postgres via Prisma migrations and
-> seeded with the examples from the Bibles, exposed through read-only API
-> endpoints. Sprint 0 (monorepo/tooling/infra) is complete.
+> **Status**: Sprint 2 — the Briefing Engine captures the client/event form
+> and ingests inspiration images (Agente 2 / Vision AI via Anthropic
+> Claude + OpenAI embeddings into pgvector). Sprint 1 (Knowledge Graph
+> domain + read API) and Sprint 0 (monorepo/tooling/infra) are complete.
 
 ## Stack
 
@@ -28,7 +28,9 @@ truth — read it before adding product logic.
 | Cache         | Redis                                          |
 | Search        | OpenSearch                                     |
 | Messaging     | RabbitMQ                                       |
-| Storage       | S3-compatible object storage                   |
+| Storage       | S3-compatible object storage (MinIO locally)  |
+| AI (Vision)   | Anthropic Claude                              |
+| AI (Embeddings)| OpenAI `text-embedding-3-small`              |
 | Infra         | Docker, Docker Compose, Kubernetes, GitHub Actions |
 
 ## Monorepo layout
@@ -67,8 +69,8 @@ pnpm dev
 This runs `scripts/dev.sh`, which:
 
 1. Copies `.env.example` to `.env` on first run (root and `apps/api`).
-2. Starts Postgres (with pgvector), Redis, RabbitMQ, and OpenSearch via
-   Docker Compose and waits for health checks.
+2. Starts Postgres (with pgvector), Redis, RabbitMQ, OpenSearch, and MinIO
+   via Docker Compose and waits for health checks.
 3. Installs dependencies with pnpm if `node_modules` is missing.
 4. Applies Prisma migrations and seeds the Knowledge Graph.
 5. Runs `turbo run dev`, starting the API, web, and admin apps in watch mode.
@@ -78,9 +80,18 @@ Once running:
 - Web: http://localhost:3000
 - Admin: http://localhost:3001
 - API: http://localhost:4000 (Swagger docs at `/docs`, health check at
-  `/health`, Knowledge Graph reads at `/knowledge-graph/{styles,materials,venues}`)
+  `/health`, Knowledge Graph reads at `/knowledge-graph/{styles,materials,venues}`,
+  briefing capture at `POST /briefing`, inspiration images at
+  `/briefing/:eventId/inspiration-images`)
 - RabbitMQ management UI: http://localhost:15672
 - OpenSearch: http://localhost:9200
+- MinIO console: http://localhost:9001
+
+Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in `apps/api/.env` to enable
+real image analysis/embeddings for the Briefing Engine — without them, the
+Knowledge Graph and briefing-capture endpoints still work, but uploaded
+images end up with `status: "FAILED"` and a clear `processingError`
+instead of silently no-op'ing.
 
 For the mobile app, run separately: `pnpm --filter @eve-os/mobile dev` (Expo).
 
@@ -134,7 +145,8 @@ Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
 
 ## Next steps
 
-Sprint 1 covers the Knowledge Graph domain and read-only API only — no
-Briefing/Creative Engine, no auth/RBAC, no product UI yet. Subsequent
-sprints will implement briefing capture, the Diagnostico Criativo, the AI
-agent layer, and the product UI, per `docs/08-roadmap.md`.
+Sprint 2 covers briefing capture and inspiration-image ingestion only — no
+Diagnostico Criativo generation, no semantic search over the stored
+embeddings, no auth/RBAC, no product UI yet. Subsequent sprints will
+implement the Creative Engine, the proposal generator, and the product UI,
+per `docs/08-roadmap.md`.

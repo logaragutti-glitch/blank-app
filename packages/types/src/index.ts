@@ -4,3 +4,6 @@ export * from "./api";
 export * from "./event-style";
 export * from "./material";
 export * from "./venue";
+export * from "./client";
+export * from "./event";
+export * from "./inspiration-image";

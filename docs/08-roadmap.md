@@ -40,12 +40,16 @@ um produto comercial horizontal para:
 
 - **Sprint 0 (concluído):** monorepo, tooling, infra local (este
   repositório).
-- **Sprint 1:** modelagem de domínio no Postgres (entidades de
+- **Sprint 1 (concluído):** modelagem de domínio no Postgres (entidades de
   `05-database-bible.md`), migrations, seed inicial do Knowledge Graph
   com os exemplos documentados (Garden Fine Art, Peônia, Villa Massari
-  etc.).
-- **Sprint 2:** Briefing Engine — captura de formulário/briefing +
-  ingestão de imagens de inspiração (embeddings via pgvector).
+  etc.), API de leitura do Knowledge Graph.
+- **Sprint 2 (concluído):** Briefing Engine — captura de formulário/briefing
+  (`POST /briefing`) + ingestão de imagens de inspiração com análise
+  estruturada (Agente 2 / Vision AI via Anthropic Claude) e embeddings via
+  pgvector (OpenAI `text-embedding-3-small`). Ainda faltam: geração do
+  Diagnóstico Criativo em si (Agente 1) e busca semântica por similaridade
+  sobre os embeddings armazenados — ambos ficam para o Sprint 3.
 - **Sprint 3:** Creative Engine — geração do Diagnóstico Criativo e da
   seleção de componentes a partir do Knowledge Graph.
 - **Sprint 4:** geração da proposta comercial (componentes reutilizáveis

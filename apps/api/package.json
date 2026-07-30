@@ -12,6 +12,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@aws-sdk/client-s3": "^3.1098.0",
     "@eve-os/types": "workspace:*",
     "@eve-os/utils": "workspace:*",
     "@nestjs/common": "^10.4.4",
@@ -25,10 +27,12 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.4",
     "nestjs-pino": "^4.1.0",
+    "openai": "^7.1.0",
     "pg": "^8.22.0",
     "pino-http": "^10.3.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@eve-os/config": "workspace:*",
@@ -37,9 +41,12 @@
     "@nestjs/testing": "^10.4.4",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.13",
+    "@types/multer": "^2.2.0",
     "@types/node": "^20.16.11",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^6.0.2",
+    "@types/uuid": "^10.0.0",
+    "aws-sdk-client-mock": "^4.1.0",
     "jest": "^29.7.0",
     "pino-pretty": "^11.2.2",
     "prisma": "^7.9.1",

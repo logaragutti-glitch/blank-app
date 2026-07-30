@@ -314,16 +314,65 @@ model Event {
   // Gastronomia, Música, Operação) — 05-database-bible.md / 01-constitution.md.
   genome Json? @map("genome")
 
-  organization Organization       @relation(fields: [organizationId], references: [id])
-  client       Client             @relation(fields: [clientId], references: [id])
-  venue        Venue              @relation(fields: [venueId], references: [id])
-  proposals    Proposal[]
-  feedback     PostEventFeedback?
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  client            Client             @relation(fields: [clientId], references: [id])
+  venue             Venue              @relation(fields: [venueId], references: [id])
+  proposals         Proposal[]
+  feedback          PostEventFeedback?
+  inspirationImages InspirationImage[]
 
   @@index([tenantId])
   @@index([clientId])
   @@index([venueId])
   @@map("events")
+}
+
+// ---------------------------------------------------------------------------
+// InspirationImage — Briefing Engine / Agente 2 Vision AI (04-ai-bible.md)
+// ---------------------------------------------------------------------------
+
+enum InspirationImageStatus {
+  PENDING
+  ANALYZED
+  FAILED
+}
+
+model InspirationImage {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  eventId        String    @map("event_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  storageKey       String @map("storage_key")
+  originalFilename String @map("original_filename")
+  mimeType         String @map("mime_type")
+  sizeBytes        Int    @map("size_bytes")
+
+  status InspirationImageStatus @default(PENDING)
+
+  // Saída estruturada do Agente 2 (Vision AI): flores, mobiliário, cores,
+  // estilos, arquitetura, iluminação, tecidos, tendências (04-ai-bible.md).
+  visionTags        Json?   @map("vision_tags")
+  visionDescription String? @map("vision_description")
+  processingError   String? @map("processing_error")
+
+  // Embedding OpenAI (text-embedding-3-small, 1536 dims) da visionDescription,
+  // usado para busca semântica no Knowledge Graph (07-architecture-book.md).
+  // Tipo Unsupported: Prisma Client não lê/escreve isto diretamente — acesso
+  // via $queryRaw/$executeRaw no repositório (ver PrismaInspirationImageRepository).
+  embedding Unsupported("vector(1536)")?
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@index([tenantId])
+  @@index([eventId])
+  @@map("inspiration_images")
 }
 
 // ---------------------------------------------------------------------------
