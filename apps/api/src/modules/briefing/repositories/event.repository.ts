@@ -14,4 +14,6 @@ export interface CreateEventInput {
 export abstract class EventRepository {
   abstract create(input: CreateEventInput): Promise<Event>;
   abstract findById(organizationId: string, id: string): Promise<Event | null>;
+  /** Most recent first — backs the project list / Home screen. */
+  abstract findAll(organizationId: string): Promise<Event[]>;
 }

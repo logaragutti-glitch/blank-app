@@ -10,6 +10,7 @@ import { BriefingModule } from "./modules/briefing/briefing.module";
 import { CreativeModule } from "./modules/creative/creative.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.module";
+import { ProjectsModule } from "./modules/projects/projects.module";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.
     BriefingModule,
     CreativeModule,
     FeedbackModule,
+    ProjectsModule,
   ],
 })
 export class AppModule {}

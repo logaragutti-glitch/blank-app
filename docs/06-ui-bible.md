@@ -13,10 +13,10 @@
   exemplo: *"Estou conectando as inspirações e procurando a essência
   deste evento..."*
 
-> Nota de implementação: os tokens atuais em `packages/ui/src/tokens.ts`
-> (Sprint 0) usam uma paleta escura genérica de placeholder — precisam
-> ser revisados para refletir "branco quente / grafite / champagne gold"
-> antes de qualquer tela de produto real ser construída.
+> **Implementação:** `packages/ui/src/tokens.ts` reflete "branco quente /
+> grafite / champagne gold" (era uma paleta escura genérica de placeholder
+> do Sprint 0). Cantos de 16px (`radii.lg`) e sombra discreta (`shadows.sm`)
+> usados em `Card`/`Button`.
 
 ## Tom de voz da IA na interface
 

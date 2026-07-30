@@ -19,4 +19,12 @@ export class PrismaEventRepository implements EventRepository {
     });
     return event ? toEventDomain(event) : null;
   }
+
+  async findAll(organizationId: string): Promise<Event[]> {
+    const events = await this.prisma.event.findMany({
+      where: { organizationId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+    return events.map(toEventDomain);
+  }
 }
