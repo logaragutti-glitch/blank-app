@@ -48,6 +48,19 @@ o restante do motor de geração.
 > `Material`s (com a flag `neverRecommend`) e é instruído a nunca escolher
 > um estilo ou material fora dessas listas.
 
+> **Implementação (Sprint 3):** a lista de `EventStyle`s candidatos não é
+> mais sempre o catálogo completo. Quando o evento tem imagens de
+> inspiração já analisadas (`InspirationImage.status = ANALYZED`), suas
+> descrições (Agente 2 / Vision AI) são combinadas e reembedded, e
+> `EventStyleRepository.findSimilarByEmbedding` faz uma busca real por
+> similaridade de cosseno (operador pgvector `<=>`) contra os embeddings
+> de estilo (`EventStyle.embedding`, backfilled via
+> `POST /knowledge-graph/styles/:id/backfill-embedding`), retornando os 5
+> estilos mais próximos. Sem imagens analisadas, sem estilos com embedding
+> ainda, ou em caso de falha do provider de embeddings, o fluxo cai de
+> volta para o catálogo completo (`findAll`) — a busca semântica é uma
+> melhoria de qualidade, nunca um requisito para gerar o diagnóstico.
+
 ## O Motor de Interpretação
 
 A IA nunca responde apenas com base em uma foto isolada. Ela combina:

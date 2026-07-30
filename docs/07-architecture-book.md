@@ -140,10 +140,13 @@ responsabilidade:
   no código do provider — conforme a regra de IA do prompt mestre do
   projeto ("nenhum prompt pode ficar hardcoded, todos devem ser
   versionados").
-- **Embeddings** (`src/modules/briefing/ai/embedding.port.ts`) — implementado
+- **Embeddings** (`src/infrastructure/ai/embedding.port.ts`) — implementado
   por `OpenAiEmbeddingProvider`, usando `text-embedding-3-small` com 1536
-  dimensões (exatamente a largura da coluna `vector(1536)` em
-  `InspirationImage.embedding`).
+  dimensões (exatamente a largura das colunas `vector(1536)` em
+  `InspirationImage.embedding` e `EventStyle.embedding`). Vive num módulo
+  global (`AiModule`) em vez de dentro do Briefing, porque é consumido
+  tanto pelo upload de imagens de inspiração quanto pela busca semântica de
+  `EventStyle` no Knowledge Graph.
 
 Ambos os clientes de SDK são inicializados de forma preguiçosa (lazy) —
 não no construtor da classe, mas no primeiro uso real — porque o SDK da

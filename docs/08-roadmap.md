@@ -53,10 +53,12 @@ um produto comercial horizontal para:
   persistido como `Proposal`. Combina briefing + imagens analisadas +
   estilos/materiais do Knowledge Graph, sempre grounded no catálogo real
   (nunca inventa materiais fora dele, nunca sugere itens marcados como
-  "não recomendar"). Ainda faltam: seleção dos componentes reutilizáveis
-  do Capítulo 7 e busca semântica por similaridade sobre os embeddings de
-  imagem armazenados (hoje o Diagnóstico usa os estilos/materiais como
-  texto no prompt, não uma busca vetorial `<=>` de fato).
+  "não recomendar"). Busca semântica real (pgvector `<=>`) já implementada:
+  `EventStyle.embedding` + `EventStyleRepository.findSimilarByEmbedding`
+  narrowam os estilos candidatos a partir dos embeddings das imagens de
+  inspiração analisadas, com fallback para o catálogo completo. Ainda
+  falta: seleção/geração dos 18 componentes reutilizáveis do Capítulo 7
+  (`ProposalComponent`).
 - **Sprint 4:** geração da proposta comercial (componentes reutilizáveis
   do Capítulo 7, aplicando as regras de ouro de `02-brand-bible.md`).
 - **Sprint 5+:** WOW Score, feedback pós-evento, renders conceituais,
