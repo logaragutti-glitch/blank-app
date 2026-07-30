@@ -27,6 +27,11 @@ if [ ! -f apps/api/.env ]; then
   echo "Created apps/api/.env from apps/api/.env.example"
 fi
 
+if [ ! -f apps/web/.env.local ]; then
+  cp apps/web/.env.example apps/web/.env.local
+  echo "Created apps/web/.env.local from apps/web/.env.example"
+fi
+
 echo "Applying database migrations..."
 pnpm --filter @eve-os/api exec prisma migrate deploy
 

@@ -85,8 +85,18 @@ um produto comercial horizontal para:
   Graph (ajustar scores de compatibilidade, promover/despromover
   fornecedores) — é uma capacidade futura distinta, esta entrega só
   cobre a captura do dado.
+- **UI do produto (concluído — MVP):** as 5 telas de `03-product-spec.md`
+  implementadas em `apps/web`, consumindo a API real: Home (resumo do dia),
+  Novo Projeto (briefing em formulário guiado por etapas), Diagnóstico
+  Criativo, Editor do Projeto (os 18 `ProposalComponent`s) e Gerar Proposta
+  (o documento montado). Autenticação (login/registro) e os tokens de
+  design (`packages/ui/src/tokens.ts`, branco quente/grafite/champagne
+  gold) também implementados. O "Editor" hoje é somente leitura + botão
+  "gerar novamente" — não há edição manual campo a campo de um componente
+  individual, já que o backend também não expõe isso ainda (só
+  regeneração completa via IA).
 - **Sprint 5+:** renders conceituais, módulos de produção/cronograma/
-  checklist, UI do produto.
+  checklist, Canvas do Evento, Modo Produção.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.

@@ -24,7 +24,10 @@ truth — read it before adding product logic.
 > caller-supplied `tenantId`/`organizationId` query params — see
 > `docs/07-architecture-book.md`. Post-event feedback capture is also
 > implemented (`POST`/`GET /events/:eventId/feedback`, see
-> `docs/05-database-bible.md`). Sprint 2 (Briefing Engine: form capture +
+> `docs/05-database-bible.md`). The 5 MVP product screens (`03-product-spec.md`)
+> are built in `apps/web` — Home, Novo Projeto, Diagnóstico Criativo, Editor
+> do Projeto, and Gerar Proposta — on top of the Brand/UI Bible design
+> tokens (`packages/ui`). Sprint 2 (Briefing Engine: form capture +
 > inspiration image ingestion), Sprint 1 (Knowledge Graph domain + read
 > API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
@@ -79,7 +82,8 @@ pnpm dev
 
 This runs `scripts/dev.sh`, which:
 
-1. Copies `.env.example` to `.env` on first run (root and `apps/api`).
+1. Copies `.env.example` to `.env`/`.env.local` on first run (root,
+   `apps/api`, `apps/web`).
 2. Starts Postgres (with pgvector), Redis, RabbitMQ, OpenSearch, and MinIO
    via Docker Compose and waits for health checks.
 3. Installs dependencies with pnpm if `node_modules` is missing.
@@ -88,7 +92,9 @@ This runs `scripts/dev.sh`, which:
 
 Once running:
 
-- Web: http://localhost:3000
+- Web: http://localhost:3000 — the 5 MVP screens. Register at
+  `/register` against the seeded organization id (`00000000-0000-0000-0000-000000000002`,
+  see `apps/api/prisma/seed.ts`) to sign in.
 - Admin: http://localhost:3001
 - API: http://localhost:4000 (Swagger docs at `/docs`, health check at
   `/health`, Knowledge Graph reads at `/knowledge-graph/{styles,materials,venues}`,
@@ -164,9 +170,12 @@ and the assembled proposal document endpoint are all implemented.
 Authentication/RBAC is also complete (see `docs/07-architecture-book.md`):
 every business endpoint requires a JWT and derives `tenantId`/
 `organizationId` from it. Structured post-event feedback capture (see
-`docs/05-database-bible.md`) is implemented too. Still missing: product
-UI, turning the structured document into an actual PDF/presentation
-artifact (deferred until a product layout exists to render against), and
-feeding post-event feedback back into Knowledge Graph scores
-automatically. Subsequent work will implement those, per
+`docs/05-database-bible.md`) is implemented too. The 5 MVP product screens
+are built in `apps/web` on the realigned Brand/UI Bible design tokens.
+Still missing: turning the structured proposal document into an actual
+PDF/presentation artifact (deferred until more product design exists to
+render against), feeding post-event feedback back into Knowledge Graph
+scores automatically, the Canvas do Evento and Modo Produção screens, and
+per-field manual editing of a proposal component (today's Editor only
+supports full regeneration). Subsequent work will implement those, per
 `docs/08-roadmap.md`.
