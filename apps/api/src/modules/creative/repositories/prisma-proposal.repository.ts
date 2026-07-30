@@ -37,4 +37,12 @@ export class PrismaProposalRepository implements ProposalRepository {
     });
     return proposals.map(toProposalDomain);
   }
+
+  async updateConceptName(id: string, conceptName: string): Promise<Proposal> {
+    const proposal = await this.prisma.proposal.update({
+      where: { id },
+      data: { conceptName },
+    });
+    return toProposalDomain(proposal);
+  }
 }

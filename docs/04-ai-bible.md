@@ -123,6 +123,22 @@ rastreabilidade entre docs e implementação:
 - **Agente 3 — Creative Engine / Agente de Conceito** — a partir do
   Diagnóstico, gera conceito nomeado, paleta, moodboard e seleção de
   componentes.
+
+  > **Implementação (Sprint 3):** `POST /creative/proposals/:proposalId/components`
+  > (`apps/api/src/modules/creative`) gera e persiste os 18
+  > `ProposalComponent`s do Capítulo 7. O provider
+  > (`AnthropicProposalComponentsProvider`) usa Claude com tool-use forçado
+  > para gerar, numa única chamada, os 12 componentes narrativos (Conceito,
+  > História do casal, Entrada, Cerimônia, Mesa do bolo, Lounge, Mesas dos
+  > convidados, Bar, Buffet, Pista, Iluminação, Florais); o prompt vive em
+  > `ai/prompts/proposal-components.prompt.ts`, versionado
+  > (`PROPOSAL_COMPONENTS_PROMPT_VERSION`). Os outros 6 (Capa, História da
+  > Bia, Moodboard, Paleta, Cronograma, Investimento) são montados
+  > deterministicamente em código (`proposal-component-builder.ts`) a
+  > partir de dados já conhecidos — Bia_Story e o Cronograma/Investimento
+  > seguem literalmente as regras de ouro de `02-brand-bible.md`, nunca
+  > exigindo uma chamada de IA. O nome do conceito escolhido é gravado de
+  > volta em `Proposal.conceptName`.
 - **Agente 4 — Diretor de Produção** — recebe o projeto já aprovado pelo
   cliente e protege a lucratividade do evento. Responde perguntas como:
   - Esse projeto cabe no orçamento aprovado (ex.: R$ 30.000)?

@@ -48,20 +48,25 @@ um produto comercial horizontal para:
   (`POST /briefing`) + ingestão de imagens de inspiração com análise
   estruturada (Agente 2 / Vision AI via Anthropic Claude) e embeddings via
   pgvector (OpenAI `text-embedding-3-small`).
-- **Sprint 3 (parcial):** geração do Diagnóstico Criativo (Agente 1 / Motor
+- **Sprint 3 (concluído):** geração do Diagnóstico Criativo (Agente 1 / Motor
   de Interpretação, via `POST /creative/:eventId/diagnostico-criativo`),
   persistido como `Proposal`. Combina briefing + imagens analisadas +
   estilos/materiais do Knowledge Graph, sempre grounded no catálogo real
   (nunca inventa materiais fora dele, nunca sugere itens marcados como
-  "não recomendar"). Busca semântica real (pgvector `<=>`) já implementada:
-  `EventStyle.embedding` + `EventStyleRepository.findSimilarByEmbedding`
-  narrowam os estilos candidatos a partir dos embeddings das imagens de
-  inspiração analisadas, com fallback para o catálogo completo. Ainda
-  falta: seleção/geração dos 18 componentes reutilizáveis do Capítulo 7
-  (`ProposalComponent`).
-- **Sprint 4:** geração da proposta comercial (componentes reutilizáveis
-  do Capítulo 7, aplicando as regras de ouro de `02-brand-bible.md`).
-- **Sprint 5+:** WOW Score, feedback pós-evento, renders conceituais,
+  "não recomendar"). Busca semântica real (pgvector `<=>`): `EventStyle.embedding`
+  + `EventStyleRepository.findSimilarByEmbedding` narrowam os estilos
+  candidatos a partir dos embeddings das imagens de inspiração analisadas,
+  com fallback para o catálogo completo. Geração dos 18 componentes
+  reutilizáveis do Capítulo 7 (Agente 3 / Creative Engine, via
+  `POST /creative/proposals/:proposalId/components`, persistidos como
+  `ProposalComponent`): 12 são narrativos (gerados por IA, tool-use forçado,
+  seguindo as regras de ouro de `02-brand-bible.md`) e 6 são montados
+  deterministicamente em código a partir de dados já conhecidos (Capa,
+  História da Bia, Moodboard, Paleta, Cronograma, Investimento) — nunca
+  requerem uma chamada de IA.
+- **Sprint 4:** produção do artefato final da proposta (PDF/apresentação a
+  partir dos `ProposalComponent`s), WOW Score computado automaticamente.
+- **Sprint 5+:** feedback pós-evento, renders conceituais,
   módulos de produção/cronograma/checklist.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da

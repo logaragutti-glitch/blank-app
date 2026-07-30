@@ -5,19 +5,45 @@ import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/app.setup";
 import { PrismaService } from "../src/infrastructure/prisma/prisma.service";
 import { DiagnosticoCriativoPort } from "../src/modules/creative/ai/diagnostico-criativo.port";
+import { ProposalComponentsPort } from "../src/modules/creative/ai/proposal-components.port";
+import type { ProposalComponentsResult } from "../src/modules/creative/ai/proposal-components.port";
 
 // Uses the Knowledge Graph seed data (prisma/seed.ts): Villa Massari venue,
 // Garden Fine Art style, Peonia material.
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const ORGANIZATION_ID = "00000000-0000-0000-0000-000000000002";
 
-// Agente 1 (Anthropic) has no live credentials in this environment (see
+// Agente 1/3 (Anthropic) have no live credentials in this environment (see
 // conversation) — mocked here so the suite still exercises the real HTTP
 // layer, context gathering (Client/Event/Venue/Knowledge Graph), and the
-// Proposal write to Postgres end to end.
+// Proposal/ProposalComponent writes to Postgres end to end.
 const diagnosticoCriativoMock: jest.Mocked<DiagnosticoCriativoPort> = {
   generate: jest.fn(),
 };
+const proposalComponentsMock: jest.Mocked<ProposalComponentsPort> = {
+  generate: jest.fn(),
+};
+
+function buildNarrativeBlock(label: string) {
+  return { title: `Título ${label}`, description: `Descrição ${label}` };
+}
+
+function buildProposalComponentsResult(): ProposalComponentsResult {
+  return {
+    concept: buildNarrativeBlock("Entre Montanhas e Flores"),
+    coupleStory: buildNarrativeBlock("Casal"),
+    entrance: buildNarrativeBlock("Entrada"),
+    ceremony: buildNarrativeBlock("Cerimônia"),
+    cakeTable: buildNarrativeBlock("Bolo"),
+    lounge: buildNarrativeBlock("Lounge"),
+    guestTables: buildNarrativeBlock("Mesas"),
+    bar: buildNarrativeBlock("Bar"),
+    buffet: buildNarrativeBlock("Buffet"),
+    danceFloor: buildNarrativeBlock("Pista"),
+    lighting: buildNarrativeBlock("Iluminação"),
+    florals: buildNarrativeBlock("Florais"),
+  };
+}
 
 describe("Creative / Diagnostico Criativo (e2e)", () => {
   let app: INestApplication;
@@ -28,6 +54,8 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DiagnosticoCriativoPort)
       .useValue(diagnosticoCriativoMock)
+      .overrideProvider(ProposalComponentsPort)
+      .useValue(proposalComponentsMock)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -124,5 +152,130 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
       .query({ organizationId: ORGANIZATION_ID })
       .expect(200);
     expect(listResponse.body).toHaveLength(0);
+  });
+});
+
+describe("Creative / Proposal Components (e2e)", () => {
+  let app: INestApplication;
+  let venueId: string;
+  let proposalId: string;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(DiagnosticoCriativoPort)
+      .useValue(diagnosticoCriativoMock)
+      .overrideProvider(ProposalComponentsPort)
+      .useValue(proposalComponentsMock)
+      .compile();
+
+    app = moduleRef.createNestApplication();
+    configureApp(app);
+    await app.init();
+
+    const prisma = app.get(PrismaService);
+    const venue = await prisma.venue.findFirstOrThrow({
+      where: { organizationId: ORGANIZATION_ID, name: "Villa Massari" },
+    });
+    venueId = venue.id;
+    const gardenFineArtStyle = await prisma.eventStyle.findFirstOrThrow({
+      where: { organizationId: ORGANIZATION_ID, name: "Garden Fine Art" },
+    });
+
+    diagnosticoCriativoMock.generate.mockResolvedValueOnce({
+      diagnosis: {
+        perfilCasal: "Romântico contemporâneo",
+        atmosferaDesejada: "Elegância leve e acolhedora",
+        estiloPredominante: "Garden Fine Art",
+        paletaSugerida: ["rosé", "verde sálvia", "champagne"],
+        mobiliarioSugerido: ["madeira clara"],
+        iluminacaoSugerida: "Luz quente e velas",
+        materiaisRecomendados: ["Peônia"],
+        compatibilidadeComEspaco: "A Villa Massari favorece cerimônia externa.",
+        justificativa: "O casal indicou preferência natural e romântica.",
+        promptVersion: "v1",
+      },
+      matchedEventStyleId: gardenFineArtStyle.id,
+    });
+
+    const briefingResponse = await request(app.getHttpServer())
+      .post("/briefing")
+      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .send({ partnerOneName: "Iris", partnerTwoName: "João", venueId })
+      .expect(201);
+    const eventId = briefingResponse.body.event.id;
+
+    const proposalResponse = await request(app.getHttpServer())
+      .post(`/creative/${eventId}/diagnostico-criativo`)
+      .query({ tenantId: TENANT_ID, organizationId: ORGANIZATION_ID })
+      .expect(201);
+    proposalId = proposalResponse.body.id;
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it("returns 404 for an unknown proposal", async () => {
+    await request(app.getHttpServer())
+      .post("/creative/proposals/00000000-0000-0000-0000-000000009999/components")
+      .query({ organizationId: ORGANIZATION_ID })
+      .expect(404);
+  });
+
+  it("generates and persists the 18 proposal components, and sets the Proposal's concept name", async () => {
+    proposalComponentsMock.generate.mockResolvedValueOnce(buildProposalComponentsResult());
+
+    const response = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/components`)
+      .query({ organizationId: ORGANIZATION_ID })
+      .expect(201);
+
+    expect(response.body).toHaveLength(18);
+    const componentTypes = response.body.map((component: { type: string }) => component.type);
+    expect(componentTypes).toEqual([
+      "COVER",
+      "BIA_STORY",
+      "COUPLE_STORY",
+      "CONCEPT",
+      "MOODBOARD",
+      "PALETTE",
+      "ENTRANCE",
+      "CEREMONY",
+      "CAKE_TABLE",
+      "LOUNGE",
+      "GUEST_TABLES",
+      "BAR",
+      "BUFFET",
+      "DANCE_FLOOR",
+      "LIGHTING",
+      "FLORALS",
+      "TIMELINE",
+      "INVESTMENT",
+    ]);
+
+    const concept = response.body.find((c: { type: string }) => c.type === "CONCEPT");
+    expect(concept.content.name).toBe("Título Entre Montanhas e Flores");
+
+    const listResponse = await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/components`)
+      .query({ organizationId: ORGANIZATION_ID })
+      .expect(200);
+    expect(listResponse.body).toHaveLength(18);
+
+    const proposalsResponse = await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/components`)
+      .query({ organizationId: "00000000-0000-0000-0000-000000000099" })
+      .expect(404);
+    expect(proposalsResponse.body.message).toMatch(/Proposal not found/);
+  });
+
+  it("returns 503 with a clear message when Agente 3 fails", async () => {
+    proposalComponentsMock.generate.mockRejectedValueOnce(new Error("simulated Anthropic outage"));
+
+    const response = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/components`)
+      .query({ organizationId: ORGANIZATION_ID })
+      .expect(503);
+    expect(response.body.message).toMatch(/simulated Anthropic outage/);
   });
 });

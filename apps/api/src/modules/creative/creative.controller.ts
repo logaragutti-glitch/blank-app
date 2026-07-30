@@ -19,6 +19,9 @@ import { EventStyleRepository } from "../knowledge-graph/repositories/event-styl
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
 import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
+import { ProposalComponentsPort } from "./ai/proposal-components.port";
+import { buildProposalComponents } from "./proposal-component-builder";
+import { ProposalComponentRepository } from "./repositories/proposal-component.repository";
 import { ProposalRepository } from "./repositories/proposal.repository";
 
 const SEMANTIC_SEARCH_STYLE_LIMIT = 5;
@@ -41,7 +44,9 @@ export class CreativeController {
     private readonly eventStyles: EventStyleRepository,
     private readonly materials: MaterialRepository,
     private readonly proposals: ProposalRepository,
+    private readonly proposalComponents: ProposalComponentRepository,
     private readonly diagnosticoCriativo: DiagnosticoCriativoPort,
+    private readonly proposalComponentsAi: ProposalComponentsPort,
     private readonly embeddings: EmbeddingPort,
   ) {}
 
@@ -150,6 +155,79 @@ export class CreativeController {
     @Param("eventId") eventId: string,
   ) {
     return this.proposals.findByEvent(organizationId, eventId);
+  }
+
+  // Agente 3 / Creative Engine: generates the 18 reusable proposal
+  // components (Capitulo 7) from the Diagnostico Criativo already stored on
+  // the Proposal. Re-running this replaces the previous version of each
+  // component (see ProposalComponentRepository.upsertMany), so it is safe
+  // to call again after the diagnosis or briefing data changes.
+  @Post("proposals/:proposalId/components")
+  async generateProposalComponents(
+    @Query("organizationId") organizationId: string,
+    @Param("proposalId") proposalId: string,
+  ) {
+    const proposal = await this.proposals.findById(organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+
+    const event = await this.events.findById(organizationId, proposal.eventId);
+    if (!event) throw new NotFoundException("Event not found for this proposal");
+
+    const [client, venue] = await Promise.all([
+      this.clients.findById(organizationId, event.clientId),
+      this.venues.findById(organizationId, event.venueId),
+    ]);
+    if (!client) throw new NotFoundException("Client not found for this event");
+    if (!venue) throw new NotFoundException("Venue not found for this event");
+
+    let narrative;
+    try {
+      narrative = await this.proposalComponentsAi.generate({
+        client: {
+          partnerOneName: client.partnerOneName,
+          partnerTwoName: client.partnerTwoName,
+          howTheyMet: client.howTheyMet,
+          proposalStory: client.proposalStory,
+        },
+        event: { type: event.type, guestsExpected: event.guestsExpected },
+        venue: {
+          name: venue.name,
+          recommendationNotes: venue.recommendationNotes,
+          structuralConstraints: venue.structuralConstraints,
+        },
+        diagnostico: proposal.diagnosticoCriativo,
+      });
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `Agente 3 (Creative Engine) failed to generate the proposal components: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      );
+    }
+
+    const components = buildProposalComponents({
+      client,
+      event,
+      venue,
+      diagnostico: proposal.diagnosticoCriativo,
+      narrative,
+    });
+
+    const [saved] = await Promise.all([
+      this.proposalComponents.upsertMany(proposalId, components),
+      this.proposals.updateConceptName(proposalId, narrative.concept.title),
+    ]);
+    return saved;
+  }
+
+  @Get("proposals/:proposalId/components")
+  async listProposalComponents(
+    @Query("organizationId") organizationId: string,
+    @Param("proposalId") proposalId: string,
+  ) {
+    const proposal = await this.proposals.findById(organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    return this.proposalComponents.findByProposal(proposalId);
   }
 
   // Narrows the Knowledge Graph styles offered to Agente 1 down to the ones

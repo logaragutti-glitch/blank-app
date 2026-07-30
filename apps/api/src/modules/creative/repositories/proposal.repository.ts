@@ -13,4 +13,6 @@ export abstract class ProposalRepository {
   abstract create(input: CreateProposalInput): Promise<Proposal>;
   abstract findById(organizationId: string, id: string): Promise<Proposal | null>;
   abstract findByEvent(organizationId: string, eventId: string): Promise<Proposal[]>;
+  /** Sets the named concept once Agente 3 has generated the CONCEPT component. */
+  abstract updateConceptName(id: string, conceptName: string): Promise<Proposal>;
 }
