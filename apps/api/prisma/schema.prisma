@@ -213,6 +213,14 @@ model EventStyle {
   furnitureNotes String[] @map("furniture_notes")
   loungeNotes    String[] @map("lounge_notes")
 
+  // Embedding OpenAI (text-embedding-3-small, 1536 dims) de uma descrição
+  // textual do estilo (nome + paleta + mobiliário + lounge), usado para
+  // busca semântica real (operador pgvector `<=>`) contra os embeddings
+  // das imagens de inspiração — ver 07-architecture-book.md. Nulo até o
+  // backfill rodar (não é gerado automaticamente no seed, que não deve
+  // depender de credenciais de IA para funcionar em CI).
+  embedding Unsupported("vector(1536)")?
+
   organization          Organization @relation(fields: [organizationId], references: [id])
   compatibleMaterials   Material[]   @relation("MaterialCompatibleStyles")
   incompatibleMaterials Material[]   @relation("MaterialIncompatibleStyles")

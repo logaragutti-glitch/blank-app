@@ -13,8 +13,8 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiQuery, ApiTags } from "@nestjs/swagger";
+import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
 import { StoragePort } from "../../infrastructure/storage/storage.port";
-import { EmbeddingPort } from "./ai/embedding.port";
 import { VisionAnalysisPort } from "./ai/vision-analysis.port";
 import { CreateBriefingDto } from "./dto/create-briefing.dto";
 import { ClientRepository } from "./repositories/client.repository";

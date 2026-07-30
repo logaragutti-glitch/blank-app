@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { LoggerModule } from "nestjs-pino";
 import { HealthModule } from "./health/health.module";
+import { AiModule } from "./infrastructure/ai/ai.module";
 import { PrismaModule } from "./infrastructure/prisma/prisma.module";
 import { StorageModule } from "./infrastructure/storage/storage.module";
 import { BriefingModule } from "./modules/briefing/briefing.module";
@@ -23,6 +24,7 @@ import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.
     }),
     PrismaModule,
     StorageModule,
+    AiModule,
     HealthModule,
     KnowledgeGraphModule,
     BriefingModule,
