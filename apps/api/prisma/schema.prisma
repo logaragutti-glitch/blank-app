@@ -1,0 +1,519 @@
+// EVE OS domain schema — see /docs (Database Bible, Constitution) for the
+// business rules this models. Every domain table follows the conventions
+// from packages/types/src/tenant.ts (AuditedEntity): UUID id, tenant_id,
+// organization_id, UTC timestamps, soft delete, audit trail, version.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [uuid_ossp(map: "uuid-ossp"), vector]
+}
+
+// ---------------------------------------------------------------------------
+// Multi-tenancy roots
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organizations Organization[]
+
+  @@map("tenants")
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  users     User[]
+  clients   Client[]
+  venues    Venue[]
+  suppliers Supplier[]
+  styles    EventStyle[]
+  materials Material[]
+  events    Event[]
+
+  @@index([tenantId])
+  @@map("organizations")
+}
+
+// ---------------------------------------------------------------------------
+// User / Auth — não faz parte do GENOME nem do Knowledge Graph; é quem opera
+// o sistema (a Bia e sua equipe), não o casal (ver Client). RBAC simples por
+// papel — ver apps/api/src/modules/auth.
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model User {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(MEMBER)
+  isActive     Boolean  @default(true) @map("is_active")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Client / Couple profile — Database Bible Cap. 2, 8 dimensions
+// (dimensions 5-8 are not yet fully specified; captured in `additionalDetails`)
+// ---------------------------------------------------------------------------
+
+model Client {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  // 1. Identidade
+  partnerOneName       String   @map("partner_one_name")
+  partnerTwoName       String?  @map("partner_two_name")
+  partnerOneProfession String?  @map("partner_one_profession")
+  partnerTwoProfession String?  @map("partner_two_profession")
+  city                 String?
+  religion             String?
+  hobbies              String[]
+
+  // 2. História
+  howTheyMet      String? @map("how_they_met")
+  proposalStory   String? @map("proposal_story")
+  familyTradition String? @map("family_tradition")
+
+  // 3. Estilo de vida
+  lifestyleTags    String[] @map("lifestyle_tags") // Extrovertido, Minimalista, Sofisticado, Contemporâneo, Natural, Boêmio
+  likesBeach       Boolean? @map("likes_beach")
+  likesCountryside Boolean? @map("likes_countryside")
+
+  // 4. Restrições
+  budgetAmount        Decimal? @map("budget_amount") @db.Decimal(12, 2)
+  budgetCurrency      String   @default("BRL") @map("budget_currency")
+  dietaryRestrictions String[] @map("dietary_restrictions")
+  accessibilityNeeds  String?  @map("accessibility_needs")
+
+  // 5-8. Dimensões ainda não detalhadas na documentação (visão do evento,
+  // referências visuais, convidados/capacidade, preferências musicais) —
+  // capturadas de forma flexível até serem normalizadas.
+  additionalDetails Json? @map("additional_details")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  events       Event[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("clients")
+}
+
+// ---------------------------------------------------------------------------
+// Venue — DNA do espaço (Database Bible, cadastro permanente)
+// ---------------------------------------------------------------------------
+
+model Venue {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  name                  String
+  structuralConstraints String?  @map("structural_constraints")
+  ceilingHeightMeters   Decimal? @map("ceiling_height_meters") @db.Decimal(4, 2)
+  powerOutlets          Int?     @map("power_outlets")
+  guestCapacity         Int?     @map("guest_capacity")
+  existingFurniture     Json?    @map("existing_furniture")
+  typicalClimate        String?  @map("typical_climate")
+  // Regras derivadas do espaço, ex.: "Se local = Villa Massari: sugerir
+  // cerimônia externa, aproveitar a arquitetura, iluminação quente,
+  // flores em tons suaves" (05-database-bible.md)
+  recommendationNotes   String[] @map("recommendation_notes")
+
+  organization Organization             @relation(fields: [organizationId], references: [id])
+  suppliers    VenuePreferredSupplier[]
+  events       Event[]
+
+  @@unique([organizationId, name])
+  @@index([tenantId])
+  @@map("venues")
+}
+
+// ---------------------------------------------------------------------------
+// Supplier
+// ---------------------------------------------------------------------------
+
+enum SupplierCategory {
+  FLORIST
+  CATERING
+  LIGHTING
+  FURNITURE_RENTAL
+  PHOTOGRAPHY
+  MUSIC
+  OTHER
+}
+
+model Supplier {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  name             String
+  category         SupplierCategory
+  performanceNotes String?          @map("performance_notes")
+
+  organization Organization             @relation(fields: [organizationId], references: [id])
+  venues       VenuePreferredSupplier[]
+
+  @@unique([organizationId, name])
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+model VenuePreferredSupplier {
+  venueId    String  @map("venue_id") @db.Uuid
+  supplierId String  @map("supplier_id") @db.Uuid
+  notes      String?
+
+  venue    Venue    @relation(fields: [venueId], references: [id])
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@id([venueId, supplierId])
+  @@map("venue_preferred_suppliers")
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge Graph — EventStyle and Material (AI Bible / Database Bible)
+// ---------------------------------------------------------------------------
+
+model EventStyle {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  name        String // ex.: "Garden Fine Art"
+  description String?
+
+  // Dimensões de intensidade (nunca categorias binárias), ex.:
+  // { "Luxuoso": 8.0, "Natural": 7.8 } — 05-database-bible.md
+  dimensionScores Json @map("dimension_scores")
+
+  paletteColors  String[] @map("palette_colors")
+  furnitureNotes String[] @map("furniture_notes")
+  loungeNotes    String[] @map("lounge_notes")
+
+  // Embedding OpenAI (text-embedding-3-small, 1536 dims) de uma descrição
+  // textual do estilo (nome + paleta + mobiliário + lounge), usado para
+  // busca semântica real (operador pgvector `<=>`) contra os embeddings
+  // das imagens de inspiração — ver 07-architecture-book.md. Nulo até o
+  // backfill rodar (não é gerado automaticamente no seed, que não deve
+  // depender de credenciais de IA para funcionar em CI).
+  embedding Unsupported("vector(1536)")?
+
+  organization          Organization @relation(fields: [organizationId], references: [id])
+  compatibleMaterials   Material[]   @relation("MaterialCompatibleStyles")
+  incompatibleMaterials Material[]   @relation("MaterialIncompatibleStyles")
+  proposals             Proposal[]
+
+  @@unique([organizationId, name])
+  @@index([tenantId])
+  @@map("event_styles")
+}
+
+enum MaterialCategory {
+  FLOWER
+  FABRIC
+  FURNITURE
+  LIGHTING
+  OTHER
+}
+
+model Material {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  name           String
+  category       MaterialCategory
+  emotions       String[]
+  seasons        String[]
+  // Itens da lista "Não utilizar" (ex.: Neon, Acrílico colorido, LED RGB)
+  // nunca devem ser sugeridos pelo Motor de Interpretação — 05-database-bible.md
+  neverRecommend Boolean          @default(false) @map("never_recommend")
+
+  organization       Organization @relation(fields: [organizationId], references: [id])
+  compatibleStyles   EventStyle[] @relation("MaterialCompatibleStyles")
+  incompatibleStyles EventStyle[] @relation("MaterialIncompatibleStyles")
+
+  @@unique([organizationId, name])
+  @@index([tenantId])
+  @@map("materials")
+}
+
+// ---------------------------------------------------------------------------
+// Event — GENOME aggregate root (EVE Foundation Artigo 1 / Constitution)
+// ---------------------------------------------------------------------------
+
+enum EventType {
+  WEDDING
+  CORPORATE
+  KIDS
+  DESTINATION
+  VENUE_MANAGED
+  HOTEL
+  CONVENTION
+}
+
+enum EventStatus {
+  DRAFT
+  BRIEFING_CAPTURED
+  DIAGNOSED
+  PROPOSED
+  APPROVED
+  IN_PRODUCTION
+  COMPLETED
+  CANCELLED
+}
+
+model Event {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  type   EventType   @default(WEDDING)
+  status EventStatus @default(DRAFT)
+
+  clientId String @map("client_id") @db.Uuid
+  venueId  String @map("venue_id") @db.Uuid
+
+  guestsExpected   Int?      @map("guests_expected")
+  ceremonyDateTime DateTime? @map("ceremony_date_time") @db.Timestamptz(6)
+  budgetAmount     Decimal?  @map("budget_amount") @db.Decimal(12, 2)
+
+  // DNA emocional percentual do evento, recalculado pelo Event Impact
+  // Engine a cada mudança (ex.: { "Romance": 94, "Elegancia": 91 }).
+  dnaScores Json? @map("dna_scores")
+
+  // Dimensões do GENOME ainda não normalizadas em tabelas próprias
+  // (Arquitetura, Luz, Paisagem, Estação, Experiência, Fotografia,
+  // Gastronomia, Música, Operação) — 05-database-bible.md / 01-constitution.md.
+  genome Json? @map("genome")
+
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  client            Client             @relation(fields: [clientId], references: [id])
+  venue             Venue              @relation(fields: [venueId], references: [id])
+  proposals         Proposal[]
+  feedback          PostEventFeedback?
+  inspirationImages InspirationImage[]
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([venueId])
+  @@map("events")
+}
+
+// ---------------------------------------------------------------------------
+// InspirationImage — Briefing Engine / Agente 2 Vision AI (04-ai-bible.md)
+// ---------------------------------------------------------------------------
+
+enum InspirationImageStatus {
+  PENDING
+  ANALYZED
+  FAILED
+}
+
+model InspirationImage {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  eventId        String    @map("event_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  storageKey       String @map("storage_key")
+  originalFilename String @map("original_filename")
+  mimeType         String @map("mime_type")
+  sizeBytes        Int    @map("size_bytes")
+
+  status InspirationImageStatus @default(PENDING)
+
+  // Saída estruturada do Agente 2 (Vision AI): flores, mobiliário, cores,
+  // estilos, arquitetura, iluminação, tecidos, tendências (04-ai-bible.md).
+  visionTags        Json?   @map("vision_tags")
+  visionDescription String? @map("vision_description")
+  processingError   String? @map("processing_error")
+
+  // Embedding OpenAI (text-embedding-3-small, 1536 dims) da visionDescription,
+  // usado para busca semântica no Knowledge Graph (07-architecture-book.md).
+  // Tipo Unsupported: Prisma Client não lê/escreve isto diretamente — acesso
+  // via $queryRaw/$executeRaw no repositório (ver PrismaInspirationImageRepository).
+  embedding Unsupported("vector(1536)")?
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@index([tenantId])
+  @@index([eventId])
+  @@map("inspiration_images")
+}
+
+// ---------------------------------------------------------------------------
+// Proposal / ProposalComponent (Capítulo 7 da Constituição)
+// ---------------------------------------------------------------------------
+
+enum ProposalStatus {
+  DRAFT
+  INTERNAL_REVIEW
+  READY
+  SENT
+  APPROVED
+  REJECTED
+}
+
+model Proposal {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  eventId      String  @map("event_id") @db.Uuid
+  eventStyleId String? @map("event_style_id") @db.Uuid
+
+  // Diagnóstico Criativo — nunca exibido ao cliente (04-ai-bible.md).
+  diagnosticoCriativo Json           @map("diagnostico_criativo")
+  conceptName         String?        @map("concept_name")
+  wowScore            Decimal?       @map("wow_score") @db.Decimal(5, 2)
+  status              ProposalStatus @default(DRAFT)
+  investmentAmount    Decimal?       @map("investment_amount") @db.Decimal(12, 2)
+
+  event      Event               @relation(fields: [eventId], references: [id])
+  eventStyle EventStyle?         @relation(fields: [eventStyleId], references: [id])
+  components ProposalComponent[]
+
+  @@index([tenantId])
+  @@index([eventId])
+  @@map("proposals")
+}
+
+enum ComponentType {
+  COVER
+  BIA_STORY
+  COUPLE_STORY
+  CONCEPT
+  MOODBOARD
+  PALETTE
+  ENTRANCE
+  CEREMONY
+  CAKE_TABLE
+  LOUNGE
+  GUEST_TABLES
+  BAR
+  BUFFET
+  DANCE_FLOOR
+  LIGHTING
+  FLORALS
+  TIMELINE
+  INVESTMENT
+}
+
+model ProposalComponent {
+  id         String        @id @default(uuid()) @db.Uuid
+  proposalId String        @map("proposal_id") @db.Uuid
+  type       ComponentType
+  order      Int
+  content    Json
+
+  proposal Proposal @relation(fields: [proposalId], references: [id])
+
+  @@unique([proposalId, type])
+  @@index([proposalId])
+  @@map("proposal_components")
+}
+
+// ---------------------------------------------------------------------------
+// PostEventFeedback (Constitution Cap. 9 — evolução contínua)
+// ---------------------------------------------------------------------------
+
+model PostEventFeedback {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @unique @map("event_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  whatDelighted          String? @map("what_delighted")
+  setupAdjustments       String? @map("setup_adjustments")
+  supplierPerformance    Json?   @map("supplier_performance")
+  whatWorkedForSpaceType String? @map("what_worked_for_space_type")
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@map("post_event_feedback")
+}

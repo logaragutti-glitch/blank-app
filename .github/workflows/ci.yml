@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Lint, Typecheck, Test, Build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: eve
+          POSTGRES_PASSWORD: eve
+          POSTGRES_DB: eve_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eve"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://eve:eve@localhost:5432/eve_os
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY: eve
+      S3_SECRET_KEY: eve12345
+      S3_BUCKET: eve-os-inspiration
+      JWT_SECRET: ci-test-secret-never-use-in-production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start MinIO
+        # GitHub Actions `services:` cannot override a container's command,
+        # and MinIO's image needs `server /data` to actually run — so it's
+        # started as a plain docker run step instead of a service container.
+        run: |
+          docker run -d --name minio \
+            -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER=eve \
+            -e MINIO_ROOT_PASSWORD=eve12345 \
+            minio/minio server /data --console-address ":9001"
+          until curl -sf http://localhost:9000/minio/health/live; do sleep 1; done
+          docker run --rm --network host --entrypoint /bin/sh minio/mc:latest -c "
+            mc alias set local http://localhost:9000 eve eve12345 &&
+            mc mb --ignore-existing local/eve-os-inspiration
+          "
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm turbo run lint
+
+      - name: Typecheck
+        run: pnpm turbo run typecheck
+
+      - name: Test
+        run: pnpm turbo run test
+
+      - name: Build
+        run: pnpm turbo run build
+
+      - name: Apply database migrations
+        run: pnpm --filter @eve-os/api exec prisma migrate deploy
+
+      - name: Seed the database
+        run: pnpm --filter @eve-os/api exec prisma db seed
+
+      - name: Run e2e tests
+        run: pnpm turbo run test:e2e
