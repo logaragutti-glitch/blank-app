@@ -25,6 +25,8 @@ function EditorContent({ eventId }: { eventId: string }) {
   const [components, setComponents] = useState<ProposalComponent[] | null | undefined>(undefined);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [renderingImage, setRenderingImage] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!accessToken || !proposalId) return;
@@ -53,6 +55,31 @@ function EditorContent({ eventId }: { eventId: string }) {
       );
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleGenerateRender() {
+    if (!proposalId) return;
+    setRenderError(null);
+    setRenderingImage(true);
+    try {
+      const updatedCover = await apiClient.post<ProposalComponent>(
+        `/creative/proposals/${proposalId}/render`,
+        undefined,
+        accessToken,
+      );
+      setComponents(
+        (previous) =>
+          previous?.map((component) => (component.type === "COVER" ? updatedCover : component)) ?? previous,
+      );
+    } catch (err) {
+      setRenderError(
+        err instanceof ApiError
+          ? `Encontrei um ponto que merece atenção: ${err.message}`
+          : "Não consegui gerar o render agora.",
+      );
+    } finally {
+      setRenderingImage(false);
     }
   }
 
@@ -98,9 +125,31 @@ function EditorContent({ eventId }: { eventId: string }) {
             </Button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
-            {components.map((component) => (
-              <ProposalComponentCard key={component.id} component={component} />
-            ))}
+            {components.map((component) =>
+              component.type === "COVER" ? (
+                <ProposalComponentCard
+                  key={component.id}
+                  component={component}
+                  actions={
+                    <>
+                      {renderingImage && (
+                        <p style={{ color: colors.textMuted, fontStyle: "italic", margin: `0 0 ${spacing.sm}` }}>
+                          Pintando o conceito em imagem...
+                        </p>
+                      )}
+                      {renderError && (
+                        <p style={{ color: colors.danger, margin: `0 0 ${spacing.sm}` }}>{renderError}</p>
+                      )}
+                      <Button variant="ghost" disabled={renderingImage} onClick={handleGenerateRender}>
+                        {component.content.renderImageUrl ? "Gerar novo render" : "Gerar render conceitual"}
+                      </Button>
+                    </>
+                  }
+                />
+              ) : (
+                <ProposalComponentCard key={component.id} component={component} />
+              ),
+            )}
           </div>
           <div style={{ marginTop: spacing.lg }}>
             <Link href={`/projects/${eventId}/proposta`}>

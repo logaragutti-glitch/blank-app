@@ -1,4 +1,5 @@
-import { Card, colors, spacing } from "@eve-os/ui";
+import type { ReactNode } from "react";
+import { Card, colors, radii, spacing } from "@eve-os/ui";
 import type { ProposalComponent } from "@eve-os/types";
 import { COMPONENT_LABELS } from "./proposal-component-labels";
 
@@ -38,6 +39,14 @@ function ComponentBody({ component }: { component: ProposalComponent }) {
     case "COVER":
       return (
         <>
+          {typeof content.renderImageUrl === "string" && (
+            // eslint-disable-next-line @next/next/no-img-element -- external, time-limited signed URL; not a local/optimizable asset
+            <img
+              src={content.renderImageUrl}
+              alt={`Render conceitual: ${String(content.conceptName ?? "")}`}
+              style={{ width: "100%", borderRadius: radii.md, marginBottom: spacing.md, display: "block" }}
+            />
+          )}
           <h4 style={{ margin: 0 }}>{String(content.conceptName ?? "")}</h4>
           <p style={{ color: colors.textMuted, margin: 0 }}>{String(content.coupleNames ?? "")}</p>
           <p style={{ color: colors.textMuted, margin: 0 }}>{String(content.venueName ?? "")}</p>
@@ -103,13 +112,21 @@ function ComponentBody({ component }: { component: ProposalComponent }) {
   }
 }
 
-export function ProposalComponentCard({ component }: { component: ProposalComponent }) {
+export function ProposalComponentCard({
+  component,
+  actions,
+}: {
+  component: ProposalComponent;
+  /** Extra controls rendered below the content — e.g. the Editor's "gerar render conceitual" button on the Capa. */
+  actions?: ReactNode;
+}) {
   return (
     <Card>
       <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.8rem", textTransform: "uppercase" }}>
         {component.order}. {COMPONENT_LABELS[component.type]}
       </p>
       <ComponentBody component={component} />
+      {actions && <div style={{ marginTop: spacing.md }}>{actions}</div>}
     </Card>
   );
 }
