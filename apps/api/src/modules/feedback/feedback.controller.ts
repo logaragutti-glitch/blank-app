@@ -6,7 +6,7 @@ import { EventRepository } from "../briefing/repositories/event.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
 import { SupplierPerformanceEntryDto, UpsertPostEventFeedbackDto } from "./dto/upsert-post-event-feedback.dto";
 import { PostEventFeedbackRepository } from "./repositories/post-event-feedback.repository";
-import { buildPerformanceNote, decideSupplierPreference } from "./supplier-reconciliation";
+import { buildPerformanceNote, decideSupplierPreference, isUuid } from "./supplier-reconciliation";
 
 // Structured post-event feedback (Constitution Capitulo 9, see
 // 05-database-bible.md) — captured after the event happens, one record per
@@ -59,8 +59,10 @@ export class FeedbackController {
 
   // Deterministic, not AI-driven: a rating of 4-5 promotes the supplier to
   // preferred at this venue, 1-2 demotes it, 3 leaves the preference as-is.
-  // Unknown supplier ids (not in this organization's Knowledge Graph) are
-  // skipped — there's nothing real to reconcile against.
+  // Unknown or malformed supplier ids (not a real UUID in this
+  // organization's Knowledge Graph) are skipped — there's nothing real to
+  // reconcile against, and supplierId is never validated as a UUID at
+  // capture time.
   private async reconcileSupplierPerformance(
     organizationId: string,
     venueId: string,
@@ -69,6 +71,7 @@ export class FeedbackController {
   ) {
     const recordedAt = new Date();
     for (const entry of entries) {
+      if (!isUuid(entry.supplierId)) continue;
       const supplier = await this.suppliers.findById(organizationId, entry.supplierId);
       if (!supplier) continue;
 

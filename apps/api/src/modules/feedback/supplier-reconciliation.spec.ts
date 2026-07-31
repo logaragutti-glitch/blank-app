@@ -1,4 +1,16 @@
-import { buildPerformanceNote, decideSupplierPreference } from "./supplier-reconciliation";
+import { buildPerformanceNote, decideSupplierPreference, isUuid } from "./supplier-reconciliation";
+
+describe("isUuid", () => {
+  it("accepts a well-formed UUID", () => {
+    expect(isUuid("00000000-0000-0000-0000-000000000002")).toBe(true);
+  });
+
+  it("rejects a non-UUID string, never letting it reach a @db.Uuid query", () => {
+    expect(isUuid("supplier-1")).toBe(false);
+    expect(isUuid("")).toBe(false);
+    expect(isUuid("00000000-0000-0000-0000-00000000000")).toBe(false);
+  });
+});
 
 describe("decideSupplierPreference", () => {
   it("promotes a supplier rated 4 or 5", () => {

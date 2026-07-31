@@ -10,6 +10,18 @@
  * heuristic (same pattern as wow-score.ts), not an AI call.
  */
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// SupplierPerformanceEntryDto.supplierId is deliberately not @IsUUID()-
+// validated at capture time (feedback can reference any string a caller
+// sends), so a garbage id must never reach a `@db.Uuid` Prisma query — that
+// throws at the database level instead of just finding no match. Checking
+// the shape first lets an unknown/malformed id fail closed (skip
+// reconciliation) instead of failing the whole feedback submission.
+export function isUuid(value: string): boolean {
+  return UUID_PATTERN.test(value);
+}
+
 export type SupplierPreferenceDecision = "promote" | "demote" | "no-change";
 
 // A high rating (>=4) means the supplier should be preferred at this

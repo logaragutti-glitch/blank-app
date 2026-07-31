@@ -17,8 +17,9 @@ describe("FeedbackController", () => {
     role: "MEMBER",
     email: "bia@evefestas.com",
   };
+  const supplierId = "00000000-0000-0000-0000-000000000001";
   const fakeEvent = { id: eventId, venueId } as Event;
-  const fakeSupplier = { id: "supplier-1", name: "Flores da Serra" } as Supplier;
+  const fakeSupplier = { id: supplierId, name: "Flores da Serra" } as Supplier;
 
   let controller: FeedbackController;
   let events: jest.Mocked<EventRepository>;
@@ -108,18 +109,18 @@ describe("FeedbackController", () => {
         createdAt: "2026-01-01T00:00:00.000Z",
         whatDelighted: null,
         setupAdjustments: null,
-        supplierPerformance: [{ supplierId: "supplier-1", rating: 5, notes: "Pontual" }],
+        supplierPerformance: [{ supplierId, rating: 5, notes: "Pontual" }],
         whatWorkedForSpaceType: null,
       });
 
       await controller.upsertFeedback(user, eventId, {
-        supplierPerformance: [{ supplierId: "supplier-1", rating: 5, notes: "Pontual" }],
+        supplierPerformance: [{ supplierId, rating: 5, notes: "Pontual" }],
       });
 
-      expect(suppliers.findById).toHaveBeenCalledWith(user.organizationId, "supplier-1");
-      expect(suppliers.setVenuePreference).toHaveBeenCalledWith(venueId, "supplier-1", true);
+      expect(suppliers.findById).toHaveBeenCalledWith(user.organizationId, supplierId);
+      expect(suppliers.setVenuePreference).toHaveBeenCalledWith(venueId, supplierId, true);
       expect(suppliers.appendPerformanceNote).toHaveBeenCalledWith(
-        "supplier-1",
+        supplierId,
         expect.stringContaining("nota 5/5"),
       );
     });
@@ -133,15 +134,15 @@ describe("FeedbackController", () => {
         createdAt: "2026-01-01T00:00:00.000Z",
         whatDelighted: null,
         setupAdjustments: null,
-        supplierPerformance: [{ supplierId: "supplier-1", rating: 1 }],
+        supplierPerformance: [{ supplierId, rating: 1 }],
         whatWorkedForSpaceType: null,
       });
 
       await controller.upsertFeedback(user, eventId, {
-        supplierPerformance: [{ supplierId: "supplier-1", rating: 1 }],
+        supplierPerformance: [{ supplierId, rating: 1 }],
       });
 
-      expect(suppliers.setVenuePreference).toHaveBeenCalledWith(venueId, "supplier-1", false);
+      expect(suppliers.setVenuePreference).toHaveBeenCalledWith(venueId, supplierId, false);
     });
 
     it("leaves the preference untouched for a neutral rating of 3", async () => {
@@ -153,12 +154,12 @@ describe("FeedbackController", () => {
         createdAt: "2026-01-01T00:00:00.000Z",
         whatDelighted: null,
         setupAdjustments: null,
-        supplierPerformance: [{ supplierId: "supplier-1", rating: 3 }],
+        supplierPerformance: [{ supplierId, rating: 3 }],
         whatWorkedForSpaceType: null,
       });
 
       await controller.upsertFeedback(user, eventId, {
-        supplierPerformance: [{ supplierId: "supplier-1", rating: 3 }],
+        supplierPerformance: [{ supplierId, rating: 3 }],
       });
 
       expect(suppliers.setVenuePreference).not.toHaveBeenCalled();
@@ -166,7 +167,32 @@ describe("FeedbackController", () => {
       expect(suppliers.appendPerformanceNote).toHaveBeenCalled();
     });
 
-    it("skips reconciliation for a supplier id that doesn't exist in this organization", async () => {
+    it("skips reconciliation for a non-UUID supplier id without querying the Knowledge Graph", async () => {
+      events.findById.mockResolvedValue(fakeEvent);
+      feedback.upsert.mockResolvedValue({
+        id: "feedback-1",
+        eventId,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        whatDelighted: null,
+        setupAdjustments: null,
+        supplierPerformance: [{ supplierId: "supplier-1", rating: 5, notes: "Pontual" }],
+        whatWorkedForSpaceType: null,
+      });
+
+      await controller.upsertFeedback(user, eventId, {
+        supplierPerformance: [{ supplierId: "supplier-1", rating: 5, notes: "Pontual" }],
+      });
+
+      // supplierId isn't @IsUUID()-validated at capture time (see the DTO),
+      // so a non-UUID string must never reach a @db.Uuid Prisma query —
+      // that throws at the database level instead of just finding nothing.
+      expect(suppliers.findById).not.toHaveBeenCalled();
+      expect(suppliers.setVenuePreference).not.toHaveBeenCalled();
+      expect(suppliers.appendPerformanceNote).not.toHaveBeenCalled();
+    });
+
+    it("skips reconciliation for a well-formed but unknown supplier id", async () => {
+      const unknownSupplierId = "00000000-0000-0000-0000-000000009999";
       events.findById.mockResolvedValue(fakeEvent);
       suppliers.findById.mockResolvedValue(null);
       feedback.upsert.mockResolvedValue({
@@ -175,14 +201,15 @@ describe("FeedbackController", () => {
         createdAt: "2026-01-01T00:00:00.000Z",
         whatDelighted: null,
         setupAdjustments: null,
-        supplierPerformance: [{ supplierId: "unknown-supplier", rating: 5 }],
+        supplierPerformance: [{ supplierId: unknownSupplierId, rating: 5 }],
         whatWorkedForSpaceType: null,
       });
 
       await controller.upsertFeedback(user, eventId, {
-        supplierPerformance: [{ supplierId: "unknown-supplier", rating: 5 }],
+        supplierPerformance: [{ supplierId: unknownSupplierId, rating: 5 }],
       });
 
+      expect(suppliers.findById).toHaveBeenCalledWith(user.organizationId, unknownSupplierId);
       expect(suppliers.setVenuePreference).not.toHaveBeenCalled();
       expect(suppliers.appendPerformanceNote).not.toHaveBeenCalled();
     });
