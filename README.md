@@ -24,7 +24,10 @@ truth — read it before adding product logic.
 > caller-supplied `tenantId`/`organizationId` query params — see
 > `docs/07-architecture-book.md`. Post-event feedback capture is also
 > implemented (`POST`/`GET /events/:eventId/feedback`, see
-> `docs/05-database-bible.md`). The 5 MVP product screens (`03-product-spec.md`)
+> `docs/05-database-bible.md`), and automatically feeds back into the
+> Knowledge Graph: a supplier rated 4-5 is promoted to preferred at that
+> event's venue, 1-2 demotes it, deterministically (no AI involved) — see
+> `docs/08-roadmap.md`. The 5 MVP product screens (`03-product-spec.md`)
 > are built in `apps/web` — Home, Novo Projeto, Diagnóstico Criativo, Editor
 > do Projeto, and Gerar Proposta — on top of the Brand/UI Bible design
 > tokens (`packages/ui`). Conceptual renders (OpenAI `gpt-image-1`) are also
@@ -235,11 +238,16 @@ implemented, with all cost math computed deterministically from real
 Knowledge Graph cost data rather than invented by the model. Modo
 Produção (the project hub changing shape once a proposal is approved, to
 foreground checklist/schedule/suppliers/ceremony time) is implemented
-too.
+too. Post-event feedback now automatically feeds back into the Knowledge
+Graph too: `supplierPerformance` ratings promote/demote a supplier's
+preferred status at that event's venue and accumulate into its
+performance notes, deterministically — see `docs/05-database-bible.md`.
 Still missing: turning the structured proposal document into an actual
 PDF/presentation artifact (deferred until more product design exists to
-render against), feeding post-event feedback back into Knowledge Graph
-scores automatically, assembly/disassembly labor cost estimation for
+render against), adjusting style-compatibility scores from the feedback's
+free-text fields (would require an AI interpreting free text, risking a
+fabricated signal — no numeric material×style score field exists in the
+schema today anyway), assembly/disassembly labor cost estimation for
 Agente 4 (no real labor-cost data exists yet to estimate this without
 inventing numbers), the Canvas do Evento screen, and per-field manual
 editing of a proposal component (today's Editor only supports full

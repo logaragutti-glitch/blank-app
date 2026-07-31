@@ -179,12 +179,25 @@ determinado tipo de espaço).
 > incremental, cada chamada só sobrescreve os campos enviados, os demais
 > ficam como estavam) e `GET /events/:eventId/feedback`
 > (`apps/api/src/modules/feedback`). `supplierPerformance` é uma lista de
-> `{ supplierId, rating (1-5), notes? }` guardada como Json, já que o
-> Knowledge Graph ainda não tem um endpoint/repositório de `Supplier`
-> próprio para validar essa referência. A realimentação automática do
-> Knowledge Graph a partir desse feedback (ajustar scores, promover/
-> despromover fornecedores) continua sendo uma capacidade futura, ainda
-> não implementada — este endpoint só captura o dado estruturado.
+> `{ supplierId, rating (1-5), notes? }` guardada como Json.
+>
+> **Realimentação automática (concluída):** `supplierPerformance` é o
+> único campo de feedback que é dado real e estruturado o suficiente para
+> alimentar o Knowledge Graph sem uma IA especular sobre texto livre — os
+> outros três campos (`whatDelighted`, `setupAdjustments`,
+> `whatWorkedForSpaceType`) continuam sendo apenas captura estruturada,
+> sem realimentação automática. A cada `POST` que inclui
+> `supplierPerformance`, `FeedbackController` (via
+> `supplier-reconciliation.ts`, uma heurística determinística pura, sem
+> chamada de IA, mesmo padrão de `wow-score.ts`) para cada entrada com um
+> `supplierId` que existe de fato no Knowledge Graph da organização:
+> nota 4-5 promove o fornecedor a preferencial no venue deste evento
+> (`VenuePreferredSupplier`), nota 1-2 remove essa preferência, nota 3 não
+> altera nada (não force um sinal que a nota não carrega), e sempre
+> anexa uma linha datada a `Supplier.performanceNotes` com a nota e as
+> notas do chamador (nunca inventa comentário). Um `supplierId`
+> desconhecido é ignorado silenciosamente — não há nada real para
+> reconciliar contra.
 
 ## O GENOME — modelo canônico do agregado Evento
 

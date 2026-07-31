@@ -26,4 +26,22 @@ export class PrismaSupplierRepository implements SupplierRepository {
     });
     return supplier ? toSupplierDomain(supplier) : null;
   }
+
+  async setVenuePreference(venueId: string, supplierId: string, preferred: boolean): Promise<void> {
+    if (preferred) {
+      await this.prisma.venuePreferredSupplier.upsert({
+        where: { venueId_supplierId: { venueId, supplierId } },
+        create: { venueId, supplierId },
+        update: {},
+      });
+      return;
+    }
+    await this.prisma.venuePreferredSupplier.deleteMany({ where: { venueId, supplierId } });
+  }
+
+  async appendPerformanceNote(supplierId: string, note: string): Promise<void> {
+    const supplier = await this.prisma.supplier.findUniqueOrThrow({ where: { id: supplierId } });
+    const performanceNotes = supplier.performanceNotes ? `${supplier.performanceNotes}\n${note}` : note;
+    await this.prisma.supplier.update({ where: { id: supplierId }, data: { performanceNotes } });
+  }
 }

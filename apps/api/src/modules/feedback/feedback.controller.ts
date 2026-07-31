@@ -3,15 +3,19 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EventRepository } from "../briefing/repositories/event.repository";
-import { UpsertPostEventFeedbackDto } from "./dto/upsert-post-event-feedback.dto";
+import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
+import { SupplierPerformanceEntryDto, UpsertPostEventFeedbackDto } from "./dto/upsert-post-event-feedback.dto";
 import { PostEventFeedbackRepository } from "./repositories/post-event-feedback.repository";
+import { buildPerformanceNote, decideSupplierPreference, isUuid } from "./supplier-reconciliation";
 
 // Structured post-event feedback (Constitution Capitulo 9, see
 // 05-database-bible.md) — captured after the event happens, one record per
-// Event. Feeding this back automatically into Knowledge Graph scores
-// (adjusting style compatibility, promoting/demoting suppliers) is a
-// separate, not-yet-built capability; this only captures the structured
-// data for that to eventually consume.
+// Event. The supplierPerformance entries feed back into the Knowledge
+// Graph automatically (promoting/demoting the supplier at this event's
+// venue, appending a note to its performance history) — see
+// supplier-reconciliation.ts. The other feedback fields are free text and
+// aren't fed back automatically, since doing so would require an AI to
+// interpret them, risking a fabricated signal.
 @ApiTags("feedback")
 @ApiBearerAuth()
 @Controller("events/:eventId/feedback")
@@ -19,6 +23,7 @@ export class FeedbackController {
   constructor(
     private readonly events: EventRepository,
     private readonly feedback: PostEventFeedbackRepository,
+    private readonly suppliers: SupplierRepository,
   ) {}
 
   // Upsert semantics: feedback is often captured incrementally (supplier
@@ -33,12 +38,52 @@ export class FeedbackController {
     const event = await this.events.findById(user.organizationId, eventId);
     if (!event) throw new NotFoundException("Event not found");
 
-    return this.feedback.upsert(eventId, {
+    const feedback = await this.feedback.upsert(eventId, {
       whatDelighted: dto.whatDelighted,
       setupAdjustments: dto.setupAdjustments,
       supplierPerformance: dto.supplierPerformance,
       whatWorkedForSpaceType: dto.whatWorkedForSpaceType,
     });
+
+    if (dto.supplierPerformance) {
+      await this.reconcileSupplierPerformance(
+        user.organizationId,
+        event.venueId,
+        eventId,
+        dto.supplierPerformance,
+      );
+    }
+
+    return feedback;
+  }
+
+  // Deterministic, not AI-driven: a rating of 4-5 promotes the supplier to
+  // preferred at this venue, 1-2 demotes it, 3 leaves the preference as-is.
+  // Unknown or malformed supplier ids (not a real UUID in this
+  // organization's Knowledge Graph) are skipped — there's nothing real to
+  // reconcile against, and supplierId is never validated as a UUID at
+  // capture time.
+  private async reconcileSupplierPerformance(
+    organizationId: string,
+    venueId: string,
+    eventId: string,
+    entries: SupplierPerformanceEntryDto[],
+  ) {
+    const recordedAt = new Date();
+    for (const entry of entries) {
+      if (!isUuid(entry.supplierId)) continue;
+      const supplier = await this.suppliers.findById(organizationId, entry.supplierId);
+      if (!supplier) continue;
+
+      const decision = decideSupplierPreference(entry.rating);
+      if (decision !== "no-change") {
+        await this.suppliers.setVenuePreference(venueId, entry.supplierId, decision === "promote");
+      }
+      await this.suppliers.appendPerformanceNote(
+        entry.supplierId,
+        buildPerformanceNote(eventId, entry.rating, entry.notes, recordedAt),
+      );
+    }
   }
 
   @Get()
