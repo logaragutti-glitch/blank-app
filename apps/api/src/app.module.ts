@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { LoggerModule } from "nestjs-pino";
 import { HealthModule } from "./health/health.module";
 import { AiModule } from "./infrastructure/ai/ai.module";
+import { EmailModule } from "./infrastructure/email/email.module";
 import { PrismaModule } from "./infrastructure/prisma/prisma.module";
 import { StorageModule } from "./infrastructure/storage/storage.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -29,6 +30,7 @@ import { ProjectsModule } from "./modules/projects/projects.module";
     PrismaModule,
     StorageModule,
     AiModule,
+    EmailModule,
     AuthModule,
     HealthModule,
     KnowledgeGraphModule,

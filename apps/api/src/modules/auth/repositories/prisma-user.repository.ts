@@ -36,4 +36,26 @@ export class PrismaUserRepository implements UserRepository {
     if (!user) return null;
     return { user: toUserDomain(user), passwordHash: user.passwordHash };
   }
+
+  async setPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordResetTokenHash: tokenHash, passwordResetExpiresAt: expiresAt },
+    });
+  }
+
+  async findByPasswordResetTokenHash(tokenHash: string): Promise<UserWithPasswordHash | null> {
+    const user = await this.prisma.user.findFirst({
+      where: { passwordResetTokenHash: tokenHash, passwordResetExpiresAt: { gt: new Date() }, deletedAt: null },
+    });
+    if (!user) return null;
+    return { user: toUserDomain(user), passwordHash: user.passwordHash };
+  }
+
+  async completePasswordReset(userId: string, passwordHash: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, passwordResetTokenHash: null, passwordResetExpiresAt: null },
+    });
+  }
 }

@@ -311,4 +311,13 @@ memory), and `GET /metrics` exposes Prometheus-format HTTP request
 counters/histograms plus Node's default process metrics — no
 Prometheus/Grafana or observability provider is provisioned in this
 sandbox, so this is a scrape-ready endpoint rather than a wired-up
-dashboard. Still open: password recovery and team member invites.
+dashboard. Password recovery is implemented too:
+`POST /auth/forgot-password` / `POST /auth/reset-password`, with the
+same "never reveal whether the email exists" principle as login, a
+single-use token (only its hash is ever persisted), and a new
+`EmailPort` — no real email provider is configured in this sandbox, so
+it logs the reset link instead of fabricating a delivery, the same
+honesty pattern as every other AI/storage port here. `apps/web` got
+`/forgot-password` and `/reset-password` screens, verified end to end
+in a real browser against a real local Postgres. Still open: team
+member invites.

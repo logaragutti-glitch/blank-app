@@ -64,6 +64,9 @@ export default function LoginPage() {
           </Button>
         </form>
         <p style={{ color: colors.textMuted, marginBottom: 0 }}>
+          <Link href="/forgot-password">Esqueci minha senha</Link>
+        </p>
+        <p style={{ color: colors.textMuted, marginBottom: 0 }}>
           Ainda não tem uma conta? <Link href="/register">Criar conta</Link>
         </p>
       </Card>

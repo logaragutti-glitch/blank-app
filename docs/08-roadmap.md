@@ -343,8 +343,22 @@ item acima, pode entrar em paralelo a qualquer momento):
   nenhum dashboard ou alerta que não existe. Alertas propriamente ditos
   exigiriam um destino real (Slack/PagerDuty/e-mail) e ficam fora de
   escopo por isso.
-- Recuperação de senha e convite de membros de equipe — ainda não
-  iniciados.
+- **Recuperação de senha (concluído):** `POST /auth/forgot-password`
+  (email) e `POST /auth/reset-password` (token + nova senha). Mesmo
+  princípio de "nunca revelar se o e-mail existe" já usado no login: a
+  resposta é idêntica com ou sem conta cadastrada, só um e-mail de
+  verdade dispara o envio. O token é aleatório (32 bytes), só o hash
+  (SHA-256) é persistido em `User.passwordResetTokenHash` — nunca o
+  valor bruto — com expiração de 60 minutos e uso único (limpo após o
+  reset). Não há provedor de e-mail real configurado neste ambiente (ver
+  `docs/11-deployment-guide.md`): um novo port `EmailPort` (mesmo padrão
+  dos ports de IA/storage) abstrai o envio, e um `ConsoleEmailProvider`
+  apenas loga o link em vez de fabricar uma entrega — produção troca por
+  um provedor real (Resend/SES/SendGrid) atrás do mesmo port, sem mudar
+  quem chama. Telas `apps/web` em `/forgot-password` e `/reset-password`
+  (com link "Esqueci minha senha" na tela de login), validado no
+  navegador de ponta a ponta com um Postgres local de verdade.
+- Convite de membros de equipe — ainda não iniciado.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.
