@@ -130,11 +130,15 @@ describe("Production Plan (e2e)", () => {
     expect(response.body.setupSchedule).toEqual(buildProductionPlanResult().setupSchedule);
     expect(response.body.checklist).toEqual(buildProductionPlanResult().checklist);
 
-    expect(productionPlanMock.generate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        catalogMaterials: [{ name: "Peônia", category: "FLOWER" }],
-      }),
+    // Grounded in the real catalog: every material connected as compatible
+    // with the matched Garden Fine Art style (see prisma/seed.ts), never
+    // anything marked neverRecommend (e.g. Neon).
+    const [generateCall] = productionPlanMock.generate.mock.calls;
+    const catalogMaterialNames = (generateCall?.[0].catalogMaterials ?? []).map((material) => material.name);
+    expect(catalogMaterialNames).toEqual(
+      expect.arrayContaining(["Peônia", "Lisianthus", "Rosa Inglesa", "Gaze", "Organza", "Linho"]),
     );
+    expect(catalogMaterialNames).not.toContain("Neon");
 
     const getResponse = await request(app.getHttpServer())
       .get(`/production/proposals/${proposalId}/plan`)
