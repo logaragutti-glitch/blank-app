@@ -218,21 +218,22 @@ Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
 `schema.prisma`, and `PrismaClient` requires a driver adapter
 (`@prisma/adapter-pg`) — see `src/infrastructure/prisma/prisma.service.ts`.
 
-## Deploying `apps/web` to Vercel
+## Deploying to production
 
-The Vercel project's "Root Directory" (Project Settings → General) is set
-to `apps/web`, with "Include files outside the Root Directory" enabled so
+See [`docs/11-deployment-guide.md`](./docs/11-deployment-guide.md) for the
+full runbook (Vercel for `apps/web`/`apps/admin`, a Dockerfile-based host
+for `apps/api`, managed Postgres+pgvector, S3-compatible storage). Quick
+summary for `apps/web`/`apps/admin` on Vercel: the Vercel project's "Root
+Directory" (Project Settings → General) is set to `apps/web` or
+`apps/admin`, with "Include files outside the Root Directory" enabled so
 the build can see the internal workspace packages
-(`transpilePackages: ["@eve-os/ui", "@eve-os/types"]` in
-`apps/web/next.config.mjs`). [`apps/web/vercel.json`](./apps/web/vercel.json)
-pins `buildCommand` to plain `next build` — with files outside the root
-visible, Vercel also sees `apps/api/prisma/schema.prisma` and otherwise
-auto-injects `prisma migrate deploy && next build` (a real Vercel
-heuristic for Prisma projects), which fails since `apps/web` has no
-`prisma` dependency and has no business running database migrations for
-a frontend deploy anyway. `apps/admin` isn't wired to a Vercel project
-yet — deploying it would need its own Vercel project with Root Directory
-set to `apps/admin` and the same `buildCommand` override.
+(`transpilePackages: ["@eve-os/ui", "@eve-os/types"]` in each app's
+`next.config.mjs`). Both apps' `vercel.json` pins `buildCommand` to plain
+`next build` — with files outside the root visible, Vercel also sees
+`apps/api/prisma/schema.prisma` and otherwise auto-injects `prisma migrate
+deploy && next build` (a real Vercel heuristic for Prisma projects), which
+fails since neither frontend has a `prisma` dependency or any business
+running database migrations for a frontend deploy anyway.
 
 ## Conventions
 

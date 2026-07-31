@@ -310,10 +310,23 @@ prioridade de negócio:
      esses campos — mostrar isso exigiria inventar dado que não existe).
 
 Independente dessa sequência (não bloqueia nem é bloqueado por nenhum
-item acima, pode entrar em paralelo a qualquer momento): infraestrutura de
-produção — deploy real de `apps/api` (hoje só roda localmente via Docker
-Compose), observabilidade além de logs, recuperação de senha e convite de
-membros de equipe.
+item acima, pode entrar em paralelo a qualquer momento):
+
+- **Infraestrutura de deploy de produção (configs + runbook concluídos):**
+  ver `docs/11-deployment-guide.md`. Sem credenciais reais de nenhum
+  provedor de nuvem neste ambiente, o deploy em si não foi executado —
+  o que foi entregue é o que dava para entregar de verdade: `vercel.json`
+  para `apps/admin` (espelhando o de `apps/web`, que já existia) e um
+  runbook documentando os passos reais para publicar `apps/web`/
+  `apps/admin` (Vercel) e `apps/api` (qualquer host com Dockerfile,
+  `apps/api/Dockerfile` já pronto) contra um Postgres+pgvector gerenciado
+  (Neon/Supabase) e armazenamento S3 real (AWS S3/Cloudflare R2) — sem
+  mudança de código necessária em nenhum dos dois casos. O runbook também
+  esclarece que Redis/RabbitMQ/OpenSearch (já provisionados no Docker
+  Compose) não são lidos por nenhum caminho de código real hoje, então
+  não são necessários para publicar o conjunto de features atual.
+- Observabilidade além de logs, recuperação de senha e convite de membros
+  de equipe — ainda não iniciados.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.
