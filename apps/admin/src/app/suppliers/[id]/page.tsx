@@ -15,6 +15,7 @@ const CATEGORIES: SupplierCategory[] = [
   "CATERING",
   "LIGHTING",
   "FURNITURE_RENTAL",
+  "ASSEMBLY_CREW",
   "PHOTOGRAPHY",
   "MUSIC",
   "OTHER",

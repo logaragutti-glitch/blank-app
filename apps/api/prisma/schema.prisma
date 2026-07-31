@@ -187,6 +187,14 @@ enum SupplierCategory {
   FURNITURE_RENTAL
   PHOTOGRAPHY
   MUSIC
+  // Equipe de montagem/desmontagem do dia do evento — a mesma equipe
+  // tipicamente cobre os dois (ver 02-brand-bible.md, que lista "montagem"
+  // e "desmontagem" como um par no que o investimento contempla), por isso
+  // uma única categoria, não duas. Permite que o custo de mão de obra do
+  // Agente 4 (04-ai-bible.md) reaproveite o mesmo mecanismo de fornecedor
+  // mais barato por categoria já usado para flores/catering/etc. — nenhuma
+  // lógica nova, só mais uma categoria com custo real.
+  ASSEMBLY_CREW
   OTHER
 }
 

@@ -279,9 +279,12 @@ performance notes, deterministically — see `docs/05-database-bible.md`.
 Still missing: adjusting style-compatibility scores from the feedback's
 free-text fields (would require an AI interpreting free text, risking a
 fabricated signal — no numeric material×style score field exists in the
-schema today anyway), and assembly/disassembly labor cost estimation for
-Agente 4 (no real labor-cost data exists yet to estimate this without
-inventing numbers). Per-field manual editing of a proposal component is
+schema today anyway). Assembly/disassembly labor cost for Agente 4's
+budget analysis is implemented now: `ASSEMBLY_CREW` is just another
+`Supplier` category (assembly and disassembly are treated as one labor
+cost, since it's typically the same crew doing both), so it flows through
+the existing "cheapest supplier per category" mechanism with no new
+business logic. Per-field manual editing of a proposal component is
 implemented too: `PATCH /creative/proposals/:proposalId/components/:componentType`
 shallow-merges the given fields, with an "Editar" button per component in
 the Editor. The proposal document's real PDF/presentation artifact is
@@ -300,5 +303,7 @@ production plan endpoint (materials list, assembly schedule, checklist),
 with no persisted session and no external navigation library for its 3
 screens. This completes the Sprint 5+ sequenced plan
 (items 1-9) from `docs/08-roadmap.md`. Independent of that sequence,
-still open: production deploy infrastructure and assembly/disassembly
-labor cost estimation (no real labor-cost data exists yet).
+production deploy infrastructure (configs + a runbook, see
+`docs/11-deployment-guide.md`) and assembly/disassembly labor cost
+estimation are both implemented now. Still open: observability beyond
+logs, password recovery, and team member invites.

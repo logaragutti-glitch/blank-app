@@ -13,7 +13,8 @@ import { authHeader, registerTestUser } from "./auth-test-helper";
 
 // Uses the Knowledge Graph seed data (prisma/seed.ts): Villa Massari venue,
 // Garden Fine Art style, Peonia material (estimatedUnitCost: 45), Flores da
-// Serra supplier (estimatedCost: 3800, preferred at Villa Massari).
+// Serra supplier (FLORIST, estimatedCost: 3800) and Equipe Raiz Montagens
+// (ASSEMBLY_CREW, estimatedCost: 2400), both preferred at Villa Massari.
 const ORGANIZATION_ID = "00000000-0000-0000-0000-000000000002";
 
 const diagnosticoCriativoMock: jest.Mocked<DiagnosticoCriativoPort> = {
