@@ -20,7 +20,8 @@
     "infra:up": "docker compose up -d postgres redis rabbitmq opensearch minio minio-bucket-init",
     "infra:down": "docker compose down",
     "infra:logs": "docker compose logs -f",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "pnpm --filter @eve-os/api exec prisma generate"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
