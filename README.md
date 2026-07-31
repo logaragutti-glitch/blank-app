@@ -159,15 +159,14 @@ Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
 
 ## Deploying `apps/web` to Vercel
 
-The root [`vercel.json`](./vercel.json) lets a Vercel project keep its Root
-Directory at the repo root (the default for this monorepo) while building
-only `apps/web`: it installs with pnpm, builds via
-`pnpm turbo run build --filter=@eve-os/web`, and points
-`outputDirectory` at `apps/web/.next`. No per-project "Root Directory"
-dashboard change is needed for the `web` app. `apps/admin` isn't wired to a
-Vercel project yet — deploying it would need its own Vercel project with an
-equivalent `--filter=@eve-os/admin` build (a root `vercel.json` only
-configures a single Vercel project pointed at this repo).
+The Vercel project's "Root Directory" (Project Settings → General) is set
+to `apps/web`. Vercel auto-detects the pnpm workspace and Next.js from
+there — no `vercel.json` is needed: it installs from the workspace root,
+then runs `next build` inside `apps/web`
+(`transpilePackages: ["@eve-os/ui", "@eve-os/types"]` in
+`apps/web/next.config.mjs` covers the internal workspace packages).
+`apps/admin` isn't wired to a Vercel project yet — deploying it would need
+its own Vercel project with Root Directory set to `apps/admin`.
 
 ## Conventions
 
