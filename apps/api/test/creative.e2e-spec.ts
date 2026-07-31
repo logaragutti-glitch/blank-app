@@ -4,9 +4,11 @@ import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/app.setup";
 import { PrismaService } from "../src/infrastructure/prisma/prisma.service";
+import { ConceptualRenderPort } from "../src/modules/creative/ai/conceptual-render.port";
 import { DiagnosticoCriativoPort } from "../src/modules/creative/ai/diagnostico-criativo.port";
 import { ProposalComponentsPort } from "../src/modules/creative/ai/proposal-components.port";
 import type { ProposalComponentsResult } from "../src/modules/creative/ai/proposal-components.port";
+import { StoragePort } from "../src/infrastructure/storage/storage.port";
 import { authHeader, registerTestUser } from "./auth-test-helper";
 
 // Uses the Knowledge Graph seed data (prisma/seed.ts): Villa Massari venue,
@@ -14,15 +16,23 @@ import { authHeader, registerTestUser } from "./auth-test-helper";
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const ORGANIZATION_ID = "00000000-0000-0000-0000-000000000002";
 
-// Agente 1/3 (Anthropic) have no live credentials in this environment (see
-// conversation) — mocked here so the suite still exercises the real HTTP
-// layer, context gathering (Client/Event/Venue/Knowledge Graph), and the
-// Proposal/ProposalComponent writes to Postgres end to end.
+// Agente 1/3 (Anthropic), the image-generation provider, and object storage
+// have no live credentials/infra in this environment (see conversation) —
+// mocked here so the suite still exercises the real HTTP layer, context
+// gathering (Client/Event/Venue/Knowledge Graph), and the Proposal/
+// ProposalComponent writes to Postgres end to end.
 const diagnosticoCriativoMock: jest.Mocked<DiagnosticoCriativoPort> = {
   generate: jest.fn(),
 };
 const proposalComponentsMock: jest.Mocked<ProposalComponentsPort> = {
   generate: jest.fn(),
+};
+const conceptualRenderMock: jest.Mocked<ConceptualRenderPort> = {
+  generate: jest.fn(),
+};
+const storageMock: jest.Mocked<StoragePort> = {
+  upload: jest.fn().mockResolvedValue(undefined),
+  getSignedDownloadUrl: jest.fn().mockImplementation(async (key: string) => `https://storage.example.com/${key}`),
 };
 
 function buildNarrativeBlock(label: string) {
@@ -218,6 +228,10 @@ describe("Creative / Proposal Components (e2e)", () => {
       .useValue(diagnosticoCriativoMock)
       .overrideProvider(ProposalComponentsPort)
       .useValue(proposalComponentsMock)
+      .overrideProvider(ConceptualRenderPort)
+      .useValue(conceptualRenderMock)
+      .overrideProvider(StoragePort)
+      .useValue(storageMock)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -367,5 +381,59 @@ describe("Creative / Proposal Components (e2e)", () => {
       .set(...auth)
       .expect(503);
     expect(response.body.message).toMatch(/simulated Anthropic outage/);
+  });
+
+  it("generates a conceptual render for the Capa and attaches a signed URL on every subsequent read", async () => {
+    conceptualRenderMock.generate.mockResolvedValueOnce({
+      imageBase64: Buffer.from("fake-png-bytes").toString("base64"),
+      mimeType: "image/png",
+    });
+
+    const response = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/render`)
+      .set(...auth)
+      .expect(201);
+
+    expect(response.body.type).toBe("COVER");
+    expect(response.body.content.renderStorageKey).toMatch(new RegExp(`^renders/${proposalId}/cover-`));
+    expect(response.body.content.renderImageUrl).toBe(
+      `https://storage.example.com/${response.body.content.renderStorageKey}`,
+    );
+    expect(storageMock.upload).toHaveBeenCalledWith(
+      expect.objectContaining({ contentType: "image/png" }),
+    );
+
+    // The signed URL is recomputed on every read, not persisted — confirm
+    // it shows up consistently on the components list and the document too.
+    const componentsResponse = await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/components`)
+      .set(...auth)
+      .expect(200);
+    const cover = componentsResponse.body.find((c: { type: string }) => c.type === "COVER");
+    expect(cover.content.renderImageUrl).toBe(response.body.content.renderImageUrl);
+
+    const documentResponse = await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/document`)
+      .set(...auth)
+      .expect(200);
+    const documentCover = documentResponse.body.components.find((c: { type: string }) => c.type === "COVER");
+    expect(documentCover.content.renderImageUrl).toBe(response.body.content.renderImageUrl);
+  });
+
+  it("returns 503 with a clear message when the conceptual render generation fails", async () => {
+    conceptualRenderMock.generate.mockRejectedValueOnce(new Error("simulated OpenAI outage"));
+
+    const response = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/render`)
+      .set(...auth)
+      .expect(503);
+    expect(response.body.message).toMatch(/simulated OpenAI outage/);
+  });
+
+  it("returns 404 for the render endpoint when the proposal does not exist", async () => {
+    await request(app.getHttpServer())
+      .post("/creative/proposals/00000000-0000-0000-0000-000000009999/render")
+      .set(...auth)
+      .expect(404);
   });
 });

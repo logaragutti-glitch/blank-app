@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   BadRequestException,
   Controller,
@@ -9,16 +10,18 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import type { EventStyle, InspirationImage } from "@eve-os/types";
+import type { EventStyle, InspirationImage, ProposalComponent } from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
+import { StoragePort } from "../../infrastructure/storage/storage.port";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
 import { InspirationImageRepository } from "../briefing/repositories/inspiration-image.repository";
 import { EventStyleRepository } from "../knowledge-graph/repositories/event-style.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
+import { ConceptualRenderPort } from "./ai/conceptual-render.port";
 import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
 import { ProposalComponentsPort } from "./ai/proposal-components.port";
 import { buildProposalComponents } from "./proposal-component-builder";
@@ -46,6 +49,8 @@ export class CreativeController {
     private readonly diagnosticoCriativo: DiagnosticoCriativoPort,
     private readonly proposalComponentsAi: ProposalComponentsPort,
     private readonly embeddings: EmbeddingPort,
+    private readonly conceptualRender: ConceptualRenderPort,
+    private readonly storage: StoragePort,
   ) {}
 
   @Post(":eventId/diagnostico-criativo")
@@ -227,7 +232,67 @@ export class CreativeController {
   ) {
     const proposal = await this.proposals.findById(user.organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
-    return this.proposalComponents.findByProposal(proposalId);
+    const components = await this.proposalComponents.findByProposal(proposalId);
+    return this.attachRenderUrls(components);
+  }
+
+  // Renders automaticos (04-ai-bible.md): a single conceptual hero image for
+  // the Capa, generated from the concept/diagnosis rather than only relying
+  // on the client's own inspiration photos. Stored under the Capa
+  // component's content as `renderStorageKey` — a fresh signed URL is
+  // computed on every read (see attachRenderUrls) instead of persisting a
+  // URL that would eventually expire.
+  @Post("proposals/:proposalId/render")
+  async generateConceptualRender(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ) {
+    const { organizationId } = user;
+    const proposal = await this.proposals.findById(organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+
+    const event = await this.events.findById(organizationId, proposal.eventId);
+    if (!event) throw new NotFoundException("Event not found for this proposal");
+    const venue = await this.venues.findById(organizationId, event.venueId);
+    if (!venue) throw new NotFoundException("Venue not found for this event");
+
+    const components = await this.proposalComponents.findByProposal(proposalId);
+    const cover = components.find((component) => component.type === "COVER");
+    if (!cover) {
+      throw new BadRequestException(
+        "This Proposal has no components yet — call POST /creative/proposals/:proposalId/components first.",
+      );
+    }
+
+    let render;
+    try {
+      render = await this.conceptualRender.generate({
+        conceptName: (cover.content.conceptName as string | undefined) ?? proposal.conceptName ?? "",
+        atmosferaDesejada: proposal.diagnosticoCriativo.atmosferaDesejada,
+        estiloPredominante: proposal.diagnosticoCriativo.estiloPredominante,
+        paletaSugerida: proposal.diagnosticoCriativo.paletaSugerida,
+        venueName: venue.name,
+      });
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `Conceptual render generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+
+    const storageKey = `renders/${proposalId}/cover-${randomUUID()}.png`;
+    await this.storage.upload({
+      key: storageKey,
+      body: Buffer.from(render.imageBase64, "base64"),
+      contentType: render.mimeType,
+    });
+
+    const [updatedCover] = await this.proposalComponents.upsertMany(proposalId, [
+      { type: "COVER", order: cover.order, content: { ...cover.content, renderStorageKey: storageKey } },
+    ]);
+    if (!updatedCover) throw new Error("Failed to persist the conceptual render.");
+
+    const [withRenderUrl] = await this.attachRenderUrls([updatedCover]);
+    return withRenderUrl;
   }
 
   // The final proposal artifact (Sprint 4): the Proposal itself plus its 18
@@ -250,7 +315,23 @@ export class CreativeController {
       );
     }
 
-    return { proposal, components };
+    return { proposal, components: await this.attachRenderUrls(components) };
+  }
+
+  // Computes a fresh signed download URL for the Capa's conceptual render,
+  // if one has been generated (content.renderStorageKey) — never persists
+  // the URL itself, since a signed URL eventually expires but the S3 key
+  // does not.
+  private async attachRenderUrls(components: ProposalComponent[]): Promise<ProposalComponent[]> {
+    return Promise.all(
+      components.map(async (component) => {
+        const renderStorageKey = component.content.renderStorageKey as string | undefined;
+        if (component.type !== "COVER" || !renderStorageKey) return component;
+
+        const renderImageUrl = await this.storage.getSignedDownloadUrl(renderStorageKey);
+        return { ...component, content: { ...component.content, renderImageUrl } };
+      }),
+    );
   }
 
   // Narrows the Knowledge Graph styles offered to Agente 1 down to the ones

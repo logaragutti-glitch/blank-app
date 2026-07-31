@@ -27,9 +27,11 @@ truth — read it before adding product logic.
 > `docs/05-database-bible.md`). The 5 MVP product screens (`03-product-spec.md`)
 > are built in `apps/web` — Home, Novo Projeto, Diagnóstico Criativo, Editor
 > do Projeto, and Gerar Proposta — on top of the Brand/UI Bible design
-> tokens (`packages/ui`). Sprint 2 (Briefing Engine: form capture +
-> inspiration image ingestion), Sprint 1 (Knowledge Graph domain + read
-> API), and Sprint 0 (monorepo/tooling/infra) are complete.
+> tokens (`packages/ui`). A conceptual render for the Capa
+> (`POST /creative/proposals/:proposalId/render`, OpenAI `gpt-image-1`) is
+> also implemented — see `docs/04-ai-bible.md`. Sprint 2 (Briefing Engine:
+> form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
+> domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
 ## Stack
 
@@ -171,11 +173,13 @@ Authentication/RBAC is also complete (see `docs/07-architecture-book.md`):
 every business endpoint requires a JWT and derives `tenantId`/
 `organizationId` from it. Structured post-event feedback capture (see
 `docs/05-database-bible.md`) is implemented too. The 5 MVP product screens
-are built in `apps/web` on the realigned Brand/UI Bible design tokens.
-Still missing: turning the structured proposal document into an actual
-PDF/presentation artifact (deferred until more product design exists to
-render against), feeding post-event feedback back into Knowledge Graph
-scores automatically, the Canvas do Evento and Modo Produção screens, and
-per-field manual editing of a proposal component (today's Editor only
-supports full regeneration). Subsequent work will implement those, per
-`docs/08-roadmap.md`.
+are built in `apps/web` on the realigned Brand/UI Bible design tokens. A
+conceptual render for the Capa (OpenAI `gpt-image-1`) is also implemented,
+scoped to a single hero image rather than all 10 narrative environments.
+Still missing: rendering the other 10 environments, turning the
+structured proposal document into an actual PDF/presentation artifact
+(deferred until more product design exists to render against), feeding
+post-event feedback back into Knowledge Graph scores automatically, the
+Canvas do Evento and Modo Produção screens, and per-field manual editing
+of a proposal component (today's Editor only supports full regeneration).
+Subsequent work will implement those, per `docs/08-roadmap.md`.

@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { StoragePort, type UploadObjectParams } from "./storage.port";
+
+const DEFAULT_SIGNED_URL_EXPIRY_SECONDS = 3600;
 
 @Injectable()
 export class S3StorageService implements StoragePort {
@@ -29,5 +32,14 @@ export class S3StorageService implements StoragePort {
         ContentType: contentType,
       }),
     );
+  }
+
+  async getSignedDownloadUrl(
+    key: string,
+    expiresInSeconds: number = DEFAULT_SIGNED_URL_EXPIRY_SECONDS,
+  ): Promise<string> {
+    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
+      expiresIn: expiresInSeconds,
+    });
   }
 }

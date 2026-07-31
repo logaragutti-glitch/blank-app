@@ -95,8 +95,16 @@ um produto comercial horizontal para:
   "gerar novamente" — não há edição manual campo a campo de um componente
   individual, já que o backend também não expõe isso ainda (só
   regeneração completa via IA).
-- **Sprint 5+:** renders conceituais, módulos de produção/cronograma/
-  checklist, Canvas do Evento, Modo Produção.
+- **Renders conceituais (concluído — escopo inicial):** `POST
+  /creative/proposals/:proposalId/render` gera uma imagem hero conceitual
+  para a Capa via OpenAI `gpt-image-1` (ver `04-ai-bible.md`), guardada no
+  storage S3-compatível e servida por URL assinada computada na hora.
+  Escopo deliberadamente restrito a 1 imagem (a Capa), não aos 10
+  ambientes narrativos individuais — validar o pipeline ponta a ponta
+  primeiro; gerar um render por ambiente é um próximo passo natural, não
+  uma mudança de arquitetura.
+- **Sprint 5+:** um render por ambiente narrativo, módulos de produção/
+  cronograma/checklist, Canvas do Evento, Modo Produção.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.

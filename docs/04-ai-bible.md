@@ -241,3 +241,21 @@ Além de mostrar fotos de inspiração enviadas pelo cliente, a IA deve
 eventualmente gerar imagens conceituais dos ambientes com base nas
 referências e no conceito do projeto — o casal veria uma representação
 visual exclusiva da proposta, não apenas referências genéricas.
+
+> **Implementação:** `POST /creative/proposals/:proposalId/render`
+> (`apps/api/src/modules/creative`) gera uma única imagem hero conceitual
+> para a Capa da proposta (não os 10 ambientes narrativos individuais —
+> decisão de escopo para validar o pipeline ponta a ponta primeiro).
+> `OpenAiConceptualRenderProvider` usa o modelo `gpt-image-1` da OpenAI (a
+> Anthropic não tem API de geração de imagens); o prompt é montado a
+> partir do conceito nomeado, da atmosfera desejada, do estilo
+> predominante, da paleta sugerida e do nome do espaço — sempre
+> fotografia editorial estilo Fine Art, sem pessoas/rostos/texto na
+> imagem. Versionado em
+> `ai/prompts/conceptual-render.prompt.ts`
+> (`CONCEPTUAL_RENDER_PROMPT_VERSION`). A imagem gerada é salva no
+> storage S3-compatível (chave `renders/:proposalId/cover-:uuid.png`) e
+> referenciada no componente `COVER` via `content.renderStorageKey`; uma
+> URL assinada (`StoragePort.getSignedDownloadUrl`) é computada na hora
+> em toda leitura dos componentes/documento, nunca persistida — evita
+> guardar uma URL que expira.

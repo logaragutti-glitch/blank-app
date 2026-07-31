@@ -18,7 +18,10 @@ const FAKE_EMBEDDING = new Array(1536).fill(0).map((_, i) => (i % 7) / 7);
 // has no live credentials/infra for (see conversation) — mocked here so the
 // suite still exercises the real HTTP layer, validation, Postgres writes,
 // and the pgvector column end to end.
-const storageMock: jest.Mocked<StoragePort> = { upload: jest.fn().mockResolvedValue(undefined) };
+const storageMock: jest.Mocked<StoragePort> = {
+  upload: jest.fn().mockResolvedValue(undefined),
+  getSignedDownloadUrl: jest.fn().mockResolvedValue("https://example.com/signed-url"),
+};
 const visionMock: jest.Mocked<VisionAnalysisPort> = {
   analyze: jest.fn().mockResolvedValue({
     tags: { flowers: ["peônias"], colors: ["rosé"] },

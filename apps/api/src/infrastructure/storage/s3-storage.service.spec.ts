@@ -28,4 +28,15 @@ describe("S3StorageService", () => {
       ContentType: "image/jpeg",
     });
   });
+
+  it("builds a time-limited signed GET URL for the given key", async () => {
+    const service = new S3StorageService();
+
+    const url = await service.getSignedDownloadUrl("renders/proposal-1/cover.png", 900);
+
+    const parsed = new URL(url);
+    expect(parsed.pathname).toContain("renders/proposal-1/cover.png");
+    expect(parsed.searchParams.get("X-Amz-Expires")).toBe("900");
+    expect(parsed.searchParams.has("X-Amz-Signature")).toBe(true);
+  });
 });
