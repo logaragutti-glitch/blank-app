@@ -125,9 +125,53 @@ um produto comercial horizontal para:
   leitura própria ainda) e o gate de aprovação formal da proposta (o
   `ProposalStatus.APPROVED` existe no enum mas nenhuma rota ainda transiciona
   o status — gerar o plano de produção hoje não exige uma proposta aprovada).
-- **Sprint 5+:** Canvas do Evento, Modo Produção (a transição de modo sobre
-  os mesmos dados do projeto após aprovação, ver `06-ui-bible.md`), fluxo de
-  aprovação formal da proposta, cadastro/API de fornecedores.
+- **Sprint 5+ (sequenciamento detalhado abaixo):** fecha o loop comercial e
+  de aprendizado, depois avança para os módulos de produto maiores.
+
+### Sprint 5+ — sequenciamento detalhado
+
+Ordenado por dependência real (o que destrava o quê), não só por
+prioridade de negócio:
+
+1. **Fluxo de aprovação formal da proposta (concluído):**
+   `POST /creative/proposals/:proposalId/approve` e `.../reject`
+   transicionam `Proposal.status` para `APPROVED`/`REJECTED`.
+   `POST /production/proposals/:proposalId/plan` agora exige
+   `status === "APPROVED"` (400 com mensagem clara apontando para o
+   endpoint de aprovação, caso contrário) — antes gerava o plano de
+   produção sem nenhum gate. Tela `apps/web` em `/projects/:eventId/proposta`
+   ganhou os botões "Aprovar proposta"/"Rejeitar", mostrando o status
+   atual; `/producao` mostra uma mensagem específica (com link de volta
+   para a proposta) em vez de um erro genérico quando a proposta ainda
+   não foi aprovada.
+2. **API de leitura de `Supplier`** — repository/endpoint básico de leitura
+   sobre a entidade que já existe no schema (`Supplier`,
+   `VenuePreferredSupplier`). Pré-requisito direto para o Agente 4
+   responder custo/margem e para o Modo Produção listar fornecedores.
+3. **Agente 4 completo** — com `Supplier` disponível, responder as
+   perguntas de orçamento/margem/custo-benefício de fornecedor descritas
+   em `04-ai-bible.md` (hoje o Agente 4 só gera materiais/cronograma/
+   checklist, não essas perguntas).
+4. **Modo Produção (UI)** — transição de modo sobre os dados do projeto já
+   aprovado (checklist, equipes, fornecedores, horários — ver
+   `06-ui-bible.md`), depende dos itens 1 e 2.
+5. **Feedback → Knowledge Graph** — a captura já existe
+   (`PostEventFeedback`); liga automaticamente ao ajuste de scores de
+   compatibilidade de estilo e ao status de fornecedores.
+6. **Edição manual campo a campo** no Editor do Projeto (hoje só
+   regeneração completa via IA).
+7. **PDF/apresentação real** da proposta (hoje `GET
+   /creative/proposals/:proposalId/document` é só um JSON estruturado).
+8. **Canvas do Evento** completo (quadro interativo conectando espaço,
+   flores, luz, música, gastronomia, mobiliário e experiência).
+9. **`apps/admin`** e **`apps/mobile`** — hoje são só scaffolds Next.js/Expo,
+   sem telas de produto reais.
+
+Independente dessa sequência (não bloqueia nem é bloqueado por nenhum
+item acima, pode entrar em paralelo a qualquer momento): infraestrutura de
+produção — deploy real de `apps/api` (hoje só roda localmente via Docker
+Compose), observabilidade além de logs, recuperação de senha e convite de
+membros de equipe.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.

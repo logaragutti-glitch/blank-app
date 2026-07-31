@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import type { Proposal } from "@eve-os/types";
+import type { Proposal, ProposalStatus } from "@eve-os/types";
 import { PrismaService } from "../../../infrastructure/prisma/prisma.service";
 import { toProposalDomain } from "../mappers/proposal.mapper";
 import { ProposalRepository, type CreateProposalInput } from "./proposal.repository";
@@ -43,6 +43,14 @@ export class PrismaProposalRepository implements ProposalRepository {
     const proposal = await this.prisma.proposal.update({
       where: { id },
       data: { conceptName },
+    });
+    return toProposalDomain(proposal);
+  }
+
+  async updateStatus(id: string, status: ProposalStatus): Promise<Proposal> {
+    const proposal = await this.prisma.proposal.update({
+      where: { id },
+      data: { status },
     });
     return toProposalDomain(proposal);
   }

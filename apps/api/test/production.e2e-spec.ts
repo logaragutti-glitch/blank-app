@@ -118,6 +118,23 @@ describe("Production Plan (e2e)", () => {
     expect(response.body.message).toMatch(/no production plan yet/);
   });
 
+  it("returns 400 when generating a plan before the proposal has been approved", async () => {
+    const response = await request(app.getHttpServer())
+      .post(`/production/proposals/${proposalId}/plan`)
+      .set(...auth)
+      .expect(400);
+    expect(response.body.message).toMatch(/must be approved/);
+    expect(productionPlanMock.generate).not.toHaveBeenCalled();
+  });
+
+  it("approves the proposal, unblocking production plan generation", async () => {
+    const response = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/approve`)
+      .set(...auth)
+      .expect(201);
+    expect(response.body.status).toBe("APPROVED");
+  });
+
   it("generates and persists the production plan, grounded in the matched style's compatible materials", async () => {
     productionPlanMock.generate.mockResolvedValueOnce(buildProductionPlanResult());
 

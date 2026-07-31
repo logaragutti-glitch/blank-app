@@ -34,7 +34,9 @@ truth — read it before adding product logic.
 > Produção) are also implemented: `POST`/`GET /production/proposals/:proposalId/plan`
 > generates a materials list, an assembly schedule, and an operational
 > checklist from an already-diagnosed Proposal, with a matching `/producao`
-> screen in `apps/web`. Sprint 2 (Briefing Engine:
+> screen in `apps/web` — gated behind formal proposal approval
+> (`POST /creative/proposals/:proposalId/approve`/`.../reject`, see
+> `docs/08-roadmap.md`). Sprint 2 (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
@@ -113,9 +115,11 @@ Once running:
   generation at `POST /creative/:eventId/diagnostico-criativo`, proposal
   components at `POST /creative/proposals/:proposalId/components`, the
   conceptual renders at `POST /creative/proposals/:proposalId/render/:componentType`
-  (Capa or one of the 10 narrative environments), the production plan
-  (materials list, assembly schedule, checklist) at
-  `/production/proposals/:proposalId/plan`, and post-event feedback at
+  (Capa or one of the 10 narrative environments), formal proposal approval
+  at `POST /creative/proposals/:proposalId/{approve,reject}`, the
+  production plan (materials list, assembly schedule, checklist — requires
+  an approved proposal) at `/production/proposals/:proposalId/plan`, and
+  post-event feedback at
   `/events/:eventId/feedback`.
 - RabbitMQ management UI: http://localhost:15672
 - OpenSearch: http://localhost:9200

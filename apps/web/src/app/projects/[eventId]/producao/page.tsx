@@ -20,7 +20,7 @@ const THOUGHTS = [
 
 function ProducaoContent({ eventId }: { eventId: string }) {
   const { accessToken } = useAuth();
-  const { proposalId, error: proposalError } = useLatestProposalId(eventId);
+  const { proposalId, proposalStatus, error: proposalError } = useLatestProposalId(eventId);
   const [plan, setPlan] = useState<ProductionPlan | null | undefined>(undefined);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +89,19 @@ function ProducaoContent({ eventId }: { eventId: string }) {
         <p style={{ color: colors.textMuted }}>Reunindo o plano de produção já gerado...</p>
       )}
 
-      {!generating && plan === null && (
+      {!generating && plan === null && proposalStatus !== undefined && proposalStatus !== "APPROVED" && (
+        <Card>
+          <p>
+            Essa proposta ainda não foi aprovada pelo cliente — o plano de produção só pode ser gerado
+            depois da aprovação.
+          </p>
+          <Link href={`/projects/${eventId}/proposta`}>
+            <Button>Ir para a proposta</Button>
+          </Link>
+        </Card>
+      )}
+
+      {!generating && plan === null && (proposalStatus === undefined || proposalStatus === "APPROVED") && (
         <Card>
           <p>Ainda não geramos a lista de materiais, o cronograma de montagem e o checklist deste projeto.</p>
           <Button onClick={handleGenerate}>Gerar plano de produção</Button>

@@ -166,6 +166,23 @@ export class CreativeController {
     return this.proposals.findByEvent(user.organizationId, eventId);
   }
 
+  // Formal approval gate: production artifacts (see the production module)
+  // are meant to be generated only once the client has actually said yes to
+  // this proposal, not merely because a diagnosis/components exist.
+  @Post("proposals/:proposalId/approve")
+  async approveProposal(@CurrentUser() user: AuthenticatedUser, @Param("proposalId") proposalId: string) {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    return this.proposals.updateStatus(proposalId, "APPROVED");
+  }
+
+  @Post("proposals/:proposalId/reject")
+  async rejectProposal(@CurrentUser() user: AuthenticatedUser, @Param("proposalId") proposalId: string) {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    return this.proposals.updateStatus(proposalId, "REJECTED");
+  }
+
   // Agente 3 / Creative Engine: generates the 18 reusable proposal
   // components (Capitulo 7) from the Diagnostico Criativo already stored on
   // the Proposal. Re-running this replaces the previous version of each

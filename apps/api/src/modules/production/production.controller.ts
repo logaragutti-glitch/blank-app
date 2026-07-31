@@ -43,6 +43,11 @@ export class ProductionController {
     const { organizationId } = user;
     const proposal = await this.proposals.findById(organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
+    if (proposal.status !== "APPROVED") {
+      throw new BadRequestException(
+        "This Proposal must be approved before generating a production plan — call POST /creative/proposals/:proposalId/approve first.",
+      );
+    }
 
     const event = await this.events.findById(organizationId, proposal.eventId);
     if (!event) throw new NotFoundException("Event not found for this proposal");
