@@ -61,6 +61,18 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
             <Button disabled>Gere o diagnóstico primeiro</Button>
           )}
         </Card>
+
+        <Card style={{ opacity: hasProposal ? 1 : 0.6 }}>
+          <h3 style={{ marginTop: 0 }}>4. Produção</h3>
+          <p style={{ color: colors.textMuted }}>Lista de materiais, cronograma de montagem e checklist.</p>
+          {hasProposal ? (
+            <Link href={`/projects/${eventId}/producao`}>
+              <Button>Ver produção</Button>
+            </Link>
+          ) : (
+            <Button disabled>Gere o diagnóstico primeiro</Button>
+          )}
+        </Card>
       </div>
     </>
   );

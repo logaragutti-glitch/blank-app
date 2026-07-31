@@ -455,9 +455,10 @@ model Proposal {
   status              ProposalStatus @default(DRAFT)
   investmentAmount    Decimal?       @map("investment_amount") @db.Decimal(12, 2)
 
-  event      Event               @relation(fields: [eventId], references: [id])
-  eventStyle EventStyle?         @relation(fields: [eventStyleId], references: [id])
-  components ProposalComponent[]
+  event          Event               @relation(fields: [eventId], references: [id])
+  eventStyle     EventStyle?         @relation(fields: [eventStyleId], references: [id])
+  components     ProposalComponent[]
+  productionPlan ProductionPlan?
 
   @@index([tenantId])
   @@index([eventId])
@@ -497,6 +498,29 @@ model ProposalComponent {
   @@unique([proposalId, type])
   @@index([proposalId])
   @@map("proposal_components")
+}
+
+// ---------------------------------------------------------------------------
+// ProductionPlan (Agente 4 / Diretor de Producao, 04-ai-bible.md) — the
+// materials list, assembly schedule, and operational checklist generated
+// from an already-diagnosed Proposal. Like PostEventFeedback, this is a
+// generated artifact keyed 1:1 to its parent, not an AuditedEntity of its
+// own (no tenant scoping/soft delete/versioning here — inherited via
+// Proposal).
+// ---------------------------------------------------------------------------
+
+model ProductionPlan {
+  id         String   @id @default(uuid()) @db.Uuid
+  proposalId String   @unique @map("proposal_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  materialsList Json @map("materials_list")
+  setupSchedule Json @map("setup_schedule")
+  checklist     Json
+
+  proposal Proposal @relation(fields: [proposalId], references: [id])
+
+  @@map("production_plans")
 }
 
 // ---------------------------------------------------------------------------

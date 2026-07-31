@@ -30,7 +30,11 @@ truth — read it before adding product logic.
 > tokens (`packages/ui`). Conceptual renders (OpenAI `gpt-image-1`) are also
 > implemented for the Capa and each of the 10 narrative environments
 > (`POST /creative/proposals/:proposalId/render/:componentType`) — see
-> `docs/04-ai-bible.md`. Sprint 2 (Briefing Engine:
+> `docs/04-ai-bible.md`. Production modules (Agente 4 / Diretor de
+> Produção) are also implemented: `POST`/`GET /production/proposals/:proposalId/plan`
+> generates a materials list, an assembly schedule, and an operational
+> checklist from an already-diagnosed Proposal, with a matching `/producao`
+> screen in `apps/web`. Sprint 2 (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
@@ -109,7 +113,9 @@ Once running:
   generation at `POST /creative/:eventId/diagnostico-criativo`, proposal
   components at `POST /creative/proposals/:proposalId/components`, the
   conceptual renders at `POST /creative/proposals/:proposalId/render/:componentType`
-  (Capa or one of the 10 narrative environments), and post-event feedback at
+  (Capa or one of the 10 narrative environments), the production plan
+  (materials list, assembly schedule, checklist) at
+  `/production/proposals/:proposalId/plan`, and post-event feedback at
   `/events/:eventId/feedback`.
 - RabbitMQ management UI: http://localhost:15672
 - OpenSearch: http://localhost:9200
@@ -199,11 +205,17 @@ every business endpoint requires a JWT and derives `tenantId`/
 `docs/05-database-bible.md`) is implemented too. The 5 MVP product screens
 are built in `apps/web` on the realigned Brand/UI Bible design tokens.
 Conceptual renders (OpenAI `gpt-image-1`) are also implemented, covering
-both the Capa and each of the 10 narrative environments.
+both the Capa and each of the 10 narrative environments. Production
+modules (Agente 4 / Diretor de Produção) are implemented too: a materials
+list, assembly schedule, and operational checklist generated from an
+already-diagnosed Proposal.
 Still missing: turning the structured proposal document into an actual
 PDF/presentation artifact (deferred until more product design exists to
-render against), feeding
-post-event feedback back into Knowledge Graph scores automatically, the
-Canvas do Evento and Modo Produção screens, and per-field manual editing
-of a proposal component (today's Editor only supports full regeneration).
-Subsequent work will implement those, per `docs/08-roadmap.md`.
+render against), feeding post-event feedback back into Knowledge Graph
+scores automatically, a real Supplier read API (the entity exists in the
+schema but has no repository/endpoint yet) and the budget/margin
+questions Agente 4 is meant to answer, a formal proposal-approval flow,
+the Canvas do Evento and Modo Produção screens, and per-field manual
+editing of a proposal component (today's Editor only supports full
+regeneration). Subsequent work will implement those, per
+`docs/08-roadmap.md`.

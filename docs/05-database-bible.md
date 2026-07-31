@@ -242,4 +242,6 @@ Profile (8 dimensões acima) · Venue (DNA do espaço) · Supplier
 incluindo lista de exclusão) · Environment (ambiente/localização dentro
 de um evento, ver mapeamento acima) · Project/Proposal (Diagnóstico
 Criativo + componentes selecionados + WOW Score) · ProposalComponent (um
-dos componentes reutilizáveis do Capítulo 7) · PostEventFeedback.
+dos componentes reutilizáveis do Capítulo 7) · ProductionPlan (lista de
+materiais + cronograma de montagem + checklist gerados pelo Agente 4, um
+por Proposal) · PostEventFeedback.

@@ -167,6 +167,23 @@ rastreabilidade entre docs e implementação:
   lucro, clima do dia, tempo de cerimônia, fotografias geradas. Com o
   tempo, identifica padrões (ex.: qual fornecedor realmente entrega
   melhor custo-benefício para determinado tipo de espaço).
+
+  > **Implementação (escopo inicial):** `POST`/
+  > `GET /production/proposals/:proposalId/plan`
+  > (`apps/api/src/modules/production`) gera os três artefatos operacionais
+  > a partir da Proposta já diagnosticada: lista de materiais, cronograma
+  > de montagem/desmontagem, e checklist. `AnthropicProductionPlanProvider`
+  > usa tool-use forçado (`record_production_plan`,
+  > `ai/prompts/production-plan.prompt.ts`,
+  > `PRODUCTION_PLAN_PROMPT_VERSION`), com a lista de materiais restrita
+  > (`enum` no schema da tool) ao catálogo real de materiais compatíveis
+  > com o estilo predominante — nunca inventa materiais fora do catálogo,
+  > nunca sugere um marcado "não recomendar". Ainda não implementado: as
+  > perguntas de orçamento/margem/custo-benefício de fornecedor (Supplier
+  > ainda não tem campos de custo nem API de leitura própria) e o
+  > aprendizado incremental evento a evento — este agente hoje cobre
+  > apenas a geração dos artefatos operacionais, não a proteção de
+  > lucratividade descrita acima.
 - **Agente 5 — Agente de Projetos** — organiza o acompanhamento do
   projeto do fechamento até a execução (checklists, reuniões,
   aprovações). *(Nota de reconciliação: a sessão original citou este
