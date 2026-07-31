@@ -11,7 +11,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "PATCH";
   body?: unknown;
   token?: string | null;
 }
@@ -41,4 +41,6 @@ export const apiClient = {
   get: <T>(path: string, token?: string | null) => request<T>(path, { method: "GET", token }),
   post: <T>(path: string, body?: unknown, token?: string | null) =>
     request<T>(path, { method: "POST", body, token }),
+  patch: <T>(path: string, body?: unknown, token?: string | null) =>
+    request<T>(path, { method: "PATCH", body, token }),
 };
