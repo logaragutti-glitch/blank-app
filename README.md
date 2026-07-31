@@ -59,7 +59,15 @@ truth — read it before adding product logic.
 > `GET /creative/proposals/:proposalId/document/pdf` (via `pdfkit`) renders
 > the same ordered components as the JSON document into an actual
 > downloadable file, embedding any conceptual renders already generated
-> (`/projects/:eventId/proposta` gained a "Baixar PDF" button). Sprint 2
+> (`/projects/:eventId/proposta` gained a "Baixar PDF" button). A
+> read-only Canvas do Evento is also implemented:
+> `GET /projects/:eventId/canvas` assembles a real snapshot of everything
+> already connected to the Event (Cliente, Espaço, Flores, Mobiliário,
+> Luz, Música, Gastronomia, Experiência), narrowed by the Diagnostico
+> Criativo when one exists — deliberately without the Rule Engine/Event
+> Impact Engine's cascading recalculation, which would need real business
+> rules that don't exist anywhere in the system yet
+> (`/projects/:eventId/canvas` renders it as a radial node graph). Sprint 2
 > (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
@@ -146,8 +154,8 @@ Once running:
   budget analysis (materials/supplier cost, margin, budget fit — same
   approval gate) at `/production/proposals/:proposalId/budget-analysis`,
   the proposal's real PDF at `GET /creative/proposals/:proposalId/document/pdf`,
-  and post-event feedback at
-  `/events/:eventId/feedback`.
+  the Canvas do Evento at `GET /projects/:eventId/canvas`, and post-event
+  feedback at `/events/:eventId/feedback`.
 - RabbitMQ management UI: http://localhost:15672
 - OpenSearch: http://localhost:9200
 - MinIO console: http://localhost:9001
@@ -256,13 +264,17 @@ performance notes, deterministically — see `docs/05-database-bible.md`.
 Still missing: adjusting style-compatibility scores from the feedback's
 free-text fields (would require an AI interpreting free text, risking a
 fabricated signal — no numeric material×style score field exists in the
-schema today anyway), assembly/disassembly labor cost estimation for
+schema today anyway), and assembly/disassembly labor cost estimation for
 Agente 4 (no real labor-cost data exists yet to estimate this without
-inventing numbers), and the Canvas do Evento screen. Per-field manual
-editing of a proposal component is implemented too:
-`PATCH /creative/proposals/:proposalId/components/:componentType`
+inventing numbers). Per-field manual editing of a proposal component is
+implemented too: `PATCH /creative/proposals/:proposalId/components/:componentType`
 shallow-merges the given fields, with an "Editar" button per component in
 the Editor. The proposal document's real PDF/presentation artifact is
 implemented too: `GET /creative/proposals/:proposalId/document/pdf`
-(`pdfkit`), with a "Baixar PDF" button in `apps/web`. Subsequent work will
-implement the remaining items, per `docs/08-roadmap.md`.
+(`pdfkit`), with a "Baixar PDF" button in `apps/web`. A read-only Canvas
+do Evento is implemented too: `GET /projects/:eventId/canvas`
+(`/projects/:eventId/canvas` in `apps/web`, a radial node graph) —
+deliberately without the Rule Engine/Event Impact Engine's cascading
+recalculation, which needs real business rules that don't exist anywhere
+in the system yet. Subsequent work will implement the remaining items
+(apps/admin and apps/mobile real screens), per `docs/08-roadmap.md`.
