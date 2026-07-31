@@ -42,4 +42,11 @@ export class S3StorageService implements StoragePort {
       expiresIn: expiresInSeconds,
     });
   }
+
+  async download(key: string): Promise<Buffer> {
+    const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    const bytes = await response.Body?.transformToByteArray();
+    if (!bytes) throw new Error(`Empty response body for storage key: ${key}`);
+    return Buffer.from(bytes);
+  }
 }

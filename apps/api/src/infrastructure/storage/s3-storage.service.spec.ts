@@ -1,4 +1,5 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import type { GetObjectCommandOutput } from "@aws-sdk/client-s3";
 import { mockClient } from "aws-sdk-client-mock";
 import { S3StorageService } from "./s3-storage.service";
 
@@ -38,5 +39,24 @@ describe("S3StorageService", () => {
     expect(parsed.pathname).toContain("renders/proposal-1/cover.png");
     expect(parsed.searchParams.get("X-Amz-Expires")).toBe("900");
     expect(parsed.searchParams.has("X-Amz-Signature")).toBe(true);
+  });
+
+  it("downloads the raw bytes for a given key", async () => {
+    const fakeBytes = new Uint8Array(Buffer.from("fake-image-bytes"));
+    s3Mock.on(GetObjectCommand).resolves({
+      Body: { transformToByteArray: async () => fakeBytes } as unknown as GetObjectCommandOutput["Body"],
+    });
+    const service = new S3StorageService();
+
+    const buffer = await service.download("renders/proposal-1/cover.png");
+
+    expect(buffer).toEqual(Buffer.from(fakeBytes));
+  });
+
+  it("throws when the response has no body", async () => {
+    s3Mock.on(GetObjectCommand).resolves({});
+    const service = new S3StorageService();
+
+    await expect(service.download("renders/proposal-1/missing.png")).rejects.toThrow(/Empty response body/);
   });
 });

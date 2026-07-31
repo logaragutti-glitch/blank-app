@@ -213,6 +213,19 @@ PDF/apresentação) é um fluxo assíncrono e potencialmente demorado
 como mensageria orientada a eventos, não como uma chamada HTTP síncrona
 bloqueante.
 
+> **Nota de implementação (renderização do PDF):** por enquanto, `GET
+> /creative/proposals/:proposalId/document/pdf`
+> (`apps/api/src/modules/creative/proposal-pdf-builder.ts`) é uma chamada
+> HTTP síncrona, não mensageria — o mesmo desvio pragmático já usado pelo
+> resto da API (as chamadas de IA de Agente 1/3/4 e a geração de renders
+> também são HTTP síncrono com 503 em caso de falha, não RabbitMQ).
+> Diferente da geração de conteúdo via IA, montar o PDF a partir de
+> componentes já gerados e renders já persistidos é rápido o bastante
+> (layout de texto + poucas imagens) para não justificar a complexidade de
+> uma fila agora. RabbitMQ continua provisionado no Docker Compose mas
+> ainda não é usado por nenhum fluxo real do sistema — ver `08-roadmap.md`
+> (infraestrutura de produção).
+
 ## Uso do OpenSearch
 
 Busca textual/facetada sobre o Knowledge Graph (estilos, fornecedores,

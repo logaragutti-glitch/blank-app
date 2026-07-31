@@ -27,6 +27,8 @@ function PropostaContent({ eventId }: { eventId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [decisionPending, setDecisionPending] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!accessToken || !proposalId) return;
@@ -53,6 +55,25 @@ function PropostaContent({ eventId }: { eventId: string }) {
       );
     } finally {
       setDecisionPending(false);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!proposalId) return;
+    setPdfError(null);
+    setDownloadingPdf(true);
+    try {
+      const blob = await apiClient.downloadBlob(`/creative/proposals/${proposalId}/document/pdf`, accessToken);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `proposta-${proposalId}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setPdfError(err instanceof ApiError ? err.message : "Não consegui baixar o PDF agora.");
+    } finally {
+      setDownloadingPdf(false);
     }
   }
 
@@ -105,6 +126,9 @@ function PropostaContent({ eventId }: { eventId: string }) {
               Status: <strong>{STATUS_LABELS[proposalDocument.proposal.status]}</strong>
             </p>
             <div style={{ display: "flex", gap: spacing.sm }}>
+              <Button variant="ghost" disabled={downloadingPdf} onClick={handleDownloadPdf}>
+                {downloadingPdf ? "Gerando PDF..." : "Baixar PDF"}
+              </Button>
               <Button disabled={decisionPending} onClick={() => handleDecision("approve")}>
                 Aprovar proposta
               </Button>
@@ -114,6 +138,7 @@ function PropostaContent({ eventId }: { eventId: string }) {
             </div>
           </div>
           {decisionError && <p style={{ color: colors.danger }}>{decisionError}</p>}
+          {pdfError && <p style={{ color: colors.danger }}>{pdfError}</p>}
           {proposalDocument.proposal.status === "APPROVED" && (
             <p style={{ color: colors.textMuted }}>
               Aprovada! Agora dá para{" "}

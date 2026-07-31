@@ -54,7 +54,12 @@ truth — read it before adding product logic.
 > component is also implemented: `PATCH /creative/proposals/:proposalId/components/:componentType`
 > shallow-merges the given fields into a component's existing content
 > (`/projects/:eventId/editor` gained an "Editar" button per component,
-> with a form tailored to each component's own content shape). Sprint 2
+> with a form tailored to each component's own content shape). A real PDF
+> artifact for the proposal is also implemented:
+> `GET /creative/proposals/:proposalId/document/pdf` (via `pdfkit`) renders
+> the same ordered components as the JSON document into an actual
+> downloadable file, embedding any conceptual renders already generated
+> (`/projects/:eventId/proposta` gained a "Baixar PDF" button). Sprint 2
 > (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
@@ -140,6 +145,7 @@ Once running:
   an approved proposal) at `/production/proposals/:proposalId/plan`, its
   budget analysis (materials/supplier cost, margin, budget fit — same
   approval gate) at `/production/proposals/:proposalId/budget-analysis`,
+  the proposal's real PDF at `GET /creative/proposals/:proposalId/document/pdf`,
   and post-event feedback at
   `/events/:eventId/feedback`.
 - RabbitMQ management UI: http://localhost:15672
@@ -247,9 +253,7 @@ too. Post-event feedback now automatically feeds back into the Knowledge
 Graph too: `supplierPerformance` ratings promote/demote a supplier's
 preferred status at that event's venue and accumulate into its
 performance notes, deterministically — see `docs/05-database-bible.md`.
-Still missing: turning the structured proposal document into an actual
-PDF/presentation artifact (deferred until more product design exists to
-render against), adjusting style-compatibility scores from the feedback's
+Still missing: adjusting style-compatibility scores from the feedback's
 free-text fields (would require an AI interpreting free text, risking a
 fabricated signal — no numeric material×style score field exists in the
 schema today anyway), assembly/disassembly labor cost estimation for
@@ -258,5 +262,7 @@ inventing numbers), and the Canvas do Evento screen. Per-field manual
 editing of a proposal component is implemented too:
 `PATCH /creative/proposals/:proposalId/components/:componentType`
 shallow-merges the given fields, with an "Editar" button per component in
-the Editor. Subsequent work will implement the remaining items, per
-`docs/08-roadmap.md`.
+the Editor. The proposal document's real PDF/presentation artifact is
+implemented too: `GET /creative/proposals/:proposalId/document/pdf`
+(`pdfkit`), with a "Baixar PDF" button in `apps/web`. Subsequent work will
+implement the remaining items, per `docs/08-roadmap.md`.

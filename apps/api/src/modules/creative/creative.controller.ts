@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   ServiceUnavailableException,
+  StreamableFile,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { EventStyle, InspirationImage, ProposalComponent } from "@eve-os/types";
@@ -28,6 +29,7 @@ import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
 import { ProposalComponentsPort } from "./ai/proposal-components.port";
 import { UpdateProposalComponentDto } from "./dto/update-proposal-component.dto";
 import { buildProposalComponents } from "./proposal-component-builder";
+import { buildProposalPdf, type ProposalPdfComponent } from "./proposal-pdf-builder";
 import {
   RENDERABLE_COMPONENT_TYPES,
   type RenderableComponentType,
@@ -368,8 +370,7 @@ export class CreativeController {
   // The final proposal artifact (Sprint 4): the Proposal itself plus its 18
   // ordered ProposalComponents in a single payload, ready for a frontend to
   // render however it needs to (web page, print-to-PDF, presentation slide
-  // deck, etc.) — this endpoint deliberately does not generate a binary
-  // file itself, since no product UI/layout exists yet to render against.
+  // deck, etc.). The real binary PDF artifact is the sibling endpoint below.
   @Get("proposals/:proposalId/document")
   async getProposalDocument(
     @CurrentUser() user: AuthenticatedUser,
@@ -386,6 +387,49 @@ export class CreativeController {
     }
 
     return { proposal, components: await this.attachRenderUrls(components) };
+  }
+
+  // Real PDF artifact (Sprint 5+ item 7). Never receives the Proposal
+  // itself — only its components — since internal fields like wowScore
+  // must never reach a client-facing document (04-ai-bible.md: "Nunca
+  // exposto ao cliente"). Fetches each renderable component's actual image
+  // bytes (not just a signed URL, which a PDF can't embed by reference) so
+  // they end up inside the file; a missing/expired/undecodable render is
+  // skipped rather than failing the whole document (see
+  // proposal-pdf-builder's renderImage).
+  @Get("proposals/:proposalId/document/pdf")
+  async getProposalDocumentPdf(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ): Promise<StreamableFile> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+
+    const components = await this.proposalComponents.findByProposal(proposalId);
+    if (components.length === 0) {
+      throw new BadRequestException(
+        "This Proposal has no components yet — call POST /creative/proposals/:proposalId/components first.",
+      );
+    }
+
+    const componentsWithImages: ProposalPdfComponent[] = await Promise.all(
+      components.map(async (component) => {
+        const renderStorageKey = component.content.renderStorageKey as string | undefined;
+        const base = { type: component.type, order: component.order, content: component.content };
+        if (!renderStorageKey) return base;
+        try {
+          return { ...base, imageBuffer: await this.storage.download(renderStorageKey) };
+        } catch {
+          return base;
+        }
+      }),
+    );
+
+    const pdfBuffer = await buildProposalPdf(componentsWithImages);
+    return new StreamableFile(pdfBuffer, {
+      type: "application/pdf",
+      disposition: `attachment; filename="proposta-${proposalId}.pdf"`,
+    });
   }
 
   // Computes a fresh signed download URL for a component's conceptual
