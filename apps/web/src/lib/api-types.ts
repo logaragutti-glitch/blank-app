@@ -7,6 +7,7 @@ import type {
   ProductionPlan,
   Proposal,
   ProposalComponent,
+  ProposalStatus,
   User,
   Venue,
 } from "@eve-os/types";
@@ -53,6 +54,7 @@ export type {
   ProductionPlan,
   Proposal,
   ProposalComponent,
+  ProposalStatus,
   User,
   Venue,
 };

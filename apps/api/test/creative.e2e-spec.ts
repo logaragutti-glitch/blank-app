@@ -213,6 +213,61 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
       .expect(200);
     expect(listResponse.body).toHaveLength(0);
   });
+
+  it("returns 404 for approve/reject on an unknown proposal", async () => {
+    await request(app.getHttpServer())
+      .post("/creative/proposals/00000000-0000-0000-0000-000000009999/approve")
+      .set(...auth)
+      .expect(404);
+    await request(app.getHttpServer())
+      .post("/creative/proposals/00000000-0000-0000-0000-000000009999/reject")
+      .set(...auth)
+      .expect(404);
+  });
+
+  it("transitions a Proposal's status via approve/reject", async () => {
+    diagnosticoCriativoMock.generate.mockResolvedValueOnce({
+      diagnosis: {
+        perfilCasal: "Romântico contemporâneo",
+        atmosferaDesejada: "Elegância leve e acolhedora",
+        estiloPredominante: "Garden Fine Art",
+        paletaSugerida: ["rosé"],
+        mobiliarioSugerido: ["madeira clara"],
+        iluminacaoSugerida: "Luz quente e velas",
+        materiaisRecomendados: ["Peônia"],
+        compatibilidadeComEspaco: "A Villa Massari favorece cerimônia externa.",
+        justificativa: "O casal indicou preferência natural e romântica.",
+        promptVersion: "v1",
+      },
+      matchedEventStyleId: gardenFineArtStyleId,
+    });
+
+    const briefingResponse = await request(app.getHttpServer())
+      .post("/briefing")
+      .set(...auth)
+      .send({ partnerOneName: "Nina", partnerTwoName: "Caio", venueId })
+      .expect(201);
+    const eventId = briefingResponse.body.event.id;
+
+    const proposalResponse = await request(app.getHttpServer())
+      .post(`/creative/${eventId}/diagnostico-criativo`)
+      .set(...auth)
+      .expect(201);
+    const proposalId = proposalResponse.body.id;
+    expect(proposalResponse.body.status).toBe("DRAFT");
+
+    const approveResponse = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/approve`)
+      .set(...auth)
+      .expect(201);
+    expect(approveResponse.body.status).toBe("APPROVED");
+
+    const rejectResponse = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/reject`)
+      .set(...auth)
+      .expect(201);
+    expect(rejectResponse.body.status).toBe("REJECTED");
+  });
 });
 
 describe("Creative / Proposal Components (e2e)", () => {

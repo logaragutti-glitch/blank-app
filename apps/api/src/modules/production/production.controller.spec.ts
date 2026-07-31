@@ -40,6 +40,7 @@ describe("ProductionController", () => {
     eventStyleId: "style-1",
     conceptName: "Entre Montanhas e Flores",
     diagnosticoCriativo,
+    status: "APPROVED",
   } as Proposal;
   const fakeEvent = { id: "event-1", venueId: "venue-1", type: "WEDDING", guestsExpected: 100 } as Event;
   const fakeVenue = { id: "venue-1", name: "Villa Massari", recommendationNotes: [] } as unknown as Venue;
@@ -117,6 +118,14 @@ describe("ProductionController", () => {
     it("throws NotFoundException when the proposal does not exist", async () => {
       proposals.findById.mockResolvedValue(null);
       await expect(controller.generateProductionPlan(user, proposalId)).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("throws BadRequestException when the proposal has not been approved yet", async () => {
+      proposals.findById.mockResolvedValue({ ...fakeProposal, status: "DRAFT" } as Proposal);
+      await expect(controller.generateProductionPlan(user, proposalId)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(materials.findAll).not.toHaveBeenCalled();
     });
 
     it("narrows the catalog materials to those compatible with the matched style", async () => {

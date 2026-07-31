@@ -1,4 +1,4 @@
-import type { DiagnosticoCriativo, Proposal } from "@eve-os/types";
+import type { DiagnosticoCriativo, Proposal, ProposalStatus } from "@eve-os/types";
 
 export interface CreateProposalInput {
   tenantId: string;
@@ -17,4 +17,6 @@ export abstract class ProposalRepository {
   abstract findByEvent(organizationId: string, eventId: string): Promise<Proposal[]>;
   /** Sets the named concept once Agente 3 has generated the CONCEPT component. */
   abstract updateConceptName(id: string, conceptName: string): Promise<Proposal>;
+  /** Formal approval/rejection by the client — see POST .../approve and .../reject. */
+  abstract updateStatus(id: string, status: ProposalStatus): Promise<Proposal>;
 }
