@@ -23,6 +23,7 @@ o contrário.
 | [`08-roadmap.md`](./08-roadmap.md) | Visão de longo prazo: Método Bia Azevedo®, EVE OS, Academia |
 | [`09-business-scale.md`](./09-business-scale.md) | Visão de negócio, ondas de expansão comercial, planos de assinatura |
 | [`10-master-blueprint.md`](./10-master-blueprint.md) | Estrutura oficial em 6 volumes da documentação, lacunas conhecidas |
+| [`11-deployment-guide.md`](./11-deployment-guide.md) | Runbook de engenharia: deploy de produção (Vercel, Postgres+pgvector gerenciado, storage S3) |
 
 ## Origem
 
