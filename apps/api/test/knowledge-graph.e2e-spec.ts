@@ -104,4 +104,105 @@ describe("Knowledge Graph (e2e)", () => {
       .set(...auth)
       .expect(404);
   });
+
+  it("creates and updates a Material (Sprint 5+ item 9, apps/admin)", async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post("/knowledge-graph/materials")
+      .set(...auth)
+      .send({ name: "Ranúnculo", category: "FLOWER", estimatedUnitCost: 38 })
+      .expect(201);
+
+    expect(createResponse.body.name).toBe("Ranúnculo");
+    expect(createResponse.body.neverRecommend).toBe(false);
+    expect(createResponse.body.compatibleStyleIds).toEqual([]);
+    expect(createResponse.body.estimatedUnitCost).toBe(38);
+
+    const updateResponse = await request(app.getHttpServer())
+      .patch(`/knowledge-graph/materials/${createResponse.body.id}`)
+      .set(...auth)
+      .send({ estimatedUnitCost: 42 })
+      .expect(200);
+    expect(updateResponse.body.estimatedUnitCost).toBe(42);
+    // Untouched fields are preserved by the partial update.
+    expect(updateResponse.body.name).toBe("Ranúnculo");
+
+    await request(app.getHttpServer())
+      .patch("/knowledge-graph/materials/00000000-0000-0000-0000-000000009999")
+      .set(...auth)
+      .send({ name: "X" })
+      .expect(404);
+  });
+
+  it("creates and updates a Venue", async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post("/knowledge-graph/venues")
+      .set(...auth)
+      .send({ name: "Sítio das Palmeiras", guestCapacity: 120 })
+      .expect(201);
+
+    expect(createResponse.body.name).toBe("Sítio das Palmeiras");
+    expect(createResponse.body.guestCapacity).toBe(120);
+    expect(createResponse.body.recommendationNotes).toEqual([]);
+
+    const updateResponse = await request(app.getHttpServer())
+      .patch(`/knowledge-graph/venues/${createResponse.body.id}`)
+      .set(...auth)
+      .send({ recommendationNotes: ["luz natural"] })
+      .expect(200);
+    expect(updateResponse.body.recommendationNotes).toEqual(["luz natural"]);
+
+    await request(app.getHttpServer())
+      .patch("/knowledge-graph/venues/00000000-0000-0000-0000-000000009999")
+      .set(...auth)
+      .send({ name: "X" })
+      .expect(404);
+  });
+
+  it("creates and updates a Supplier", async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post("/knowledge-graph/suppliers")
+      .set(...auth)
+      .send({ name: "Doces da Vó", category: "CATERING" })
+      .expect(201);
+
+    expect(createResponse.body.name).toBe("Doces da Vó");
+    expect(createResponse.body.preferredVenueIds).toEqual([]);
+
+    const updateResponse = await request(app.getHttpServer())
+      .patch(`/knowledge-graph/suppliers/${createResponse.body.id}`)
+      .set(...auth)
+      .send({ estimatedCost: 5200 })
+      .expect(200);
+    expect(updateResponse.body.estimatedCost).toBe(5200);
+
+    await request(app.getHttpServer())
+      .patch("/knowledge-graph/suppliers/00000000-0000-0000-0000-000000009999")
+      .set(...auth)
+      .send({ name: "X" })
+      .expect(404);
+  });
+
+  it("creates and updates an EventStyle, tolerating a missing embeddings provider", async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post("/knowledge-graph/styles")
+      .set(...auth)
+      .send({ name: "Praia ao Entardecer", dimensionScores: { Natural: 9, Intimista: 7 } })
+      .expect(201);
+
+    expect(createResponse.body.name).toBe("Praia ao Entardecer");
+    expect(createResponse.body.dimensionScores).toEqual({ Natural: 9, Intimista: 7 });
+
+    const updateResponse = await request(app.getHttpServer())
+      .patch(`/knowledge-graph/styles/${createResponse.body.id}`)
+      .set(...auth)
+      .send({ paletteColors: ["areia", "coral"] })
+      .expect(200);
+    expect(updateResponse.body.paletteColors).toEqual(["areia", "coral"]);
+
+    await request(app.getHttpServer())
+      .patch("/knowledge-graph/styles/00000000-0000-0000-0000-000000009999")
+      .set(...auth)
+      .send({ name: "X" })
+      .expect(404);
+  });
 });

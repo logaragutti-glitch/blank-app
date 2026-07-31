@@ -260,8 +260,37 @@ prioridade de negócio:
    e uma leve "respiração" contínua nos cartões (06-ui-bible.md: "reforça
    a metáfora do Evento Vivo") — sem edição/drag-and-drop dos nós, sem
    reorganização em tempo real, ainda.
-9. **`apps/admin`** e **`apps/mobile`** — hoje são só scaffolds Next.js/Expo,
-   sem telas de produto reais.
+9. **`apps/admin` e `apps/mobile`** — os docs não especificam nenhuma tela
+   para esses dois apps (diferente dos itens 1-8, todos com spec em
+   `03-product-spec.md`/`06-ui-bible.md`), então o escopo foi decidido em
+   conversa direta com o usuário antes de implementar:
+   - **`apps/admin` — gestão do Knowledge Graph (concluído):** até aqui só
+     existia leitura (`GET /knowledge-graph/{styles,materials,venues,
+     suppliers}`); ninguém conseguia cadastrar ou editar um material,
+     espaço, fornecedor ou estilo sem acessar o banco diretamente. Agora
+     `POST`/`PATCH /knowledge-graph/{styles,materials,venues,suppliers}
+     [/:id]` cobrem criação e edição das 4 entidades (nunca exclusão nesta
+     primeira versão — os campos de auditoria/soft-delete já existem no
+     schema, então adicionar isso depois é direto). `createdBy`/`updatedBy`
+     agora são de fato preenchidos com o usuário autenticado — o primeiro
+     fluxo manual de criação de dados do sistema (todo o resto é gerado
+     por IA ou pelo próprio domínio). Criar/editar um estilo recalcula o
+     embedding de busca semântica automaticamente, best-effort (nunca
+     bloqueia a operação se a IA falhar/estiver sem credenciais — mesmo
+     padrão de degradação graciosa usado no resto do sistema). Fornecedor
+     não permite editar `preferredVenueIds` diretamente — esse campo é
+     derivado do loop de feedback pós-evento (item 5), não um campo manual
+     solto. Endpoints não têm gate de papel (`@Roles`) apesar de existir a
+     infraestrutura pronta (`RolesGuard`/`@Roles`, nunca usada em nenhum
+     controller até então): como o registro sempre cria usuários `MEMBER`
+     e não existe nenhum fluxo de promoção a `OWNER`/`ADMIN` no sistema
+     hoje, restringir por papel deixaria a tela inacessível na prática —
+     mesmo padrão do resto da API (autenticação obrigatória, sem
+     diferenciação de papel). Telas em `apps/admin`: login (contra uma
+     conta já existente, sem auto-registro) + lista/criar/editar para
+     cada uma das 4 entidades.
+   - **`apps/mobile` — Modo Produção no dia do evento:** ainda não
+     implementado, próximo passo.
 
 Independente dessa sequência (não bloqueia nem é bloqueado por nenhum
 item acima, pode entrar em paralelo a qualquer momento): infraestrutura de

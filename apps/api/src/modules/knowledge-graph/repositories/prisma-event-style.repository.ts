@@ -1,8 +1,13 @@
 import { Injectable } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import type { EventStyle } from "@eve-os/types";
 import { PrismaService } from "../../../infrastructure/prisma/prisma.service";
 import { toEventStyleDomain } from "../mappers/event-style.mapper";
-import { EventStyleRepository } from "./event-style.repository";
+import {
+  EventStyleRepository,
+  type CreateEventStyleInput,
+  type UpdateEventStyleInput,
+} from "./event-style.repository";
 
 @Injectable()
 export class PrismaEventStyleRepository implements EventStyleRepository {
@@ -59,5 +64,38 @@ export class PrismaEventStyleRepository implements EventStyleRepository {
       .map((row) => styleById.get(row.id))
       .filter((style): style is (typeof styles)[number] => Boolean(style))
       .map(toEventStyleDomain);
+  }
+
+  async create(tenantId: string, organizationId: string, input: CreateEventStyleInput): Promise<EventStyle> {
+    const style = await this.prisma.eventStyle.create({
+      data: {
+        tenantId,
+        organizationId,
+        name: input.name,
+        description: input.description,
+        dimensionScores: input.dimensionScores as Prisma.InputJsonValue,
+        paletteColors: input.paletteColors,
+        furnitureNotes: input.furnitureNotes,
+        loungeNotes: input.loungeNotes,
+        createdBy: input.createdBy,
+      },
+    });
+    return toEventStyleDomain(style);
+  }
+
+  async update(id: string, input: UpdateEventStyleInput): Promise<EventStyle> {
+    const style = await this.prisma.eventStyle.update({
+      where: { id },
+      data: {
+        name: input.name,
+        description: input.description,
+        dimensionScores: input.dimensionScores as Prisma.InputJsonValue | undefined,
+        paletteColors: input.paletteColors,
+        furnitureNotes: input.furnitureNotes,
+        loungeNotes: input.loungeNotes,
+        updatedBy: input.updatedBy,
+      },
+    });
+    return toEventStyleDomain(style);
   }
 }
