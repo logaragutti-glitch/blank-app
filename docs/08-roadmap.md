@@ -80,11 +80,10 @@ um produto comercial horizontal para:
   usuário autenticado — os antigos query params `tenantId`/`organizationId`
   supridos livremente pelo chamador foram removidos.
 - **Feedback pós-evento (concluído):** captura estruturada via `POST` /
-  `GET /events/:eventId/feedback` (ver `05-database-bible.md`). Ainda não
-  implementada: a realimentação automática desse feedback no Knowledge
-  Graph (ajustar scores de compatibilidade, promover/despromover
-  fornecedores) — é uma capacidade futura distinta, esta entrega só
-  cobre a captura do dado.
+  `GET /events/:eventId/feedback` (ver `05-database-bible.md`). A
+  realimentação automática no Knowledge Graph (promover/despromover
+  fornecedores a partir de `supplierPerformance`) foi implementada no
+  item 5 do sequenciamento abaixo.
 - **UI do produto (concluído — MVP):** as 5 telas de `03-product-spec.md`
   implementadas em `apps/web`, consumindo a API real: Home (resumo do dia),
   Novo Projeto (briefing em formulário guiado por etapas), Diagnóstico
@@ -185,9 +184,24 @@ prioridade de negócio:
    o checklist já cobre a categoria "Equipe" como texto (mesmo padrão de
    `ChecklistItem.category`), mas uma entidade de equipe real (membros,
    atribuições) ficaria para um item futuro caso vire prioridade.
-5. **Feedback → Knowledge Graph** — a captura já existe
-   (`PostEventFeedback`); liga automaticamente ao ajuste de scores de
-   compatibilidade de estilo e ao status de fornecedores.
+5. **Feedback → Knowledge Graph (concluído):** `supplierPerformance`
+   (`{ supplierId, rating 1-5, notes? }`) é o único campo do feedback que
+   é dado real e estruturado o bastante para realimentar o Knowledge
+   Graph sem uma IA especular sobre texto livre — `POST
+   /events/:eventId/feedback` agora aciona, para cada entrada com um
+   `supplierId` real (`apps/api/src/modules/feedback/
+   supplier-reconciliation.ts`, heurística pura, sem IA, mesmo padrão de
+   `wow-score.ts`): nota 4-5 promove o fornecedor a preferencial no venue
+   do evento (`VenuePreferredSupplier`), nota 1-2 remove essa preferência,
+   nota 3 não altera nada, e sempre anexa uma linha datada a
+   `Supplier.performanceNotes`. Um `supplierId` desconhecido é ignorado
+   silenciosamente. Ainda não implementado (deliberadamente, ver item 3):
+   ajustar "scores de compatibilidade de estilo" a partir de
+   `whatDelighted`/`setupAdjustments`/`whatWorkedForSpaceType` — são
+   campos de texto livre, e não existe hoje nenhum campo de score
+   numérico por par material×estilo no schema; fazer isso exigiria uma
+   IA interpretando texto livre, o que arriscaria inventar um sinal que
+   o usuário nunca deu de fato.
 6. **Edição manual campo a campo** no Editor do Projeto (hoje só
    regeneração completa via IA).
 7. **PDF/apresentação real** da proposta (hoje `GET
