@@ -273,6 +273,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
 describe("Creative / Proposal Components (e2e)", () => {
   let app: INestApplication;
   let venueId: string;
+  let gardenFineArtStyleId: string;
   let proposalId: string;
   let auth: [string, string];
   let otherOrgAuth: [string, string];
@@ -301,6 +302,7 @@ describe("Creative / Proposal Components (e2e)", () => {
     const gardenFineArtStyle = await prisma.eventStyle.findFirstOrThrow({
       where: { organizationId: ORGANIZATION_ID, name: "Garden Fine Art" },
     });
+    gardenFineArtStyleId = gardenFineArtStyle.id;
 
     const { accessToken } = await registerTestUser(app, ORGANIZATION_ID);
     auth = authHeader(accessToken);
@@ -560,7 +562,7 @@ describe("Creative / Proposal Components (e2e)", () => {
         justificativa: "O casal indicou preferência natural e romântica.",
         promptVersion: "v1",
       },
-      matchedEventStyleId: "00000000-0000-0000-0000-000000009999",
+      matchedEventStyleId: gardenFineArtStyleId,
     });
     const noComponentsProposalResponse = await request(app.getHttpServer())
       .post(`/creative/${briefingResponse.body.event.id}/diagnostico-criativo`)
