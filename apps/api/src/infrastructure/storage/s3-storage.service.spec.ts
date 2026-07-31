@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import type { GetObjectCommandOutput } from "@aws-sdk/client-s3";
 import { mockClient } from "aws-sdk-client-mock";
 import { S3StorageService } from "./s3-storage.service";
@@ -58,5 +58,21 @@ describe("S3StorageService", () => {
     const service = new S3StorageService();
 
     await expect(service.download("renders/proposal-1/missing.png")).rejects.toThrow(/Empty response body/);
+  });
+
+  it("pings the configured bucket to check connectivity", async () => {
+    s3Mock.on(HeadBucketCommand).resolves({});
+    const service = new S3StorageService();
+
+    await expect(service.ping()).resolves.toBeUndefined();
+    const calls = s3Mock.commandCalls(HeadBucketCommand);
+    expect(calls[0]?.args[0].input).toMatchObject({ Bucket: "test-bucket" });
+  });
+
+  it("propagates the error when the bucket is unreachable", async () => {
+    s3Mock.on(HeadBucketCommand).rejects(new Error("connection refused"));
+    const service = new S3StorageService();
+
+    await expect(service.ping()).rejects.toThrow(/connection refused/);
   });
 });

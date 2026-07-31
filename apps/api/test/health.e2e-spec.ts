@@ -21,7 +21,24 @@ describe("Health (e2e)", () => {
     await app.close();
   });
 
-  it("GET /health -> 200", () => {
-    return request(app.getHttpServer()).get("/health").expect(200);
+  it("GET /health -> 200, checking memory, database, and storage connectivity", async () => {
+    const response = await request(app.getHttpServer()).get("/health").expect(200);
+
+    expect(response.body).toMatchObject({
+      status: "ok",
+      info: {
+        memory_heap: { status: "up" },
+        database: { status: "up" },
+        storage: { status: "up" },
+      },
+    });
+  });
+
+  it("GET /metrics -> 200, Prometheus exposition format including the earlier /health request", async () => {
+    const response = await request(app.getHttpServer()).get("/metrics").expect(200);
+
+    expect(response.headers["content-type"]).toContain("text/plain");
+    expect(response.text).toContain("http_requests_total");
+    expect(response.text).toMatch(/http_requests_total\{method="GET",route="\/health",status_code="200"\}/);
   });
 });
