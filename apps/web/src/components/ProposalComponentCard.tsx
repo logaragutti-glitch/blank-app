@@ -26,6 +26,14 @@ function ChipList({ items }: { items: string[] }) {
 function NarrativeContent({ content }: { content: Record<string, unknown> }) {
   return (
     <>
+      {typeof content.renderImageUrl === "string" && (
+        // eslint-disable-next-line @next/next/no-img-element -- external, time-limited signed URL; not a local/optimizable asset
+        <img
+          src={content.renderImageUrl}
+          alt={`Render conceitual: ${String(content.title ?? "")}`}
+          style={{ width: "100%", borderRadius: radii.md, marginBottom: spacing.md, display: "block" }}
+        />
+      )}
       <h4 style={{ margin: 0 }}>{String(content.title ?? content.name ?? "")}</h4>
       <p style={{ color: colors.textMuted }}>{String(content.description ?? content.text ?? "")}</p>
     </>

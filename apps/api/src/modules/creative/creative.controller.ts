@@ -25,6 +25,11 @@ import { ConceptualRenderPort } from "./ai/conceptual-render.port";
 import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
 import { ProposalComponentsPort } from "./ai/proposal-components.port";
 import { buildProposalComponents } from "./proposal-component-builder";
+import {
+  RENDERABLE_COMPONENT_TYPES,
+  type RenderableComponentType,
+  isRenderableComponentType,
+} from "./renderable-component-types";
 import { ProposalComponentRepository } from "./repositories/proposal-component.repository";
 import { ProposalRepository } from "./repositories/proposal.repository";
 import { computeWowScore } from "./wow-score";
@@ -236,17 +241,26 @@ export class CreativeController {
     return this.attachRenderUrls(components);
   }
 
-  // Renders automaticos (04-ai-bible.md): a single conceptual hero image for
-  // the Capa, generated from the concept/diagnosis rather than only relying
-  // on the client's own inspiration photos. Stored under the Capa
-  // component's content as `renderStorageKey` — a fresh signed URL is
-  // computed on every read (see attachRenderUrls) instead of persisting a
-  // URL that would eventually expire.
-  @Post("proposals/:proposalId/render")
+  // Renders automaticos (04-ai-bible.md): a conceptual hero image for the
+  // Capa (the event as a whole) or for one of the 10 narrative environments
+  // (Entrada, Cerimonia, Mesa do bolo...), generated from the concept/
+  // diagnosis rather than only relying on the client's own inspiration
+  // photos. Stored under that component's content as `renderStorageKey` — a
+  // fresh signed URL is computed on every read (see attachRenderUrls)
+  // instead of persisting a URL that would eventually expire.
+  @Post("proposals/:proposalId/render/:componentType")
   async generateConceptualRender(
     @CurrentUser() user: AuthenticatedUser,
     @Param("proposalId") proposalId: string,
+    @Param("componentType") componentTypeParam: string,
   ) {
+    if (!isRenderableComponentType(componentTypeParam)) {
+      throw new BadRequestException(
+        `componentType must be one of: ${RENDERABLE_COMPONENT_TYPES.join(", ")}`,
+      );
+    }
+    const componentType: RenderableComponentType = componentTypeParam;
+
     const { organizationId } = user;
     const proposal = await this.proposals.findById(organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
@@ -257,21 +271,24 @@ export class CreativeController {
     if (!venue) throw new NotFoundException("Venue not found for this event");
 
     const components = await this.proposalComponents.findByProposal(proposalId);
-    const cover = components.find((component) => component.type === "COVER");
-    if (!cover) {
+    const target = components.find((component) => component.type === componentType);
+    if (!target) {
       throw new BadRequestException(
         "This Proposal has no components yet — call POST /creative/proposals/:proposalId/components first.",
       );
     }
 
+    const isCover = componentType === "COVER";
     let render;
     try {
       render = await this.conceptualRender.generate({
-        conceptName: (cover.content.conceptName as string | undefined) ?? proposal.conceptName ?? "",
+        conceptName: (target.content.conceptName as string | undefined) ?? proposal.conceptName ?? "",
         atmosferaDesejada: proposal.diagnosticoCriativo.atmosferaDesejada,
         estiloPredominante: proposal.diagnosticoCriativo.estiloPredominante,
         paletaSugerida: proposal.diagnosticoCriativo.paletaSugerida,
         venueName: venue.name,
+        environmentTitle: isCover ? undefined : (target.content.title as string | undefined),
+        environmentDescription: isCover ? undefined : (target.content.description as string | undefined),
       });
     } catch (error) {
       throw new ServiceUnavailableException(
@@ -279,19 +296,19 @@ export class CreativeController {
       );
     }
 
-    const storageKey = `renders/${proposalId}/cover-${randomUUID()}.png`;
+    const storageKey = `renders/${proposalId}/${componentType.toLowerCase()}-${randomUUID()}.png`;
     await this.storage.upload({
       key: storageKey,
       body: Buffer.from(render.imageBase64, "base64"),
       contentType: render.mimeType,
     });
 
-    const [updatedCover] = await this.proposalComponents.upsertMany(proposalId, [
-      { type: "COVER", order: cover.order, content: { ...cover.content, renderStorageKey: storageKey } },
+    const [updatedComponent] = await this.proposalComponents.upsertMany(proposalId, [
+      { type: componentType, order: target.order, content: { ...target.content, renderStorageKey: storageKey } },
     ]);
-    if (!updatedCover) throw new Error("Failed to persist the conceptual render.");
+    if (!updatedComponent) throw new Error("Failed to persist the conceptual render.");
 
-    const [withRenderUrl] = await this.attachRenderUrls([updatedCover]);
+    const [withRenderUrl] = await this.attachRenderUrls([updatedComponent]);
     return withRenderUrl;
   }
 
@@ -318,15 +335,15 @@ export class CreativeController {
     return { proposal, components: await this.attachRenderUrls(components) };
   }
 
-  // Computes a fresh signed download URL for the Capa's conceptual render,
-  // if one has been generated (content.renderStorageKey) — never persists
-  // the URL itself, since a signed URL eventually expires but the S3 key
-  // does not.
+  // Computes a fresh signed download URL for a component's conceptual
+  // render, if one has been generated (content.renderStorageKey) — never
+  // persists the URL itself, since a signed URL eventually expires but the
+  // S3 key does not.
   private async attachRenderUrls(components: ProposalComponent[]): Promise<ProposalComponent[]> {
     return Promise.all(
       components.map(async (component) => {
         const renderStorageKey = component.content.renderStorageKey as string | undefined;
-        if (component.type !== "COVER" || !renderStorageKey) return component;
+        if (!isRenderableComponentType(component.type) || !renderStorageKey) return component;
 
         const renderImageUrl = await this.storage.getSignedDownloadUrl(renderStorageKey);
         return { ...component, content: { ...component.content, renderImageUrl } };

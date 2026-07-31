@@ -242,20 +242,27 @@ eventualmente gerar imagens conceituais dos ambientes com base nas
 referências e no conceito do projeto — o casal veria uma representação
 visual exclusiva da proposta, não apenas referências genéricas.
 
-> **Implementação:** `POST /creative/proposals/:proposalId/render`
-> (`apps/api/src/modules/creative`) gera uma única imagem hero conceitual
-> para a Capa da proposta (não os 10 ambientes narrativos individuais —
-> decisão de escopo para validar o pipeline ponta a ponta primeiro).
-> `OpenAiConceptualRenderProvider` usa o modelo `gpt-image-1` da OpenAI (a
-> Anthropic não tem API de geração de imagens); o prompt é montado a
-> partir do conceito nomeado, da atmosfera desejada, do estilo
-> predominante, da paleta sugerida e do nome do espaço — sempre
-> fotografia editorial estilo Fine Art, sem pessoas/rostos/texto na
-> imagem. Versionado em
+> **Implementação:** `POST /creative/proposals/:proposalId/render/:componentType`
+> (`apps/api/src/modules/creative`) gera uma imagem hero conceitual para a
+> Capa (imagem geral do evento) ou para um dos 10 ambientes narrativos
+> individuais (Entrada, Cerimônia, Mesa do bolo, Lounge, Mesas dos
+> convidados, Bar, Buffet, Pista, Iluminação, Florais) — `componentType` é
+> validado contra `RENDERABLE_COMPONENT_TYPES`
+> (`renderable-component-types.ts`), 400 para qualquer outro tipo de
+> componente (Paleta, Cronograma, Investimento etc. não têm uma cena
+> física para renderizar). `OpenAiConceptualRenderProvider` usa o modelo
+> `gpt-image-1` da OpenAI (a Anthropic não tem API de geração de imagens);
+> o prompt é montado a partir do conceito nomeado, da atmosfera desejada,
+> do estilo predominante, da paleta sugerida e do nome do espaço — para um
+> ambiente específico, o prompt também inclui o título/descrição
+> narrativos daquele ambiente (já gerados pelo Agente 3), focando a cena
+> nele em vez do evento como um todo. Sempre fotografia editorial estilo
+> Fine Art, sem pessoas/rostos/texto na imagem. Versionado em
 > `ai/prompts/conceptual-render.prompt.ts`
-> (`CONCEPTUAL_RENDER_PROMPT_VERSION`). A imagem gerada é salva no
-> storage S3-compatível (chave `renders/:proposalId/cover-:uuid.png`) e
-> referenciada no componente `COVER` via `content.renderStorageKey`; uma
-> URL assinada (`StoragePort.getSignedDownloadUrl`) é computada na hora
-> em toda leitura dos componentes/documento, nunca persistida — evita
-> guardar uma URL que expira.
+> (`CONCEPTUAL_RENDER_PROMPT_VERSION`). A imagem gerada é salva no storage
+> S3-compatível (chave `renders/:proposalId/:componentType-:uuid.png`,
+> minúsculo) e referenciada no componente correspondente via
+> `content.renderStorageKey`; uma URL assinada
+> (`StoragePort.getSignedDownloadUrl`) é computada na hora em toda leitura
+> dos componentes/documento, nunca persistida — evita guardar uma URL que
+> expira.

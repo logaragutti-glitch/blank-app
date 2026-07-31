@@ -390,7 +390,7 @@ describe("Creative / Proposal Components (e2e)", () => {
     });
 
     const response = await request(app.getHttpServer())
-      .post(`/creative/proposals/${proposalId}/render`)
+      .post(`/creative/proposals/${proposalId}/render/COVER`)
       .set(...auth)
       .expect(201);
 
@@ -401,6 +401,10 @@ describe("Creative / Proposal Components (e2e)", () => {
     );
     expect(storageMock.upload).toHaveBeenCalledWith(
       expect.objectContaining({ contentType: "image/png" }),
+    );
+    // The Capa's overall hero shot doesn't target a specific environment.
+    expect(conceptualRenderMock.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ environmentTitle: undefined, environmentDescription: undefined }),
     );
 
     // The signed URL is recomputed on every read, not persisted — confirm
@@ -420,11 +424,48 @@ describe("Creative / Proposal Components (e2e)", () => {
     expect(documentCover.content.renderImageUrl).toBe(response.body.content.renderImageUrl);
   });
 
+  it("generates a conceptual render for a narrative environment, scoped to its own title/description", async () => {
+    conceptualRenderMock.generate.mockResolvedValueOnce({
+      imageBase64: Buffer.from("fake-png-bytes").toString("base64"),
+      mimeType: "image/png",
+    });
+
+    const response = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/render/ENTRANCE`)
+      .set(...auth)
+      .expect(201);
+
+    expect(response.body.type).toBe("ENTRANCE");
+    expect(response.body.content.renderStorageKey).toMatch(new RegExp(`^renders/${proposalId}/entrance-`));
+    expect(response.body.content.renderImageUrl).toBe(
+      `https://storage.example.com/${response.body.content.renderStorageKey}`,
+    );
+    expect(conceptualRenderMock.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ environmentTitle: "Título Entrada", environmentDescription: "Descrição Entrada" }),
+    );
+
+    // Regenerating the Capa afterwards must not disturb this environment's render.
+    const componentsResponse = await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/components`)
+      .set(...auth)
+      .expect(200);
+    const entrance = componentsResponse.body.find((c: { type: string }) => c.type === "ENTRANCE");
+    expect(entrance.content.renderImageUrl).toBe(response.body.content.renderImageUrl);
+  });
+
+  it("returns 400 for a componentType with no physical scene to render (e.g. INVESTMENT)", async () => {
+    const response = await request(app.getHttpServer())
+      .post(`/creative/proposals/${proposalId}/render/INVESTMENT`)
+      .set(...auth)
+      .expect(400);
+    expect(response.body.message).toMatch(/componentType must be one of/);
+  });
+
   it("returns 503 with a clear message when the conceptual render generation fails", async () => {
     conceptualRenderMock.generate.mockRejectedValueOnce(new Error("simulated OpenAI outage"));
 
     const response = await request(app.getHttpServer())
-      .post(`/creative/proposals/${proposalId}/render`)
+      .post(`/creative/proposals/${proposalId}/render/COVER`)
       .set(...auth)
       .expect(503);
     expect(response.body.message).toMatch(/simulated OpenAI outage/);
@@ -432,7 +473,7 @@ describe("Creative / Proposal Components (e2e)", () => {
 
   it("returns 404 for the render endpoint when the proposal does not exist", async () => {
     await request(app.getHttpServer())
-      .post("/creative/proposals/00000000-0000-0000-0000-000000009999/render")
+      .post("/creative/proposals/00000000-0000-0000-0000-000000009999/render/COVER")
       .set(...auth)
       .expect(404);
   });

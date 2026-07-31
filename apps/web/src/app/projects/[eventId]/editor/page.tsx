@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, colors, spacing } from "@eve-os/ui";
-import type { ProposalComponent } from "@eve-os/types";
+import type { ComponentType, ProposalComponent } from "@eve-os/types";
 import { AppShell } from "../../../../components/AppShell";
 import { AiThought } from "../../../../components/AiThought";
 import { ProposalComponentCard } from "../../../../components/ProposalComponentCard";
@@ -11,6 +11,7 @@ import { AuthGuard } from "../../../../lib/auth-guard";
 import { apiClient, ApiError } from "../../../../lib/api-client";
 import { useAuth } from "../../../../lib/auth-context";
 import { useLatestProposalId } from "../../../../lib/use-latest-proposal-id";
+import { isRenderableComponentType } from "../../../../lib/renderable-component-types";
 
 const THOUGHTS = [
   "Estou nomeando o conceito deste projeto...",
@@ -25,8 +26,8 @@ function EditorContent({ eventId }: { eventId: string }) {
   const [components, setComponents] = useState<ProposalComponent[] | null | undefined>(undefined);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [renderingImage, setRenderingImage] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  const [renderingType, setRenderingType] = useState<ComponentType | null>(null);
+  const [renderErrors, setRenderErrors] = useState<Partial<Record<ComponentType, string>>>({});
 
   useEffect(() => {
     if (!accessToken || !proposalId) return;
@@ -58,28 +59,29 @@ function EditorContent({ eventId }: { eventId: string }) {
     }
   }
 
-  async function handleGenerateRender() {
+  async function handleGenerateRender(componentType: ComponentType) {
     if (!proposalId) return;
-    setRenderError(null);
-    setRenderingImage(true);
+    setRenderErrors((previous) => ({ ...previous, [componentType]: undefined }));
+    setRenderingType(componentType);
     try {
-      const updatedCover = await apiClient.post<ProposalComponent>(
-        `/creative/proposals/${proposalId}/render`,
+      const updated = await apiClient.post<ProposalComponent>(
+        `/creative/proposals/${proposalId}/render/${componentType}`,
         undefined,
         accessToken,
       );
       setComponents(
         (previous) =>
-          previous?.map((component) => (component.type === "COVER" ? updatedCover : component)) ?? previous,
+          previous?.map((component) => (component.type === componentType ? updated : component)) ?? previous,
       );
     } catch (err) {
-      setRenderError(
-        err instanceof ApiError
+      setRenderErrors((previous) => ({
+        ...previous,
+        [componentType]: err instanceof ApiError
           ? `Encontrei um ponto que merece atenção: ${err.message}`
           : "Não consegui gerar o render agora.",
-      );
+      }));
     } finally {
-      setRenderingImage(false);
+      setRenderingType(null);
     }
   }
 
@@ -126,21 +128,27 @@ function EditorContent({ eventId }: { eventId: string }) {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
             {components.map((component) =>
-              component.type === "COVER" ? (
+              isRenderableComponentType(component.type) ? (
                 <ProposalComponentCard
                   key={component.id}
                   component={component}
                   actions={
                     <>
-                      {renderingImage && (
+                      {renderingType === component.type && (
                         <p style={{ color: colors.textMuted, fontStyle: "italic", margin: `0 0 ${spacing.sm}` }}>
                           Pintando o conceito em imagem...
                         </p>
                       )}
-                      {renderError && (
-                        <p style={{ color: colors.danger, margin: `0 0 ${spacing.sm}` }}>{renderError}</p>
+                      {renderErrors[component.type] && (
+                        <p style={{ color: colors.danger, margin: `0 0 ${spacing.sm}` }}>
+                          {renderErrors[component.type]}
+                        </p>
                       )}
-                      <Button variant="ghost" disabled={renderingImage} onClick={handleGenerateRender}>
+                      <Button
+                        variant="ghost"
+                        disabled={renderingType !== null}
+                        onClick={() => handleGenerateRender(component.type)}
+                      >
                         {component.content.renderImageUrl ? "Gerar novo render" : "Gerar render conceitual"}
                       </Button>
                     </>

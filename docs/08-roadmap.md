@@ -95,16 +95,20 @@ um produto comercial horizontal para:
   "gerar novamente" — não há edição manual campo a campo de um componente
   individual, já que o backend também não expõe isso ainda (só
   regeneração completa via IA).
-- **Renders conceituais (concluído — escopo inicial):** `POST
-  /creative/proposals/:proposalId/render` gera uma imagem hero conceitual
-  para a Capa via OpenAI `gpt-image-1` (ver `04-ai-bible.md`), guardada no
-  storage S3-compatível e servida por URL assinada computada na hora.
-  Escopo deliberadamente restrito a 1 imagem (a Capa), não aos 10
-  ambientes narrativos individuais — validar o pipeline ponta a ponta
-  primeiro; gerar um render por ambiente é um próximo passo natural, não
-  uma mudança de arquitetura.
-- **Sprint 5+:** um render por ambiente narrativo, módulos de produção/
-  cronograma/checklist, Canvas do Evento, Modo Produção.
+- **Renders conceituais (concluído):** `POST
+  /creative/proposals/:proposalId/render/:componentType` gera uma imagem
+  hero conceitual via OpenAI `gpt-image-1` (ver `04-ai-bible.md`), guardada
+  no storage S3-compatível e servida por URL assinada computada na hora.
+  Cobre a Capa (imagem geral do evento) e os 10 ambientes narrativos
+  (Entrada, Cerimônia, Mesa do bolo, Lounge, Mesas dos convidados, Bar,
+  Buffet, Pista, Iluminação, Florais) — `componentType` é validado contra
+  essa lista (`RENDERABLE_COMPONENT_TYPES`), 400 para qualquer outro tipo
+  (Paleta, Cronograma, Investimento etc. não têm uma cena física para
+  renderizar). Para os ambientes, o prompt usa o título/descrição
+  narrativos já gerados pelo Agente 3 para aquele ambiente específico, em
+  vez do conceito geral do evento.
+- **Sprint 5+:** módulos de produção/cronograma/checklist, Canvas do
+  Evento, Modo Produção.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.
