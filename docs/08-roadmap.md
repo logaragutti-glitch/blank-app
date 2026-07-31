@@ -120,11 +120,8 @@ um produto comercial horizontal para:
   `ProductionPlan` por Proposal (regenerar substitui por completo, mesmo
   padrão do `ProposalComponent`/render). Tela `apps/web` em
   `/projects/:eventId/producao`, acessível a partir do hub do projeto.
-  Ainda não implementado: integração com o cadastro real de fornecedores
-  (`Supplier`/`VenuePreferredSupplier` já existem no schema mas sem API de
-  leitura própria ainda) e o gate de aprovação formal da proposta (o
-  `ProposalStatus.APPROVED` existe no enum mas nenhuma rota ainda transiciona
-  o status — gerar o plano de produção hoje não exige uma proposta aprovada).
+  Gate de aprovação formal e API de fornecedores/análise financeira: ver
+  itens 1–3 do sequenciamento abaixo (todos concluídos).
 - **Sprint 5+ (sequenciamento detalhado abaixo):** fecha o loop comercial e
   de aprendizado, depois avança para os módulos de produto maiores.
 
@@ -151,14 +148,31 @@ prioridade de negócio:
    relação `VenuePreferredSupplier` (many-to-many) num array de ids, mesmo
    padrão de `Material.compatibleStyleIds`. Seed ganhou um exemplo
    concreto ("Flores da Serra", fornecedor preferencial da Villa Massari)
-   para o endpoint não ficar vazio por padrão. Ainda não implementado: os
-   campos de custo/orçamento em `Supplier` (necessários para o Agente 4
-   responder as perguntas de custo-benefício do item 3) e qualquer
-   escrita/CRUD sobre fornecedores (só leitura por enquanto).
-3. **Agente 4 completo** — com `Supplier` disponível, responder as
-   perguntas de orçamento/margem/custo-benefício de fornecedor descritas
-   em `04-ai-bible.md` (hoje o Agente 4 só gera materiais/cronograma/
-   checklist, não essas perguntas).
+   para o endpoint não ficar vazio por padrão. Ainda não implementado:
+   qualquer escrita/CRUD sobre fornecedores (só leitura por enquanto).
+3. **Agente 4 completo — análise financeira (concluído):**
+   `POST`/`GET /production/proposals/:proposalId/budget-analysis`
+   (mesmo gate de aprovação do item 1, mesmo padrão de artefato 1:1 por
+   Proposal do `ProductionPlan` — regenerar substitui por completo).
+   Regra de ouro estendida: a IA (Agente 4) nunca inventa um **custo** —
+   só estima uma **quantidade** realista por material, e só para materiais
+   que já têm um custo real conhecido no catálogo (`Material.
+   estimatedUnitCost`, adicionado nesta etapa). Todo o cálculo financeiro
+   é determinístico em código, nunca no modelo: custo da linha (custo
+   unitário × quantidade estimada), fornecedor mais barato por categoria
+   (`Supplier.estimatedCost`, também novo, preferindo fornecedores já
+   marcados como preferenciais no venue do evento, com fallback para
+   qualquer fornecedor com custo conhecido), margem
+   (`Proposal.investmentAmount − custo total estimado`) e "cabe no
+   orçamento?" (`custo total estimado <= Event.budgetAmount`).
+   `hasIncompleteData` sinaliza quando não há material ou fornecedor com
+   custo conhecido suficiente para uma análise completa — a resposta
+   nunca é forçada com dados fictícios nesse caso. Tela `apps/web` em
+   `/projects/:eventId/producao` ganhou a seção "Análise financeira" com
+   o mesmo padrão de geração/regeneração das outras seções. Ainda não
+   implementado: custo de mão de obra de montagem/desmontagem (deixado de
+   fora deliberadamente — não há nenhum dado real no catálogo hoje que
+   permita estimar isso sem inventar números).
 4. **Modo Produção (UI)** — transição de modo sobre os dados do projeto já
    aprovado (checklist, equipes, fornecedores, horários — ver
    `06-ui-bible.md`), depende dos itens 1 e 2.

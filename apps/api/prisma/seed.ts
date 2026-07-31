@@ -86,6 +86,9 @@ async function main() {
       category: MaterialCategory.FLOWER,
       emotions: ["Romance", "Abundância", "Delicadeza"],
       seasons: ["Primavera"],
+      // Custo estimado por buquê médio (BRL) — usado pelo Agente 4
+      // (04-ai-bible.md) para orçamento/margem.
+      estimatedUnitCost: 45,
       compatibleStyles: { connect: [{ id: gardenFineArt.id }] },
       incompatibleStyles: { connect: [{ id: futurista.id }, { id: industrial.id }] },
     },
@@ -240,6 +243,9 @@ async function main() {
       name: "Flores da Serra",
       category: SupplierCategory.FLORIST,
       performanceNotes: "Entrega sempre pontual, bom custo-benefício para flores de estação.",
+      // Custo estimado para contratação num evento típico (BRL) — usado
+      // pelo Agente 4 (04-ai-bible.md) para orçamento/custo-benefício.
+      estimatedCost: 3800,
       venues: { create: [{ venueId: villaMassari.id, notes: "Fornecedor preferencial para cerimônias externas." }] },
     },
   });

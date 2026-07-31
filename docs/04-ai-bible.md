@@ -178,12 +178,33 @@ rastreabilidade entre docs e implementação:
   > `PRODUCTION_PLAN_PROMPT_VERSION`), com a lista de materiais restrita
   > (`enum` no schema da tool) ao catálogo real de materiais compatíveis
   > com o estilo predominante — nunca inventa materiais fora do catálogo,
-  > nunca sugere um marcado "não recomendar". Ainda não implementado: as
-  > perguntas de orçamento/margem/custo-benefício de fornecedor (Supplier
-  > ainda não tem campos de custo nem API de leitura própria) e o
-  > aprendizado incremental evento a evento — este agente hoje cobre
-  > apenas a geração dos artefatos operacionais, não a proteção de
-  > lucratividade descrita acima.
+  > nunca sugere um marcado "não recomendar".
+  >
+  > **Implementação (análise financeira):** `POST`/
+  > `GET /production/proposals/:proposalId/budget-analysis` responde as
+  > perguntas de orçamento/margem/custo-benefício de fornecedor. Regra de
+  > ouro estendida a custo: a IA nunca inventa um **custo**, só estima uma
+  > **quantidade** realista por material (`AnthropicBudgetAnalysisProvider`,
+  > tool-use forçado `record_budget_analysis`,
+  > `ai/prompts/budget-analysis.prompt.ts`,
+  > `BUDGET_ANALYSIS_PROMPT_VERSION`), e só para materiais que já têm um
+  > custo real conhecido no catálogo (`Material.estimatedUnitCost`,
+  > restrito por `enum` no schema da tool, mesmo padrão do plano de
+  > produção). Todo o cálculo financeiro é determinístico em código, nunca
+  > no modelo: custo da linha (custo unitário × quantidade estimada),
+  > fornecedor mais barato por categoria (`Supplier.estimatedCost`,
+  > preferindo fornecedores marcados como preferenciais no venue do
+  > evento), margem (`Proposal.investmentAmount − custo total estimado`)
+  > e "cabe no orçamento?" (`custo total estimado <= Event.budgetAmount`).
+  > `hasIncompleteData` sinaliza quando não há material ou fornecedor com
+  > custo conhecido suficiente para uma análise completa, em vez de forçar
+  > uma resposta com dados fictícios. Ainda não implementado: "quanto
+  > custa montar? quanto custa desmontar?" (não há nenhum dado real de
+  > custo de mão de obra no catálogo hoje que permita estimar isso sem
+  > inventar números) e o aprendizado incremental evento a evento — este
+  > agente hoje cobre a geração dos artefatos operacionais e a análise
+  > financeira, não o loop de aprendizado contínuo descrito acima (ver
+  > item 5 do sequenciamento em `08-roadmap.md`).
 - **Agente 5 — Agente de Projetos** — organiza o acompanhamento do
   projeto do fechamento até a execução (checklists, reuniões,
   aprovações). *(Nota de reconciliação: a sessão original citou este

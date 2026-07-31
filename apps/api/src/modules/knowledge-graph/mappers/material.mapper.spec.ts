@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { toMaterialDomain } from "./material.mapper";
 
 type MaterialModelInput = Parameters<typeof toMaterialDomain>[0];
@@ -18,6 +19,7 @@ function buildModel(overrides: Partial<MaterialModelInput> = {}): MaterialModelI
     emotions: ["Romance", "Abundância", "Delicadeza"],
     seasons: ["Primavera"],
     neverRecommend: false,
+    estimatedUnitCost: null,
     compatibleStyles: [{ id: "style-garden" }],
     incompatibleStyles: [{ id: "style-futurista" }, { id: "style-industrial" }],
     ...overrides,
@@ -37,5 +39,15 @@ describe("toMaterialDomain", () => {
     );
     expect(domain.neverRecommend).toBe(true);
     expect(domain.compatibleStyleIds).toEqual([]);
+  });
+
+  it("converts a Prisma Decimal estimated unit cost to a plain number", () => {
+    const domain = toMaterialDomain(buildModel({ estimatedUnitCost: new Prisma.Decimal("35.50") }));
+    expect(domain.estimatedUnitCost).toBe(35.5);
+  });
+
+  it("keeps estimated unit cost null when not set", () => {
+    const domain = toMaterialDomain(buildModel());
+    expect(domain.estimatedUnitCost).toBeNull();
   });
 });

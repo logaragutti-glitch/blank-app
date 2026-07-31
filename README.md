@@ -36,7 +36,14 @@ truth — read it before adding product logic.
 > checklist from an already-diagnosed Proposal, with a matching `/producao`
 > screen in `apps/web` — gated behind formal proposal approval
 > (`POST /creative/proposals/:proposalId/approve`/`.../reject`, see
-> `docs/08-roadmap.md`). Sprint 2 (Briefing Engine:
+> `docs/08-roadmap.md`). Agente 4's budget analysis is also implemented:
+> `POST`/`GET /production/proposals/:proposalId/budget-analysis` answers
+> the budget/margin/best-value-supplier questions from `04-ai-bible.md` —
+> the AI only estimates a material quantity, all cost math (unit cost,
+> supplier ranking, margin, budget fit) is computed deterministically from
+> real Knowledge Graph cost data (`Material.estimatedUnitCost`,
+> `Supplier.estimatedCost`), read via `GET /knowledge-graph/suppliers`/
+> `.../suppliers/:id`. Sprint 2 (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
@@ -118,8 +125,10 @@ Once running:
   (Capa or one of the 10 narrative environments), formal proposal approval
   at `POST /creative/proposals/:proposalId/{approve,reject}`, the
   production plan (materials list, assembly schedule, checklist — requires
-  an approved proposal) at `/production/proposals/:proposalId/plan`, and
-  post-event feedback at
+  an approved proposal) at `/production/proposals/:proposalId/plan`, its
+  budget analysis (materials/supplier cost, margin, budget fit — same
+  approval gate) at `/production/proposals/:proposalId/budget-analysis`,
+  and post-event feedback at
   `/events/:eventId/feedback`.
 - RabbitMQ management UI: http://localhost:15672
 - OpenSearch: http://localhost:9200
@@ -212,14 +221,20 @@ Conceptual renders (OpenAI `gpt-image-1`) are also implemented, covering
 both the Capa and each of the 10 narrative environments. Production
 modules (Agente 4 / Diretor de Produção) are implemented too: a materials
 list, assembly schedule, and operational checklist generated from an
-already-diagnosed Proposal.
+already-diagnosed Proposal. A formal proposal-approval flow
+(`POST /creative/proposals/:proposalId/approve`/`.../reject`) gates
+production-artifact generation. A real Supplier read API
+(`GET /knowledge-graph/suppliers`/`.../suppliers/:id`) and Agente 4's
+budget/margin/best-value-supplier analysis
+(`POST`/`GET /production/proposals/:proposalId/budget-analysis`) are also
+implemented, with all cost math computed deterministically from real
+Knowledge Graph cost data rather than invented by the model.
 Still missing: turning the structured proposal document into an actual
 PDF/presentation artifact (deferred until more product design exists to
 render against), feeding post-event feedback back into Knowledge Graph
-scores automatically, a real Supplier read API (the entity exists in the
-schema but has no repository/endpoint yet) and the budget/margin
-questions Agente 4 is meant to answer, a formal proposal-approval flow,
-the Canvas do Evento and Modo Produção screens, and per-field manual
-editing of a proposal component (today's Editor only supports full
-regeneration). Subsequent work will implement those, per
+scores automatically, assembly/disassembly labor cost estimation for
+Agente 4 (no real labor-cost data exists yet to estimate this without
+inventing numbers), the Canvas do Evento and Modo Produção screens, and
+per-field manual editing of a proposal component (today's Editor only
+supports full regeneration). Subsequent work will implement those, per
 `docs/08-roadmap.md`.

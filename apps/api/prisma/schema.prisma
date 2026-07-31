@@ -204,6 +204,11 @@ model Supplier {
   name             String
   category         SupplierCategory
   performanceNotes String?          @map("performance_notes")
+  // Estimativa de custo para contratar este fornecedor num evento tipico
+  // (BRL) — nulo ate ser preenchido; usado pelo Agente 4 (Diretor de
+  // Producao, 04-ai-bible.md) para orcamento/margem/custo-beneficio.
+  // Nunca inventado pela IA — so comparado/somado quando presente.
+  estimatedCost    Decimal?         @map("estimated_cost") @db.Decimal(10, 2)
 
   organization Organization             @relation(fields: [organizationId], references: [id])
   venues       VenuePreferredSupplier[]
@@ -288,13 +293,17 @@ model Material {
   updatedBy      String?   @map("updated_by") @db.Uuid
   version        Int       @default(1)
 
-  name           String
-  category       MaterialCategory
-  emotions       String[]
-  seasons        String[]
+  name              String
+  category          MaterialCategory
+  emotions          String[]
+  seasons           String[]
   // Itens da lista "Não utilizar" (ex.: Neon, Acrílico colorido, LED RGB)
   // nunca devem ser sugeridos pelo Motor de Interpretação — 05-database-bible.md
-  neverRecommend Boolean          @default(false) @map("never_recommend")
+  neverRecommend    Boolean          @default(false) @map("never_recommend")
+  // Custo estimado por unidade tipica (BRL, ex.: por buque, por metro de
+  // tecido) — nulo ate ser preenchido; usado pelo Agente 4 para o calculo
+  // de custo total de materiais. Nunca inventado pela IA.
+  estimatedUnitCost Decimal?         @map("estimated_unit_cost") @db.Decimal(10, 2)
 
   organization       Organization @relation(fields: [organizationId], references: [id])
   compatibleStyles   EventStyle[] @relation("MaterialCompatibleStyles")
@@ -459,6 +468,7 @@ model Proposal {
   eventStyle     EventStyle?         @relation(fields: [eventStyleId], references: [id])
   components     ProposalComponent[]
   productionPlan ProductionPlan?
+  budgetAnalysis BudgetAnalysis?
 
   @@index([tenantId])
   @@index([eventId])
@@ -521,6 +531,33 @@ model ProductionPlan {
   proposal Proposal @relation(fields: [proposalId], references: [id])
 
   @@map("production_plans")
+}
+
+// ---------------------------------------------------------------------------
+// BudgetAnalysis (Agente 4 / Diretor de Producao) — orcamento/margem/
+// custo-beneficio, sempre grounded em custos reais do Knowledge Graph
+// (Material.estimatedUnitCost, Supplier.estimatedCost); nunca inventado.
+// Mesmo padrao do ProductionPlan: 1:1 com Proposal, regenerar substitui
+// por completo, sem escopo/versionamento proprio.
+// ---------------------------------------------------------------------------
+
+model BudgetAnalysis {
+  id         String   @id @default(uuid()) @db.Uuid
+  proposalId String   @unique @map("proposal_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  lineItems          Json     @map("line_items")
+  bestValueSuppliers Json     @map("best_value_suppliers")
+  materialsCost      Decimal  @map("materials_cost") @db.Decimal(12, 2)
+  suppliersCost      Decimal  @map("suppliers_cost") @db.Decimal(12, 2)
+  totalEstimatedCost Decimal  @map("total_estimated_cost") @db.Decimal(12, 2)
+  margin             Decimal? @db.Decimal(12, 2)
+  fitsBudget         Boolean? @map("fits_budget")
+  hasIncompleteData  Boolean  @default(false) @map("has_incomplete_data")
+
+  proposal Proposal @relation(fields: [proposalId], references: [id])
+
+  @@map("budget_analyses")
 }
 
 // ---------------------------------------------------------------------------
