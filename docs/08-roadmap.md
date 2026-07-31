@@ -289,8 +289,25 @@ prioridade de negócio:
      diferenciação de papel). Telas em `apps/admin`: login (contra uma
      conta já existente, sem auto-registro) + lista/criar/editar para
      cada uma das 4 entidades.
-   - **`apps/mobile` — Modo Produção no dia do evento:** ainda não
-     implementado, próximo passo.
+   - **`apps/mobile` — Modo Produção no dia do evento (concluído):** login
+     (sem sessão persistida entre aberturas do app — sem dependência de
+     `AsyncStorage`/`SecureStore` nesta primeira versão; a equipe faz login
+     de novo a cada abertura, uma limitação real e assumida, não um
+     descuido), lista de projetos (`GET /projects`, já existente) e detalhe
+     do projeto reaproveitando o plano de produção já existente (`GET
+     /production/proposals/:proposalId/plan`): lista de materiais,
+     cronograma de montagem, checklist operacional — mesmos dados do
+     `/producao` em `apps/web`, sem gerar nada novo (Modo Produção é
+     consumo em campo, não geração). Sem navegação por biblioteca externa
+     (`@react-navigation`/`expo-router`) — só 3 telas lógicas, resolvidas
+     com uma máquina de estados simples em `App.tsx`, evitando dependências
+     nativas que não há como exercitar de verdade num simulador neste
+     sandbox. `@eve-os/ui` não é reaproveitável (renderiza elementos HTML),
+     então os tokens de cor/espaçamento da Brand Bible foram duplicados em
+     `apps/mobile/lib/tokens.ts`. Ainda não implementado: marcar itens do
+     checklist como concluídos (o schema não tem esse campo hoje) e contatos
+     de fornecedores com telefone/e-mail (o catálogo de `Supplier` não tem
+     esses campos — mostrar isso exigiria inventar dado que não existe).
 
 Independente dessa sequência (não bloqueia nem é bloqueado por nenhum
 item acima, pode entrar em paralelo a qualquer momento): infraestrutura de
