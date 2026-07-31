@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { toSupplierDomain } from "./supplier.mapper";
 
 type SupplierModelInput = Parameters<typeof toSupplierDomain>[0];
@@ -16,6 +17,7 @@ function buildModel(overrides: Partial<SupplierModelInput> = {}): SupplierModelI
     name: "Flores da Serra",
     category: "FLORIST",
     performanceNotes: "Entrega sempre pontual, boa relação de custo-benefício.",
+    estimatedCost: null,
     venues: [{ venueId: "venue-villa-massari" }],
     ...overrides,
   };
@@ -30,5 +32,15 @@ describe("toSupplierDomain", () => {
   it("handles a supplier with no preferred venues yet", () => {
     const domain = toSupplierDomain(buildModel({ venues: [] }));
     expect(domain.preferredVenueIds).toEqual([]);
+  });
+
+  it("converts a Prisma Decimal estimated cost to a plain number", () => {
+    const domain = toSupplierDomain(buildModel({ estimatedCost: new Prisma.Decimal("1200.00") }));
+    expect(domain.estimatedCost).toBe(1200);
+  });
+
+  it("keeps estimated cost null when not set", () => {
+    const domain = toSupplierDomain(buildModel());
+    expect(domain.estimatedCost).toBeNull();
   });
 });

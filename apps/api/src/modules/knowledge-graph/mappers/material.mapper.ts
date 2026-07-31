@@ -24,5 +24,6 @@ export function toMaterialDomain(model: MaterialWithStyleIds): Material {
     neverRecommend: model.neverRecommend,
     compatibleStyleIds: model.compatibleStyles.map((style) => style.id),
     incompatibleStyleIds: model.incompatibleStyles.map((style) => style.id),
+    estimatedUnitCost: model.estimatedUnitCost ? model.estimatedUnitCost.toNumber() : null,
   };
 }

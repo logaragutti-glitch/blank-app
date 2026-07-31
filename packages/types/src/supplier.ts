@@ -16,4 +16,6 @@ export interface Supplier extends AuditedEntity {
   performanceNotes: string | null;
   /** Venues this supplier is a preferred choice for. */
   preferredVenueIds: string[];
+  /** Estimated cost (BRL) to engage this supplier for a typical event — null until filled in. */
+  estimatedCost: number | null;
 }

@@ -11,4 +11,6 @@ export interface Material extends AuditedEntity {
   neverRecommend: boolean;
   compatibleStyleIds: string[];
   incompatibleStyleIds: string[];
+  /** Estimated cost (BRL) per typical unit (e.g. per buquê, per meter of fabric) — null until filled in. */
+  estimatedUnitCost: number | null;
 }

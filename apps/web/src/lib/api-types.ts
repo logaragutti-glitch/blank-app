@@ -1,4 +1,5 @@
 import type {
+  BudgetAnalysis,
   Client,
   DiagnosticoCriativo,
   Event,
@@ -47,6 +48,7 @@ export interface ProposalDocument {
 }
 
 export type {
+  BudgetAnalysis,
   Client,
   DiagnosticoCriativo,
   Event,

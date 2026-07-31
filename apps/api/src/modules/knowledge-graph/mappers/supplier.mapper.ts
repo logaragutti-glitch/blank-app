@@ -20,5 +20,6 @@ export function toSupplierDomain(model: SupplierWithVenueIds): Supplier {
     category: model.category as SupplierCategory,
     performanceNotes: model.performanceNotes,
     preferredVenueIds: model.venues.map((venue) => venue.venueId),
+    estimatedCost: model.estimatedCost ? model.estimatedCost.toNumber() : null,
   };
 }
