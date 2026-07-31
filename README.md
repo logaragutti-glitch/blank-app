@@ -71,7 +71,12 @@ truth — read it before adding product logic.
 > `apps/admin` now has real screens too: manual Knowledge Graph management
 > (`POST`/`PATCH /knowledge-graph/{styles,materials,venues,suppliers}[/:id]`,
 > alongside the existing read-only API) — login, list, create, and edit
-> screens for the 4 catalog entities. Sprint 2
+> screens for the 4 catalog entities. `apps/mobile` also has real screens
+> now: a Modo Produção field app (login, project list, and project detail
+> reusing the existing production plan endpoint — materials list, assembly
+> schedule, operational checklist), with no session persisted between app
+> opens and no external navigation library (only 3 screens, resolved with
+> a simple state machine). Sprint 2
 > (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
@@ -288,6 +293,11 @@ recalculation, which needs real business rules that don't exist anywhere
 in the system yet. `apps/admin` now has real screens too: manual
 create/edit for the Knowledge Graph's 4 catalog entities (styles,
 materials, venues, suppliers) — until now only readable, with no way to
-register or edit one without touching the database directly. Subsequent
-work will implement the remaining item (`apps/mobile` real screens), per
-`docs/08-roadmap.md`.
+register or edit one without touching the database directly. `apps/mobile`
+now has real screens too: a Modo Produção field app reusing the existing
+production plan endpoint (materials list, assembly schedule, checklist),
+with no persisted session and no external navigation library for its 3
+screens. This completes the Sprint 5+ sequenced plan
+(items 1-9) from `docs/08-roadmap.md`. Independent of that sequence,
+still open: production deploy infrastructure and assembly/disassembly
+labor cost estimation (no real labor-cost data exists yet).
