@@ -160,13 +160,18 @@ Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
 ## Deploying `apps/web` to Vercel
 
 The Vercel project's "Root Directory" (Project Settings → General) is set
-to `apps/web`. Vercel auto-detects the pnpm workspace and Next.js from
-there — no `vercel.json` is needed: it installs from the workspace root,
-then runs `next build` inside `apps/web`
+to `apps/web`, with "Include files outside the Root Directory" enabled so
+the build can see the internal workspace packages
 (`transpilePackages: ["@eve-os/ui", "@eve-os/types"]` in
-`apps/web/next.config.mjs` covers the internal workspace packages).
-`apps/admin` isn't wired to a Vercel project yet — deploying it would need
-its own Vercel project with Root Directory set to `apps/admin`.
+`apps/web/next.config.mjs`). [`apps/web/vercel.json`](./apps/web/vercel.json)
+pins `buildCommand` to plain `next build` — with files outside the root
+visible, Vercel also sees `apps/api/prisma/schema.prisma` and otherwise
+auto-injects `prisma migrate deploy && next build` (a real Vercel
+heuristic for Prisma projects), which fails since `apps/web` has no
+`prisma` dependency and has no business running database migrations for
+a frontend deploy anyway. `apps/admin` isn't wired to a Vercel project
+yet — deploying it would need its own Vercel project with Root Directory
+set to `apps/admin` and the same `buildCommand` override.
 
 ## Conventions
 
