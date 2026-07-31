@@ -304,6 +304,11 @@ with no persisted session and no external navigation library for its 3
 screens. This completes the Sprint 5+ sequenced plan
 (items 1-9) from `docs/08-roadmap.md`. Independent of that sequence,
 production deploy infrastructure (configs + a runbook, see
-`docs/11-deployment-guide.md`) and assembly/disassembly labor cost
-estimation are both implemented now. Still open: observability beyond
-logs, password recovery, and team member invites.
+`docs/11-deployment-guide.md`), assembly/disassembly labor cost
+estimation, and observability beyond logs are all implemented now:
+`GET /health` checks real Postgres and S3/MinIO connectivity (not just
+memory), and `GET /metrics` exposes Prometheus-format HTTP request
+counters/histograms plus Node's default process metrics — no
+Prometheus/Grafana or observability provider is provisioned in this
+sandbox, so this is a scrape-ready endpoint rather than a wired-up
+dashboard. Still open: password recovery and team member invites.

@@ -11,4 +11,6 @@ export abstract class StoragePort {
   abstract getSignedDownloadUrl(key: string, expiresInSeconds?: number): Promise<string>;
   /** The object's raw bytes — used when the caller needs to embed the data itself (e.g. a render inside a generated PDF), not just link to it. */
   abstract download(key: string): Promise<Buffer>;
+  /** Lightweight connectivity check for /health — confirms the configured bucket is reachable, without reading/writing any object. */
+  abstract ping(): Promise<void>;
 }

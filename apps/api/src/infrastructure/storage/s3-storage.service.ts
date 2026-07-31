@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { StoragePort, type UploadObjectParams } from "./storage.port";
 
@@ -48,5 +48,9 @@ export class S3StorageService implements StoragePort {
     const bytes = await response.Body?.transformToByteArray();
     if (!bytes) throw new Error(`Empty response body for storage key: ${key}`);
     return Buffer.from(bytes);
+  }
+
+  async ping(): Promise<void> {
+    await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
   }
 }

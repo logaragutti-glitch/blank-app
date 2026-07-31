@@ -330,8 +330,21 @@ item acima, pode entrar em paralelo a qualquer momento):
   esclarece que Redis/RabbitMQ/OpenSearch (já provisionados no Docker
   Compose) não são lidos por nenhum caminho de código real hoje, então
   não são necessários para publicar o conjunto de features atual.
-- Observabilidade além de logs, recuperação de senha e convite de membros
-  de equipe — ainda não iniciados.
+- **Observabilidade além de logs (concluído):** `GET /health` (`@nestjs/
+  terminus`) checava só heap de memória — agora também checa conectividade
+  real com o Postgres (`PrismaHealthIndicator`, `SELECT`-level ping) e com
+  o bucket S3/MinIO configurado (`StoragePort.ping()`, um `HeadBucket`).
+  `GET /metrics` expõe métricas no formato Prometheus (`prom-client`):
+  contagem e duração de requests HTTP por método/rota/status
+  (`MetricsInterceptor`, global) mais as métricas padrão de processo/event
+  loop do Node. Não há Prometheus/Grafana nem nenhum provedor de
+  observabilidade (Datadog etc.) provisionado neste ambiente — o endpoint
+  fica pronto para um scraper real ser apontado depois, sem inventar
+  nenhum dashboard ou alerta que não existe. Alertas propriamente ditos
+  exigiriam um destino real (Slack/PagerDuty/e-mail) e ficam fora de
+  escopo por isso.
+- Recuperação de senha e convite de membros de equipe — ainda não
+  iniciados.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.
