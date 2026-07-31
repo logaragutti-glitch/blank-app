@@ -4,6 +4,7 @@ import type {
   Event,
   EventType,
   InspirationImage,
+  ProductionPlan,
   Proposal,
   ProposalComponent,
   User,
@@ -44,4 +45,14 @@ export interface ProposalDocument {
   components: ProposalComponent[];
 }
 
-export type { Client, DiagnosticoCriativo, Event, InspirationImage, Proposal, ProposalComponent, User, Venue };
+export type {
+  Client,
+  DiagnosticoCriativo,
+  Event,
+  InspirationImage,
+  ProductionPlan,
+  Proposal,
+  ProposalComponent,
+  User,
+  Venue,
+};

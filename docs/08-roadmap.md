@@ -107,8 +107,27 @@ um produto comercial horizontal para:
   renderizar). Para os ambientes, o prompt usa o título/descrição
   narrativos já gerados pelo Agente 3 para aquele ambiente específico, em
   vez do conceito geral do evento.
-- **Sprint 5+:** módulos de produção/cronograma/checklist, Canvas do
-  Evento, Modo Produção.
+- **Módulos de produção (concluído):** Agente 4 / Diretor de Produção
+  (`04-ai-bible.md`) via `POST`/`GET /production/proposals/:proposalId/plan`
+  (`apps/api/src/modules/production`) — transforma uma proposta já
+  diagnosticada em três artefatos operacionais: lista de materiais
+  (grounded no catálogo real, nunca inventa materiais fora dele nem sugere
+  itens marcados "não recomendar", narrowed aos materiais compatíveis com
+  o estilo predominante quando há um, com fallback para o catálogo
+  utilizável completo), cronograma de montagem/desmontagem do dia (distinto
+  do Cronograma comercial já existente no componente `TIMELINE`), e
+  checklist operacional (fornecedores, equipe, logística, materiais). Um
+  `ProductionPlan` por Proposal (regenerar substitui por completo, mesmo
+  padrão do `ProposalComponent`/render). Tela `apps/web` em
+  `/projects/:eventId/producao`, acessível a partir do hub do projeto.
+  Ainda não implementado: integração com o cadastro real de fornecedores
+  (`Supplier`/`VenuePreferredSupplier` já existem no schema mas sem API de
+  leitura própria ainda) e o gate de aprovação formal da proposta (o
+  `ProposalStatus.APPROVED` existe no enum mas nenhuma rota ainda transiciona
+  o status — gerar o plano de produção hoje não exige uma proposta aprovada).
+- **Sprint 5+:** Canvas do Evento, Modo Produção (a transição de modo sobre
+  os mesmos dados do projeto após aprovação, ver `06-ui-bible.md`), fluxo de
+  aprovação formal da proposta, cadastro/API de fornecedores.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.
