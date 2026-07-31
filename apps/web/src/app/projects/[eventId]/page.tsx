@@ -1,10 +1,160 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, colors, spacing } from "@eve-os/ui";
 import { AppShell } from "../../../components/AppShell";
 import { AuthGuard } from "../../../lib/auth-guard";
+import { apiClient } from "../../../lib/api-client";
+import { useAuth } from "../../../lib/auth-context";
 import { useProject } from "../../../lib/use-project";
+import type { BudgetAnalysis, ProductionPlan } from "../../../lib/api-types";
+
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "long",
+  timeStyle: "short",
+});
+
+/**
+ * Modo Produção (06-ui-bible.md): once the client approves the proposal,
+ * the project hub — the same data, not a new screen from scratch —
+ * changes shape to foreground checklist, fornecedores, horários and
+ * montagem instead of the creative workflow steps.
+ */
+function ModoProducao({ eventId, project }: { eventId: string; project: NonNullable<ReturnType<typeof useProject>["project"]> }) {
+  const { accessToken } = useAuth();
+  const [plan, setPlan] = useState<ProductionPlan | null | undefined>(undefined);
+  const [budgetAnalysis, setBudgetAnalysis] = useState<BudgetAnalysis | null | undefined>(undefined);
+  const proposalId = project.latestProposal?.id;
+
+  useEffect(() => {
+    if (!accessToken || !proposalId) return;
+    // A 400 here means "not generated yet", same as elsewhere in the app —
+    // this is a preview widget, so any other failure just falls back to
+    // the same "generate it" prompt; the full error surfaces on /producao.
+    apiClient
+      .get<ProductionPlan>(`/production/proposals/${proposalId}/plan`, accessToken)
+      .then(setPlan)
+      .catch(() => setPlan(null));
+    apiClient
+      .get<BudgetAnalysis>(`/production/proposals/${proposalId}/budget-analysis`, accessToken)
+      .then(setBudgetAnalysis)
+      .catch(() => setBudgetAnalysis(null));
+  }, [accessToken, proposalId]);
+
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
+        <span
+          style={{
+            color: colors.primary,
+            border: `1px solid ${colors.primary}`,
+            borderRadius: 9999,
+            padding: `2px ${spacing.sm}`,
+            fontSize: "0.75rem",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Modo Produção
+        </span>
+      </div>
+      <h1 style={{ marginBottom: spacing.xs }}>{project.clientNames}</h1>
+      <p style={{ color: colors.textMuted, marginTop: 0 }}>{project.venueName ?? "Espaço não definido"}</p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: spacing.md, marginTop: spacing.lg }}>
+        <Card>
+          <h3 style={{ marginTop: 0 }}>Horário</h3>
+          <p style={{ color: colors.textMuted, margin: 0 }}>
+            {project.ceremonyDateTime
+              ? dateTimeFormatter.format(new Date(project.ceremonyDateTime))
+              : "Data/horário da cerimônia ainda não definidos."}
+          </p>
+        </Card>
+
+        <Card>
+          <h3 style={{ marginTop: 0 }}>Checklist operacional</h3>
+          {plan === undefined && <p style={{ color: colors.textMuted }}>Reunindo o checklist...</p>}
+          {plan === null && (
+            <>
+              <p style={{ color: colors.textMuted }}>Ainda não geramos o checklist deste projeto.</p>
+              <Link href={`/projects/${eventId}/producao`}>
+                <Button>Gerar na tela de Produção</Button>
+              </Link>
+            </>
+          )}
+          {plan && plan.checklist.length === 0 && <p style={{ color: colors.textMuted }}>—</p>}
+          {plan && plan.checklist.length > 0 && (
+            <ul style={{ paddingLeft: spacing.lg, margin: 0 }}>
+              {plan.checklist.map((item) => (
+                <li key={item.label} style={{ marginBottom: spacing.sm }}>
+                  <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.8rem", textTransform: "uppercase" }}>
+                    {item.category}
+                  </p>
+                  <strong>{item.label}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card>
+          <h3 style={{ marginTop: 0 }}>Montagem</h3>
+          {plan === undefined && <p style={{ color: colors.textMuted }}>Reunindo o cronograma...</p>}
+          {plan === null && <p style={{ color: colors.textMuted }}>Ainda não geramos o cronograma de montagem.</p>}
+          {plan && plan.setupSchedule.length === 0 && <p style={{ color: colors.textMuted }}>—</p>}
+          {plan && plan.setupSchedule.length > 0 && (
+            <ol style={{ paddingLeft: spacing.lg, margin: 0 }}>
+              {plan.setupSchedule.map((step) => (
+                <li key={step.label} style={{ marginBottom: spacing.sm }}>
+                  <strong>{step.label}</strong>
+                  <p style={{ color: colors.textMuted, margin: 0 }}>
+                    {step.timing} · {step.durationEstimate}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Card>
+
+        <Card>
+          <h3 style={{ marginTop: 0 }}>Fornecedores</h3>
+          {budgetAnalysis === undefined && <p style={{ color: colors.textMuted }}>Reunindo os fornecedores...</p>}
+          {budgetAnalysis === null && (
+            <>
+              <p style={{ color: colors.textMuted }}>Ainda não geramos a análise financeira deste projeto.</p>
+              <Link href={`/projects/${eventId}/producao`}>
+                <Button>Gerar na tela de Produção</Button>
+              </Link>
+            </>
+          )}
+          {budgetAnalysis && budgetAnalysis.bestValueSuppliers.length === 0 && (
+            <p style={{ color: colors.textMuted }}>—</p>
+          )}
+          {budgetAnalysis && budgetAnalysis.bestValueSuppliers.length > 0 && (
+            <ul style={{ paddingLeft: spacing.lg, margin: 0 }}>
+              {budgetAnalysis.bestValueSuppliers.map((supplier) => (
+                <li key={supplier.supplierId} style={{ marginBottom: spacing.sm }}>
+                  <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.8rem", textTransform: "uppercase" }}>
+                    {supplier.category}
+                  </p>
+                  <strong>{supplier.supplierName}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Link href={`/projects/${eventId}/producao`} style={{ color: colors.textMuted }}>
+          Ver todos os detalhes de produção →
+        </Link>
+        <Link href={`/projects/${eventId}/proposta`} style={{ color: colors.textMuted }}>
+          Ver proposta aprovada
+        </Link>
+      </div>
+    </>
+  );
+}
 
 function ProjectHubContent({ eventId }: { eventId: string }) {
   const { project, error } = useProject(eventId);
@@ -14,6 +164,19 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
   if (project === null) return <p style={{ color: colors.danger }}>Projeto não encontrado.</p>;
 
   const hasProposal = Boolean(project.latestProposal);
+
+  if (project.latestProposal?.status === "APPROVED") {
+    return (
+      <>
+        <p style={{ color: colors.textMuted, marginBottom: spacing.xs }}>
+          <Link href="/" style={{ color: colors.textMuted }}>
+            ← Voltar
+          </Link>
+        </p>
+        <ModoProducao eventId={eventId} project={project} />
+      </>
+    );
+  }
 
   return (
     <>

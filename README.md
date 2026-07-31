@@ -43,7 +43,11 @@ truth — read it before adding product logic.
 > supplier ranking, margin, budget fit) is computed deterministically from
 > real Knowledge Graph cost data (`Material.estimatedUnitCost`,
 > `Supplier.estimatedCost`), read via `GET /knowledge-graph/suppliers`/
-> `.../suppliers/:id`. Sprint 2 (Briefing Engine:
+> `.../suppliers/:id`. Modo Produção is also implemented: the project hub
+> (`/projects/:eventId`) changes shape once the proposal is approved —
+> same data, not a new screen — to foreground the ceremony schedule,
+> operational checklist, assembly schedule, and recommended suppliers
+> (see `docs/06-ui-bible.md`). Sprint 2 (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
@@ -228,13 +232,16 @@ production-artifact generation. A real Supplier read API
 budget/margin/best-value-supplier analysis
 (`POST`/`GET /production/proposals/:proposalId/budget-analysis`) are also
 implemented, with all cost math computed deterministically from real
-Knowledge Graph cost data rather than invented by the model.
+Knowledge Graph cost data rather than invented by the model. Modo
+Produção (the project hub changing shape once a proposal is approved, to
+foreground checklist/schedule/suppliers/ceremony time) is implemented
+too.
 Still missing: turning the structured proposal document into an actual
 PDF/presentation artifact (deferred until more product design exists to
 render against), feeding post-event feedback back into Knowledge Graph
 scores automatically, assembly/disassembly labor cost estimation for
 Agente 4 (no real labor-cost data exists yet to estimate this without
-inventing numbers), the Canvas do Evento and Modo Produção screens, and
-per-field manual editing of a proposal component (today's Editor only
-supports full regeneration). Subsequent work will implement those, per
+inventing numbers), the Canvas do Evento screen, and per-field manual
+editing of a proposal component (today's Editor only supports full
+regeneration). Subsequent work will implement those, per
 `docs/08-roadmap.md`.

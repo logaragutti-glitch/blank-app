@@ -173,9 +173,18 @@ prioridade de negócio:
    implementado: custo de mão de obra de montagem/desmontagem (deixado de
    fora deliberadamente — não há nenhum dado real no catálogo hoje que
    permita estimar isso sem inventar números).
-4. **Modo Produção (UI)** — transição de modo sobre os dados do projeto já
-   aprovado (checklist, equipes, fornecedores, horários — ver
-   `06-ui-bible.md`), depende dos itens 1 e 2.
+4. **Modo Produção (UI) (concluído):** o hub do projeto
+   (`apps/web/src/app/projects/[eventId]/page.tsx`) muda de forma quando
+   `Proposal.status === "APPROVED"` — não é uma tela nova, é uma transição
+   de modo sobre os mesmos dados (`06-ui-bible.md`). Nesse modo aparecem
+   horário da cerimônia, checklist operacional e cronograma de montagem
+   (`ProductionPlan`) e fornecedores recomendados (`BudgetAnalysis.
+   bestValueSuppliers`), com CTA para gerar cada um na tela `/producao`
+   quando ainda não existem. "Equipes" não é implementado como entidade
+   própria — não existe nenhum dado real de equipe/staff no schema hoje;
+   o checklist já cobre a categoria "Equipe" como texto (mesmo padrão de
+   `ChecklistItem.category`), mas uma entidade de equipe real (membros,
+   atribuições) ficaria para um item futuro caso vire prioridade.
 5. **Feedback → Knowledge Graph** — a captura já existe
    (`PostEventFeedback`); liga automaticamente ao ajuste de scores de
    compatibilidade de estilo e ao status de fornecedores.
