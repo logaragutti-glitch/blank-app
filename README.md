@@ -67,7 +67,11 @@ truth — read it before adding product logic.
 > Criativo when one exists — deliberately without the Rule Engine/Event
 > Impact Engine's cascading recalculation, which would need real business
 > rules that don't exist anywhere in the system yet
-> (`/projects/:eventId/canvas` renders it as a radial node graph). Sprint 2
+> (`/projects/:eventId/canvas` renders it as a radial node graph).
+> `apps/admin` now has real screens too: manual Knowledge Graph management
+> (`POST`/`PATCH /knowledge-graph/{styles,materials,venues,suppliers}[/:id]`,
+> alongside the existing read-only API) — login, list, create, and edit
+> screens for the 4 catalog entities. Sprint 2
 > (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
@@ -137,11 +141,16 @@ Once running:
 - Web: http://localhost:3000 — the 5 MVP screens. Register at
   `/register` against the seeded organization id (`00000000-0000-0000-0000-000000000002`,
   see `apps/api/prisma/seed.ts`) to sign in.
-- Admin: http://localhost:3001
+- Admin: http://localhost:3001 — Knowledge Graph management (styles,
+  materials, venues, suppliers). Log in with an account already registered
+  via `apps/web` (`apps/admin` has no self-registration screen of its
+  own).
 - API: http://localhost:4000 (Swagger docs at `/docs`, health check at
   `/health`). Every other endpoint requires a Bearer token from
   `POST /auth/login` — Knowledge Graph reads at
-  `/knowledge-graph/{styles,materials,venues,suppliers}`, project listing at
+  `/knowledge-graph/{styles,materials,venues,suppliers}`, and writes at
+  `POST`/`PATCH /knowledge-graph/{styles,materials,venues,suppliers}[/:id]`,
+  project listing at
   `GET /projects`, briefing capture at `POST /briefing`, inspiration
   images at `/briefing/:eventId/inspiration-images`, Diagnostico Criativo
   generation at `POST /creative/:eventId/diagnostico-criativo`, proposal
@@ -276,5 +285,9 @@ do Evento is implemented too: `GET /projects/:eventId/canvas`
 (`/projects/:eventId/canvas` in `apps/web`, a radial node graph) —
 deliberately without the Rule Engine/Event Impact Engine's cascading
 recalculation, which needs real business rules that don't exist anywhere
-in the system yet. Subsequent work will implement the remaining items
-(apps/admin and apps/mobile real screens), per `docs/08-roadmap.md`.
+in the system yet. `apps/admin` now has real screens too: manual
+create/edit for the Knowledge Graph's 4 catalog entities (styles,
+materials, venues, suppliers) — until now only readable, with no way to
+register or edit one without touching the database directly. Subsequent
+work will implement the remaining item (`apps/mobile` real screens), per
+`docs/08-roadmap.md`.
