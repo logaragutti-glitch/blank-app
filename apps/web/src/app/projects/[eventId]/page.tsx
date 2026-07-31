@@ -151,6 +151,9 @@ function ModoProducao({ eventId, project }: { eventId: string; project: NonNulla
         <Link href={`/projects/${eventId}/proposta`} style={{ color: colors.textMuted }}>
           Ver proposta aprovada
         </Link>
+        <Link href={`/projects/${eventId}/canvas`} style={{ color: colors.textMuted }}>
+          Ver Canvas do Evento
+        </Link>
       </div>
     </>
   );
@@ -235,6 +238,16 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
           ) : (
             <Button disabled>Gere o diagnóstico primeiro</Button>
           )}
+        </Card>
+
+        <Card>
+          <h3 style={{ marginTop: 0 }}>Canvas do Evento</h3>
+          <p style={{ color: colors.textMuted }}>
+            Um quadro visual conectando cliente, espaço, flores, luz, música, gastronomia, mobiliário e experiência.
+          </p>
+          <Link href={`/projects/${eventId}/canvas`}>
+            <Button variant="ghost">Abrir Canvas</Button>
+          </Link>
         </Card>
       </div>
     </>

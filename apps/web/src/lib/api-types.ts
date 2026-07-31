@@ -47,6 +47,30 @@ export interface ProposalDocument {
   components: ProposalComponent[];
 }
 
+export type EventCanvasNodeCategory =
+  | "CLIENT"
+  | "VENUE"
+  | "FLOWERS"
+  | "FURNITURE"
+  | "LIGHTING"
+  | "MUSIC"
+  | "CATERING"
+  | "EXPERIENCE";
+
+export interface EventCanvasNode {
+  category: EventCanvasNodeCategory;
+  summary: string | null;
+  items: string[];
+  hasData: boolean;
+}
+
+/** GET /projects/:eventId/canvas — a read model, not a single domain entity (see apps/api/src/modules/projects). */
+export interface EventCanvas {
+  eventId: string;
+  hasDiagnostico: boolean;
+  nodes: EventCanvasNode[];
+}
+
 export type {
   BudgetAnalysis,
   Client,

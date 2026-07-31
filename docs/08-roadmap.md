@@ -239,8 +239,27 @@ prioridade de negócio:
    agora, mesmo padrão pragmático já usado pelo resto da API. Tela
    `apps/web` em `/projects/:eventId/proposta` ganhou um botão "Baixar
    PDF".
-8. **Canvas do Evento** completo (quadro interativo conectando espaço,
-   flores, luz, música, gastronomia, mobiliário e experiência).
+8. **Canvas do Evento (escopo reduzido, concluído):**
+   `GET /projects/:eventId/canvas` (`apps/api/src/modules/projects`) monta
+   um retrato real e somente-leitura de tudo que já está conectado a este
+   Evento no Knowledge Graph — Cliente, Espaço, Flores, Mobiliário, Luz,
+   Música, Gastronomia, Experiência — narrowed pelo Diagnóstico Criativo
+   quando um existe (mesmo padrão de "grounded no catálogo real" do resto
+   do sistema), com fallback pro catálogo completo quando não. Cada nó
+   traz `hasData: false` quando nada foi cadastrado ainda (ex.: nenhum
+   `Supplier` de categoria `MUSIC`/`CATERING` foi seedado) — um sinal
+   honesto, não um bug. **Deliberadamente não implementa** o Rule Engine /
+   Event Impact Engine com recálculo de impacto em cascata descrito em
+   `04-ai-bible.md`/`06-ui-bible.md` (ex.: "mudar o horário da cerimônia
+   recomenda reforçar a iluminação") — isso exigiria regras de negócio
+   reais que não existem em nenhum lugar do sistema hoje, e inventá-las
+   quebraria a mesma regra de ouro seguida no resto do código (nunca
+   fabricar dado/comportamento sem uma fonte real). Tela `apps/web` em
+   `/projects/:eventId/canvas`: um quadro radial (Evento no centro, os 8
+   nós ao redor, conectados por linhas), com uma micro-animação de entrada
+   e uma leve "respiração" contínua nos cartões (06-ui-bible.md: "reforça
+   a metáfora do Evento Vivo") — sem edição/drag-and-drop dos nós, sem
+   reorganização em tempo real, ainda.
 9. **`apps/admin`** e **`apps/mobile`** — hoje são só scaffolds Next.js/Expo,
    sem telas de produto reais.
 
