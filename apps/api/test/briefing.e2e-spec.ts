@@ -22,6 +22,7 @@ const storageMock: jest.Mocked<StoragePort> = {
   upload: jest.fn().mockResolvedValue(undefined),
   getSignedDownloadUrl: jest.fn().mockResolvedValue("https://example.com/signed-url"),
   download: jest.fn().mockResolvedValue(Buffer.from("fake-bytes")),
+  ping: jest.fn().mockResolvedValue(undefined),
 };
 const visionMock: jest.Mocked<VisionAnalysisPort> = {
   analyze: jest.fn().mockResolvedValue({

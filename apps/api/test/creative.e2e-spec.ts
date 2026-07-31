@@ -34,6 +34,7 @@ const storageMock: jest.Mocked<StoragePort> = {
   upload: jest.fn().mockResolvedValue(undefined),
   getSignedDownloadUrl: jest.fn().mockImplementation(async (key: string) => `https://storage.example.com/${key}`),
   download: jest.fn().mockResolvedValue(Buffer.from("fake-png-bytes")),
+  ping: jest.fn().mockResolvedValue(undefined),
 };
 
 function buildNarrativeBlock(label: string) {

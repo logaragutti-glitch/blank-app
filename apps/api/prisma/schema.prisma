@@ -79,10 +79,17 @@ model User {
   role         UserRole @default(MEMBER)
   isActive     Boolean  @default(true) @map("is_active")
 
+  // Hash (never the raw token) of a pending "forgot password" request, plus
+  // its expiry — both null once used or expired. Single-use: cleared on a
+  // successful reset, not just overwritten by the next request.
+  passwordResetTokenHash String?   @map("password_reset_token_hash")
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at") @db.Timestamptz(6)
+
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@index([tenantId])
   @@index([organizationId])
+  @@index([passwordResetTokenHash])
   @@map("users")
 }
 

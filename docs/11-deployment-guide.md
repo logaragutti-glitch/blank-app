@@ -30,6 +30,7 @@ infraestrutura ociosa:
 | Postgres + pgvector | Sim (todo o domínio + busca semântica de estilos) | **Sim** |
 | Armazenamento S3-compatível (MinIO local) | Sim (imagens de inspiração, renders conceituais) | **Sim** (via um provedor real) |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | Sim (Agentes 1/3/4, embeddings, renders) | **Sim** |
+| Provedor de e-mail transacional (Resend/SES/SendGrid) | Não — `EmailPort` hoje usa `ConsoleEmailProvider`, que só loga o link de redefinição de senha em vez de enviar (nenhum provedor está configurado/credenciado neste ambiente) | **Sim, para recuperação de senha funcionar de verdade em produção** — trocar `ConsoleEmailProvider` por um provider real atrás do mesmo `EmailPort` (`apps/api/src/infrastructure/email/`), sem mudar quem chama |
 | Redis | Não — nenhum módulo o injeta ainda | Não, por enquanto |
 | RabbitMQ | Não — cogitado em `07-architecture-book.md` para geração assíncrona de PDF/propostas, mas todo esse fluxo hoje é HTTP síncrono | Não, por enquanto |
 | OpenSearch | Não — a busca semântica real usa pgvector, não OpenSearch | Não, por enquanto |
@@ -74,9 +75,10 @@ Railway/Render, os dois mais simples para uma API NestJS + Postgres:
    `DATABASE_URL`, `S3_ENDPOINT`/`S3_ACCESS_KEY`/`S3_SECRET_KEY`/
    `S3_BUCKET`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `JWT_SECRET` (gerar
    um valor aleatório real — o `.env.example` só tem um placeholder, nunca
-   usar `change-me-in-production` de verdade). `REDIS_URL`/
-   `RABBITMQ_URL`/`OPENSEARCH_URL` podem ficar de fora — nada os lê hoje
-   (ver tabela acima).
+   usar `change-me-in-production` de verdade), `WEB_APP_URL` (usada para
+   montar o link de redefinição de senha — apontar para a URL real de
+   `apps/web`). `REDIS_URL`/`RABBITMQ_URL`/`OPENSEARCH_URL` podem ficar de
+   fora — nada os lê hoje (ver tabela acima).
 3. Migrações: rodar `npx prisma migrate deploy` (não `migrate dev`) contra
    o `DATABASE_URL` de produção antes do primeiro boot bem-sucedido — a
    maioria dos provedores tem um "release command"/"pre-deploy command"
@@ -84,11 +86,10 @@ Railway/Render, os dois mais simples para uma API NestJS + Postgres:
    os dados de exemplo do Knowledge Graph (`prisma/seed.ts`) como ponto de
    partida real (o seed é idempotente).
 4. Health check do provedor: `GET /health` (`apps/api/src/health`) já
-   existe e é público (`@Public()`). **Limitação conhecida:** hoje só
-   verifica heap de memória, não conectividade real com o Postgres — o
-   provedor pode reportar "saudável" mesmo com o banco fora do ar. Uma
-   melhoria futura razoável (não feita aqui) seria adicionar um
-   `PrismaHealthIndicator`.
+   existe e é público (`@Public()`) e verifica conectividade real com o
+   Postgres e com o bucket S3 configurado, não só heap de memória.
+   `GET /metrics` expõe métricas Prometheus, caso o provedor tenha onde
+   apontar um scraper.
 5. Porta: a API escuta em `PORT` (padrão `4000`) — a maioria dos
    provedores injeta essa env var automaticamente; conferir se bate com o
    que o provedor espera.

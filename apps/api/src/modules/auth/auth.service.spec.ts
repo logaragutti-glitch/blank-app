@@ -1,8 +1,10 @@
-import { ConflictException, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import type { JwtService } from "@nestjs/jwt";
 import bcrypt from "bcrypt";
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import type { User } from "@eve-os/types";
+import type { EmailPort } from "../../infrastructure/email/email.port";
 import { AuthService } from "./auth.service";
 import type { UserRepository } from "./repositories/user.repository";
 
@@ -29,6 +31,7 @@ describe("AuthService", () => {
   let users: jest.Mocked<UserRepository>;
   let jwt: jest.Mocked<JwtService>;
   let prisma: { organization: { findUnique: jest.Mock } };
+  let email: jest.Mocked<EmailPort>;
   let service: AuthService;
 
   beforeEach(() => {
@@ -36,10 +39,14 @@ describe("AuthService", () => {
       create: jest.fn(),
       findById: jest.fn(),
       findWithPasswordHashByEmail: jest.fn(),
+      setPasswordResetToken: jest.fn(),
+      findByPasswordResetTokenHash: jest.fn(),
+      completePasswordReset: jest.fn(),
     };
     jwt = { sign: jest.fn().mockReturnValue("signed.jwt.token") } as unknown as jest.Mocked<JwtService>;
     prisma = { organization: { findUnique: jest.fn() } };
-    service = new AuthService(users, jwt, prisma as never);
+    email = { sendPasswordResetEmail: jest.fn() };
+    service = new AuthService(users, jwt, prisma as never, email);
   });
 
   describe("register", () => {
@@ -127,6 +134,83 @@ describe("AuthService", () => {
       const result = await service.login({ email: user.email, password: "supersecret1" });
 
       expect(result).toEqual({ accessToken: "signed.jwt.token", user });
+    });
+  });
+
+  describe("forgotPassword", () => {
+    it("returns the same generic message and sends no email when the address isn't registered", async () => {
+      users.findWithPasswordHashByEmail.mockResolvedValue(null);
+
+      const result = await service.forgotPassword({ email: "nobody@evefestas.com" });
+
+      expect(result.message).toMatch(/if that email is registered/i);
+      expect(users.setPasswordResetToken).not.toHaveBeenCalled();
+      expect(email.sendPasswordResetEmail).not.toHaveBeenCalled();
+    });
+
+    it("returns the same generic message and sends no email for an inactive user", async () => {
+      const passwordHash = await bcrypt.hash("supersecret1", 4);
+      users.findWithPasswordHashByEmail.mockResolvedValue({ user: buildUser({ isActive: false }), passwordHash });
+
+      const result = await service.forgotPassword({ email: "bia@evefestas.com" });
+
+      expect(result.message).toMatch(/if that email is registered/i);
+      expect(email.sendPasswordResetEmail).not.toHaveBeenCalled();
+    });
+
+    it("stores a hash of a fresh token (never the raw token) and emails a reset link containing the raw token", async () => {
+      const passwordHash = await bcrypt.hash("supersecret1", 4);
+      const user = buildUser();
+      users.findWithPasswordHashByEmail.mockResolvedValue({ user, passwordHash });
+
+      const result = await service.forgotPassword({ email: user.email });
+
+      expect(result.message).toMatch(/if that email is registered/i);
+      expect(users.setPasswordResetToken).toHaveBeenCalledTimes(1);
+      const [userId, storedHash, expiresAt] = users.setPasswordResetToken.mock.calls[0]!;
+      expect(userId).toBe(user.id);
+      expect(expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+      expect(email.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+      const emailCall = email.sendPasswordResetEmail.mock.calls[0]![0];
+      expect(emailCall.to).toBe(user.email);
+      const rawToken = new URL(emailCall.resetUrl).searchParams.get("token");
+      expect(rawToken).not.toBeNull();
+      expect(createHash("sha256").update(rawToken!).digest("hex")).toBe(storedHash);
+    });
+  });
+
+  describe("resetPassword", () => {
+    it("throws BadRequestException when the token is invalid or expired", async () => {
+      users.findByPasswordResetTokenHash.mockResolvedValue(null);
+
+      await expect(service.resetPassword({ token: "bogus", newPassword: "newsecret1" })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(users.completePasswordReset).not.toHaveBeenCalled();
+    });
+
+    it("hashes the new password and clears the reset token via the repository on a valid token", async () => {
+      const user = buildUser();
+      users.findByPasswordResetTokenHash.mockResolvedValue({ user, passwordHash: "old-hash" });
+
+      const result = await service.resetPassword({ token: "a-valid-raw-token", newPassword: "newsecret1" });
+
+      expect(result).toEqual({ message: "Password updated" });
+      expect(users.completePasswordReset).toHaveBeenCalledTimes(1);
+      const [userId, newPasswordHash] = users.completePasswordReset.mock.calls[0]!;
+      expect(userId).toBe(user.id);
+      expect(await bcrypt.compare("newsecret1", newPasswordHash)).toBe(true);
+    });
+
+    it("looks the token up by its hash, never the raw value", async () => {
+      users.findByPasswordResetTokenHash.mockResolvedValue(null);
+
+      await expect(service.resetPassword({ token: "raw-token-value", newPassword: "newsecret1" })).rejects.toThrow();
+
+      const lookedUpHash = users.findByPasswordResetTokenHash.mock.calls[0]![0];
+      expect(lookedUpHash).not.toBe("raw-token-value");
+      expect(lookedUpHash).toBe(createHash("sha256").update("raw-token-value").digest("hex"));
     });
   });
 });
