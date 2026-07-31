@@ -47,6 +47,7 @@ truth — read it before adding product logic.
 | Storage       | S3-compatible object storage (MinIO locally)  |
 | AI (Vision)   | Anthropic Claude                              |
 | AI (Embeddings)| OpenAI `text-embedding-3-small`              |
+| AI (Images)   | OpenAI `gpt-image-1`                          |
 | Infra         | Docker, Docker Compose, Kubernetes, GitHub Actions |
 
 ## Monorepo layout
@@ -99,10 +100,15 @@ Once running:
   see `apps/api/prisma/seed.ts`) to sign in.
 - Admin: http://localhost:3001
 - API: http://localhost:4000 (Swagger docs at `/docs`, health check at
-  `/health`, Knowledge Graph reads at `/knowledge-graph/{styles,materials,venues}`,
-  briefing capture at `POST /briefing`, inspiration images at
-  `/briefing/:eventId/inspiration-images`, Diagnostico Criativo generation
-  at `POST /creative/:eventId/diagnostico-criativo`)
+  `/health`). Every other endpoint requires a Bearer token from
+  `POST /auth/login` — Knowledge Graph reads at
+  `/knowledge-graph/{styles,materials,venues}`, project listing at
+  `GET /projects`, briefing capture at `POST /briefing`, inspiration
+  images at `/briefing/:eventId/inspiration-images`, Diagnostico Criativo
+  generation at `POST /creative/:eventId/diagnostico-criativo`, proposal
+  components at `POST /creative/proposals/:proposalId/components`, the
+  conceptual render at `POST /creative/proposals/:proposalId/render`, and
+  post-event feedback at `/events/:eventId/feedback`.
 - RabbitMQ management UI: http://localhost:15672
 - OpenSearch: http://localhost:9200
 - MinIO console: http://localhost:9001
