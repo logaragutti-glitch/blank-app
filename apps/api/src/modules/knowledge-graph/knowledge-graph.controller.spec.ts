@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { KnowledgeGraphController } from "./knowledge-graph.controller";
 import { EventStyleRepository } from "./repositories/event-style.repository";
 import { MaterialRepository } from "./repositories/material.repository";
+import { SupplierRepository } from "./repositories/supplier.repository";
 import { VenueRepository } from "./repositories/venue.repository";
 
 describe("KnowledgeGraphController", () => {
@@ -19,6 +20,7 @@ describe("KnowledgeGraphController", () => {
   let controller: KnowledgeGraphController;
   let eventStyles: jest.Mocked<EventStyleRepository>;
   let venues: jest.Mocked<VenueRepository>;
+  let suppliers: jest.Mocked<SupplierRepository>;
   let embeddings: jest.Mocked<EmbeddingPort>;
 
   beforeEach(async () => {
@@ -31,6 +33,7 @@ describe("KnowledgeGraphController", () => {
         },
         { provide: MaterialRepository, useValue: { findAll: jest.fn(), findById: jest.fn() } },
         { provide: VenueRepository, useValue: { findAll: jest.fn(), findById: jest.fn() } },
+        { provide: SupplierRepository, useValue: { findAll: jest.fn(), findById: jest.fn() } },
         { provide: EmbeddingPort, useValue: { embed: jest.fn() } },
       ],
     }).compile();
@@ -38,6 +41,7 @@ describe("KnowledgeGraphController", () => {
     controller = moduleRef.get(KnowledgeGraphController);
     eventStyles = moduleRef.get(EventStyleRepository);
     venues = moduleRef.get(VenueRepository);
+    suppliers = moduleRef.get(SupplierRepository);
     embeddings = moduleRef.get(EmbeddingPort);
   });
 
@@ -50,6 +54,30 @@ describe("KnowledgeGraphController", () => {
   it("throws NotFoundException when a venue does not exist", async () => {
     venues.findById.mockResolvedValue(null);
     await expect(controller.getVenue(user, "missing-id")).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("lists suppliers scoped to the given organization", async () => {
+    suppliers.findAll.mockResolvedValue([]);
+    await controller.listSuppliers(user);
+    expect(suppliers.findAll).toHaveBeenCalledWith(organizationId);
+  });
+
+  it("throws NotFoundException when a supplier does not exist", async () => {
+    suppliers.findById.mockResolvedValue(null);
+    await expect(controller.getSupplier(user, "missing-id")).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("returns an existing supplier", async () => {
+    const supplier = {
+      id: "supplier-1",
+      name: "Flores da Serra",
+      category: "FLORIST",
+      performanceNotes: null,
+      preferredVenueIds: ["venue-1"],
+    } as never;
+    suppliers.findById.mockResolvedValue(supplier);
+    const result = await controller.getSupplier(user, "supplier-1");
+    expect(result).toBe(supplier);
   });
 
   it("throws NotFoundException when backfilling the embedding of a style that does not exist", async () => {

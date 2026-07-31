@@ -144,10 +144,17 @@ prioridade de negócio:
    atual; `/producao` mostra uma mensagem específica (com link de volta
    para a proposta) em vez de um erro genérico quando a proposta ainda
    não foi aprovada.
-2. **API de leitura de `Supplier`** — repository/endpoint básico de leitura
-   sobre a entidade que já existe no schema (`Supplier`,
-   `VenuePreferredSupplier`). Pré-requisito direto para o Agente 4
-   responder custo/margem e para o Modo Produção listar fornecedores.
+2. **API de leitura de `Supplier` (concluído):**
+   `GET /knowledge-graph/suppliers` e `.../suppliers/:id`
+   (`apps/api/src/modules/knowledge-graph`) — mesmo padrão de
+   `styles`/`materials`/`venues`. `Supplier.preferredVenueIds` achata a
+   relação `VenuePreferredSupplier` (many-to-many) num array de ids, mesmo
+   padrão de `Material.compatibleStyleIds`. Seed ganhou um exemplo
+   concreto ("Flores da Serra", fornecedor preferencial da Villa Massari)
+   para o endpoint não ficar vazio por padrão. Ainda não implementado: os
+   campos de custo/orçamento em `Supplier` (necessários para o Agente 4
+   responder as perguntas de custo-benefício do item 3) e qualquer
+   escrita/CRUD sobre fornecedores (só leitura por enquanto).
 3. **Agente 4 completo** — com `Supplier` disponível, responder as
    perguntas de orçamento/margem/custo-benefício de fornecedor descritas
    em `04-ai-bible.md` (hoje o Agente 4 só gera materiais/cronograma/

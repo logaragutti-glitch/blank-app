@@ -81,4 +81,27 @@ describe("Knowledge Graph (e2e)", () => {
       .set(...auth)
       .expect(404);
   });
+
+  it("GET /knowledge-graph/suppliers includes Flores da Serra as preferred at Villa Massari", async () => {
+    const [suppliersResponse, venuesResponse] = await Promise.all([
+      request(app.getHttpServer()).get("/knowledge-graph/suppliers").set(...auth).expect(200),
+      request(app.getHttpServer()).get("/knowledge-graph/venues").set(...auth).expect(200),
+    ]);
+
+    const floresDaSerra = suppliersResponse.body.find(
+      (supplier: { name: string }) => supplier.name === "Flores da Serra",
+    );
+    expect(floresDaSerra).toBeDefined();
+    expect(floresDaSerra.category).toBe("FLORIST");
+
+    const villaMassari = venuesResponse.body.find((venue: { name: string }) => venue.name === "Villa Massari");
+    expect(floresDaSerra.preferredVenueIds).toContain(villaMassari.id);
+  });
+
+  it("GET /knowledge-graph/suppliers/:id -> 404 for an unknown id", async () => {
+    await request(app.getHttpServer())
+      .get("/knowledge-graph/suppliers/00000000-0000-0000-0000-000000009999")
+      .set(...auth)
+      .expect(404);
+  });
 });

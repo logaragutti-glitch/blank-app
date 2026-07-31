@@ -1,0 +1,19 @@
+import type { AuditedEntity } from "./tenant";
+
+export type SupplierCategory =
+  | "FLORIST"
+  | "CATERING"
+  | "LIGHTING"
+  | "FURNITURE_RENTAL"
+  | "PHOTOGRAPHY"
+  | "MUSIC"
+  | "OTHER";
+
+export interface Supplier extends AuditedEntity {
+  name: string;
+  category: SupplierCategory;
+  /** Free-text notes on past performance (Database Bible Cap. 9 — feeds the incremental learning loop). */
+  performanceNotes: string | null;
+  /** Venues this supplier is a preferred choice for. */
+  preferredVenueIds: string[];
+}

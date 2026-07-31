@@ -12,3 +12,4 @@ export * from "./proposal";
 export * from "./proposal-component";
 export * from "./post-event-feedback";
 export * from "./production-plan";
+export * from "./supplier";
