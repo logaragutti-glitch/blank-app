@@ -166,10 +166,15 @@ prioridade de negócio:
    custo conhecido suficiente para uma análise completa — a resposta
    nunca é forçada com dados fictícios nesse caso. Tela `apps/web` em
    `/projects/:eventId/producao` ganhou a seção "Análise financeira" com
-   o mesmo padrão de geração/regeneração das outras seções. Ainda não
-   implementado: custo de mão de obra de montagem/desmontagem (deixado de
-   fora deliberadamente — não há nenhum dado real no catálogo hoje que
-   permita estimar isso sem inventar números).
+   o mesmo padrão de geração/regeneração das outras seções. Custo de mão
+   de obra de montagem/desmontagem (concluído): `ASSEMBLY_CREW` é uma
+   `SupplierCategory` como qualquer outra (montagem e desmontagem tratadas
+   como um único custo, já que tipicamente é a mesma equipe que faz as
+   duas — ver `02-brand-bible.md`, que já lista os dois como par no que o
+   investimento contempla), então entra no cálculo pelo mesmo mecanismo de
+   "fornecedor mais barato por categoria" já usado para flores/iluminação/
+   etc. — nenhuma lógica nova foi necessária, só mais uma categoria com
+   custo real cadastrado.
 4. **Modo Produção (UI) (concluído):** o hub do projeto
    (`apps/web/src/app/projects/[eventId]/page.tsx`) muda de forma quando
    `Proposal.status === "APPROVED"` — não é uma tela nova, é uma transição

@@ -198,13 +198,18 @@ rastreabilidade entre docs e implementação:
   > e "cabe no orçamento?" (`custo total estimado <= Event.budgetAmount`).
   > `hasIncompleteData` sinaliza quando não há material ou fornecedor com
   > custo conhecido suficiente para uma análise completa, em vez de forçar
-  > uma resposta com dados fictícios. Ainda não implementado: "quanto
-  > custa montar? quanto custa desmontar?" (não há nenhum dado real de
-  > custo de mão de obra no catálogo hoje que permita estimar isso sem
-  > inventar números) e o aprendizado incremental evento a evento — este
-  > agente hoje cobre a geração dos artefatos operacionais e a análise
-  > financeira, não o loop de aprendizado contínuo descrito acima (ver
-  > item 5 do sequenciamento em `08-roadmap.md`).
+  > uma resposta com dados fictícios. "Quanto custa montar? Quanto custa
+  > desmontar?" também é respondido agora: `ASSEMBLY_CREW` é só mais uma
+  > `SupplierCategory` (montagem e desmontagem tratadas como um único
+  > custo de mão de obra, já que tipicamente é a mesma equipe que faz as
+  > duas — ver `02-brand-bible.md`, que já lista os dois como um par no que
+  > o investimento contempla), então o custo de mão de obra entra no
+  > cálculo pelo mesmo mecanismo de "fornecedor mais barato por categoria"
+  > já usado para flores/iluminação/etc. — nenhuma lógica nova foi
+  > necessária. Ainda não implementado: o aprendizado incremental evento a
+  > evento — este agente hoje cobre a geração dos artefatos operacionais e
+  > a análise financeira, não o loop de aprendizado contínuo descrito acima
+  > (ver item 5 do sequenciamento em `08-roadmap.md`).
 - **Agente 5 — Agente de Projetos** — organiza o acompanhamento do
   projeto do fechamento até a execução (checklists, reuniões,
   aprovações). *(Nota de reconciliação: a sessão original citou este

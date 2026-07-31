@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "SupplierCategory" ADD VALUE 'ASSEMBLY_CREW' BEFORE 'OTHER';

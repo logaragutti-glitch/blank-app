@@ -250,6 +250,23 @@ async function main() {
     },
   });
 
+  await prisma.supplier.upsert({
+    where: { organizationId_name: { organizationId, name: "Equipe Raiz Montagens" } },
+    update: {},
+    create: {
+      tenantId,
+      organizationId,
+      name: "Equipe Raiz Montagens",
+      category: SupplierCategory.ASSEMBLY_CREW,
+      performanceNotes: "Equipe experiente com o terreno irregular da Villa Massari, monta e desmonta no mesmo dia.",
+      // Custo estimado de mão de obra (montagem + desmontagem, BRL) para um
+      // evento típico — usado pelo Agente 4 para orçamento/custo-benefício,
+      // mesmo mecanismo já usado para as demais categorias de fornecedor.
+      estimatedCost: 2400,
+      venues: { create: [{ venueId: villaMassari.id, notes: "Equipe preferencial pela familiaridade com o espaço." }] },
+    },
+  });
+
   // --- Cliente e evento de origem: Karen & Daniel -----------------------------
   // O orçamento real que originou este projeto (docs/README.md, seção "Origem").
 

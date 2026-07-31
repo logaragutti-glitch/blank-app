@@ -7,6 +7,11 @@ export type SupplierCategory =
   | "FURNITURE_RENTAL"
   | "PHOTOGRAPHY"
   | "MUSIC"
+  // Equipe de montagem/desmontagem do dia do evento — ver comentário no
+  // schema.prisma. Alimenta o custo de mão de obra do Agente 4 pelo mesmo
+  // mecanismo de "fornecedor mais barato por categoria" já usado para as
+  // demais categorias, sem lógica nova.
+  | "ASSEMBLY_CREW"
   | "OTHER";
 
 export interface Supplier extends AuditedEntity {
