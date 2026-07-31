@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Logger,
   NotFoundException,
   Param,
+  Patch,
   Post,
   ServiceUnavailableException,
 } from "@nestjs/common";
@@ -24,6 +26,7 @@ import { VenueRepository } from "../knowledge-graph/repositories/venue.repositor
 import { ConceptualRenderPort } from "./ai/conceptual-render.port";
 import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
 import { ProposalComponentsPort } from "./ai/proposal-components.port";
+import { UpdateProposalComponentDto } from "./dto/update-proposal-component.dto";
 import { buildProposalComponents } from "./proposal-component-builder";
 import {
   RENDERABLE_COMPONENT_TYPES,
@@ -256,6 +259,39 @@ export class CreativeController {
     if (!proposal) throw new NotFoundException("Proposal not found");
     const components = await this.proposalComponents.findByProposal(proposalId);
     return this.attachRenderUrls(components);
+  }
+
+  // Manual field-by-field editing (Sprint 5+ item 6): lets a human refine a
+  // single already-generated component without discarding the others or
+  // waiting for a full AI regeneration (see generateProposalComponents).
+  // Shallow-merges the given fields into the component's existing content,
+  // so a partial edit (e.g. just `title`) never wipes out sibling fields
+  // (e.g. a conceptual render's `renderStorageKey`).
+  @Patch("proposals/:proposalId/components/:componentType")
+  async updateProposalComponent(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Param("componentType") componentTypeParam: string,
+    @Body() dto: UpdateProposalComponentDto,
+  ) {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+
+    const components = await this.proposalComponents.findByProposal(proposalId);
+    const target = components.find((component) => component.type === componentTypeParam);
+    if (!target) {
+      throw new NotFoundException(
+        `No "${componentTypeParam}" component found for this Proposal — generate the components first.`,
+      );
+    }
+
+    const [updated] = await this.proposalComponents.upsertMany(proposalId, [
+      { type: target.type, order: target.order, content: { ...target.content, ...dto.content } },
+    ]);
+    if (!updated) throw new Error("Failed to persist the manual edit.");
+
+    const [withRenderUrl] = await this.attachRenderUrls([updated]);
+    return withRenderUrl;
   }
 
   // Renders automaticos (04-ai-bible.md): a conceptual hero image for the

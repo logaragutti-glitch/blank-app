@@ -273,6 +273,7 @@ describe("Creative / Diagnostico Criativo (e2e)", () => {
 describe("Creative / Proposal Components (e2e)", () => {
   let app: INestApplication;
   let venueId: string;
+  let gardenFineArtStyleId: string;
   let proposalId: string;
   let auth: [string, string];
   let otherOrgAuth: [string, string];
@@ -301,6 +302,7 @@ describe("Creative / Proposal Components (e2e)", () => {
     const gardenFineArtStyle = await prisma.eventStyle.findFirstOrThrow({
       where: { organizationId: ORGANIZATION_ID, name: "Garden Fine Art" },
     });
+    gardenFineArtStyleId = gardenFineArtStyle.id;
 
     const { accessToken } = await registerTestUser(app, ORGANIZATION_ID);
     auth = authHeader(accessToken);
@@ -530,6 +532,90 @@ describe("Creative / Proposal Components (e2e)", () => {
     await request(app.getHttpServer())
       .post("/creative/proposals/00000000-0000-0000-0000-000000009999/render/COVER")
       .set(...auth)
+      .expect(404);
+  });
+
+  it("returns 404 when patching a component on an unknown proposal", async () => {
+    await request(app.getHttpServer())
+      .patch("/creative/proposals/00000000-0000-0000-0000-000000009999/components/CONCEPT")
+      .set(...auth)
+      .send({ content: { title: "Novo título" } })
+      .expect(404);
+  });
+
+  it("returns 404 when patching a component type that hasn't been generated for this proposal", async () => {
+    const briefingResponse = await request(app.getHttpServer())
+      .post("/briefing")
+      .set(...auth)
+      .send({ partnerOneName: "Ana", partnerTwoName: "Beto", venueId })
+      .expect(201);
+    diagnosticoCriativoMock.generate.mockResolvedValueOnce({
+      diagnosis: {
+        perfilCasal: "Romântico contemporâneo",
+        atmosferaDesejada: "Elegância leve e acolhedora",
+        estiloPredominante: "Garden Fine Art",
+        paletaSugerida: ["rosé"],
+        mobiliarioSugerido: ["madeira clara"],
+        iluminacaoSugerida: "Luz quente e velas",
+        materiaisRecomendados: ["Peônia"],
+        compatibilidadeComEspaco: "A Villa Massari favorece cerimônia externa.",
+        justificativa: "O casal indicou preferência natural e romântica.",
+        promptVersion: "v1",
+      },
+      matchedEventStyleId: gardenFineArtStyleId,
+    });
+    const noComponentsProposalResponse = await request(app.getHttpServer())
+      .post(`/creative/${briefingResponse.body.event.id}/diagnostico-criativo`)
+      .set(...auth)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/creative/proposals/${noComponentsProposalResponse.body.id}/components/CONCEPT`)
+      .set(...auth)
+      .send({ content: { title: "Novo título" } })
+      .expect(404);
+  });
+
+  it("shallow-merges a manual edit into a component's content, preserving other fields", async () => {
+    const before = await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/components`)
+      .set(...auth)
+      .expect(200);
+    const conceptBefore = before.body.find((c: { type: string }) => c.type === "CONCEPT");
+    expect(conceptBefore.content.description).toBeTruthy();
+
+    const response = await request(app.getHttpServer())
+      .patch(`/creative/proposals/${proposalId}/components/CONCEPT`)
+      .set(...auth)
+      .send({ content: { name: "Um Jardim ao Entardecer" } })
+      .expect(200);
+
+    expect(response.body.type).toBe("CONCEPT");
+    expect(response.body.content.name).toBe("Um Jardim ao Entardecer");
+    // Fields not included in the patch are preserved, not wiped out.
+    expect(response.body.content.description).toBe(conceptBefore.content.description);
+
+    const after = await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/components`)
+      .set(...auth)
+      .expect(200);
+    const conceptAfter = after.body.find((c: { type: string }) => c.type === "CONCEPT");
+    expect(conceptAfter.content.name).toBe("Um Jardim ao Entardecer");
+  });
+
+  it("rejects a patch with no content object", async () => {
+    await request(app.getHttpServer())
+      .patch(`/creative/proposals/${proposalId}/components/CONCEPT`)
+      .set(...auth)
+      .send({})
+      .expect(400);
+  });
+
+  it("does not let another organization patch this proposal's components", async () => {
+    await request(app.getHttpServer())
+      .patch(`/creative/proposals/${proposalId}/components/CONCEPT`)
+      .set(...otherOrgAuth)
+      .send({ content: { name: "Should not apply" } })
       .expect(404);
   });
 });

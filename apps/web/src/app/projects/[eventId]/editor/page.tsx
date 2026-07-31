@@ -59,6 +59,19 @@ function EditorContent({ eventId }: { eventId: string }) {
     }
   }
 
+  async function handleEditComponent(componentType: ComponentType, patch: Record<string, unknown>) {
+    if (!proposalId) return;
+    const updated = await apiClient.patch<ProposalComponent>(
+      `/creative/proposals/${proposalId}/components/${componentType}`,
+      { content: patch },
+      accessToken,
+    );
+    setComponents(
+      (previous) =>
+        previous?.map((component) => (component.type === componentType ? updated : component)) ?? previous,
+    );
+  }
+
   async function handleGenerateRender(componentType: ComponentType) {
     if (!proposalId) return;
     setRenderErrors((previous) => ({ ...previous, [componentType]: undefined }));
@@ -132,6 +145,7 @@ function EditorContent({ eventId }: { eventId: string }) {
                 <ProposalComponentCard
                   key={component.id}
                   component={component}
+                  onEdit={(patch) => handleEditComponent(component.type, patch)}
                   actions={
                     <>
                       {renderingType === component.type && (
@@ -155,7 +169,11 @@ function EditorContent({ eventId }: { eventId: string }) {
                   }
                 />
               ) : (
-                <ProposalComponentCard key={component.id} component={component} />
+                <ProposalComponentCard
+                  key={component.id}
+                  component={component}
+                  onEdit={(patch) => handleEditComponent(component.type, patch)}
+                />
               ),
             )}
           </div>

@@ -202,8 +202,22 @@ prioridade de negócio:
    numérico por par material×estilo no schema; fazer isso exigiria uma
    IA interpretando texto livre, o que arriscaria inventar um sinal que
    o usuário nunca deu de fato.
-6. **Edição manual campo a campo** no Editor do Projeto (hoje só
-   regeneração completa via IA).
+6. **Edição manual campo a campo (concluído):**
+   `PATCH /creative/proposals/:proposalId/components/:componentType`
+   (`apps/api/src/modules/creative`) mescla superficialmente os campos
+   enviados no `content` já existente do componente — uma edição parcial
+   (ex.: só `title`) nunca apaga campos irmãos (ex.: `renderStorageKey`
+   de um render já gerado). 404 se a proposta ou o componente daquele
+   tipo ainda não existirem (edição manual pressupõe que o componente já
+   foi gerado ao menos uma vez). Tela `apps/web` em `/projects/:eventId/editor`
+   ganhou um botão "Editar" por card (`ProposalComponentCard`), com um
+   formulário específico por formato de `content` — espelhando
+   exatamente o switch já usado para exibição: Capa (nome do conceito/
+   nomes do casal/espaço), Paleta e Moodboard (listas separadas por
+   vírgula), Cronograma (título/descrição por etapa já existente, sem
+   adicionar/remover etapas nesta primeira versão), Investimento (itens
+   incluídos, valor, moeda), e o par título/descrição (ou nome/texto,
+   conforme o que já existir) para os demais componentes narrativos.
 7. **PDF/apresentação real** da proposta (hoje `GET
    /creative/proposals/:proposalId/document` é só um JSON estruturado).
 8. **Canvas do Evento** completo (quadro interativo conectando espaço,

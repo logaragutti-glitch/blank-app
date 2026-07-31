@@ -50,7 +50,12 @@ truth — read it before adding product logic.
 > (`/projects/:eventId`) changes shape once the proposal is approved —
 > same data, not a new screen — to foreground the ceremony schedule,
 > operational checklist, assembly schedule, and recommended suppliers
-> (see `docs/06-ui-bible.md`). Sprint 2 (Briefing Engine:
+> (see `docs/06-ui-bible.md`). Manual field-by-field editing of a proposal
+> component is also implemented: `PATCH /creative/proposals/:proposalId/components/:componentType`
+> shallow-merges the given fields into a component's existing content
+> (`/projects/:eventId/editor` gained an "Editar" button per component,
+> with a form tailored to each component's own content shape). Sprint 2
+> (Briefing Engine:
 > form capture + inspiration image ingestion), Sprint 1 (Knowledge Graph
 > domain + read API), and Sprint 0 (monorepo/tooling/infra) are complete.
 
@@ -249,7 +254,9 @@ free-text fields (would require an AI interpreting free text, risking a
 fabricated signal — no numeric material×style score field exists in the
 schema today anyway), assembly/disassembly labor cost estimation for
 Agente 4 (no real labor-cost data exists yet to estimate this without
-inventing numbers), the Canvas do Evento screen, and per-field manual
-editing of a proposal component (today's Editor only supports full
-regeneration). Subsequent work will implement those, per
+inventing numbers), and the Canvas do Evento screen. Per-field manual
+editing of a proposal component is implemented too:
+`PATCH /creative/proposals/:proposalId/components/:componentType`
+shallow-merges the given fields, with an "Editar" button per component in
+the Editor. Subsequent work will implement the remaining items, per
 `docs/08-roadmap.md`.
