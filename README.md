@@ -109,7 +109,7 @@ Once running:
 - API: http://localhost:4000 (Swagger docs at `/docs`, health check at
   `/health`). Every other endpoint requires a Bearer token from
   `POST /auth/login` — Knowledge Graph reads at
-  `/knowledge-graph/{styles,materials,venues}`, project listing at
+  `/knowledge-graph/{styles,materials,venues,suppliers}`, project listing at
   `GET /projects`, briefing capture at `POST /briefing`, inspiration
   images at `/briefing/:eventId/inspiration-images`, Diagnostico Criativo
   generation at `POST /creative/:eventId/diagnostico-criativo`, proposal

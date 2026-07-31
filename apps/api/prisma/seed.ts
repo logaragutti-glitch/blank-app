@@ -3,7 +3,7 @@
 // Karen & Daniel / Villa Massari example that originated this project
 // (see docs/03-product-spec.md).
 import { PrismaPg } from "@prisma/adapter-pg";
-import { MaterialCategory, PrismaClient } from "@prisma/client";
+import { MaterialCategory, PrismaClient, SupplierCategory } from "@prisma/client";
 
 try {
   process.loadEnvFile(new URL("../.env", import.meta.url));
@@ -226,6 +226,21 @@ async function main() {
         "iluminação quente",
         "flores em tons suaves",
       ],
+    },
+  });
+
+  // --- Fornecedor preferencial da Villa Massari -------------------------------
+
+  await prisma.supplier.upsert({
+    where: { organizationId_name: { organizationId, name: "Flores da Serra" } },
+    update: {},
+    create: {
+      tenantId,
+      organizationId,
+      name: "Flores da Serra",
+      category: SupplierCategory.FLORIST,
+      performanceNotes: "Entrega sempre pontual, bom custo-benefício para flores de estação.",
+      venues: { create: [{ venueId: villaMassari.id, notes: "Fornecedor preferencial para cerimônias externas." }] },
     },
   });
 

@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
 import { EventStyleRepository } from "./repositories/event-style.repository";
 import { MaterialRepository } from "./repositories/material.repository";
+import { SupplierRepository } from "./repositories/supplier.repository";
 import { VenueRepository } from "./repositories/venue.repository";
 import { buildStyleEmbeddingText } from "./style-embedding-text";
 
@@ -16,6 +17,7 @@ export class KnowledgeGraphController {
     private readonly eventStyles: EventStyleRepository,
     private readonly materials: MaterialRepository,
     private readonly venues: VenueRepository,
+    private readonly suppliers: SupplierRepository,
     private readonly embeddings: EmbeddingPort,
   ) {}
 
@@ -53,6 +55,18 @@ export class KnowledgeGraphController {
     const venue = await this.venues.findById(user.organizationId, id);
     if (!venue) throw new NotFoundException("Venue not found");
     return venue;
+  }
+
+  @Get("suppliers")
+  listSuppliers(@CurrentUser() user: AuthenticatedUser) {
+    return this.suppliers.findAll(user.organizationId);
+  }
+
+  @Get("suppliers/:id")
+  async getSupplier(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    const supplier = await this.suppliers.findById(user.organizationId, id);
+    if (!supplier) throw new NotFoundException("Supplier not found");
+    return supplier;
   }
 
   // Maintenance endpoint: (re)computes and stores the embedding used for
