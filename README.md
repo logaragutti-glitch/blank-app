@@ -157,6 +157,18 @@ Prisma 7 reads datasource config from `apps/api/prisma.config.ts`, not from
 `schema.prisma`, and `PrismaClient` requires a driver adapter
 (`@prisma/adapter-pg`) — see `src/infrastructure/prisma/prisma.service.ts`.
 
+## Deploying `apps/web` to Vercel
+
+The root [`vercel.json`](./vercel.json) lets a Vercel project keep its Root
+Directory at the repo root (the default for this monorepo) while building
+only `apps/web`: it installs with pnpm, builds via
+`pnpm turbo run build --filter=@eve-os/web`, and points
+`outputDirectory` at `apps/web/.next`. No per-project "Root Directory"
+dashboard change is needed for the `web` app. `apps/admin` isn't wired to a
+Vercel project yet — deploying it would need its own Vercel project with an
+equivalent `--filter=@eve-os/admin` build (a root `vercel.json` only
+configures a single Vercel project pointed at this repo).
+
 ## Conventions
 
 - Conventional Commits, enforced by commitlint + Husky `commit-msg` hook.
