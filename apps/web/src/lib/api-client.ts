@@ -37,10 +37,25 @@ async function request<T>(path: string, { method, body, token }: RequestOptions)
   return (await response.json()) as T;
 }
 
+async function downloadBlob(path: string, token?: string | null): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const rawMessage = (payload as { message?: string | string[] } | null)?.message;
+    const message = Array.isArray(rawMessage) ? rawMessage.join(", ") : (rawMessage ?? response.statusText);
+    throw new ApiError(message, response.status);
+  }
+  return response.blob();
+}
+
 export const apiClient = {
   get: <T>(path: string, token?: string | null) => request<T>(path, { method: "GET", token }),
   post: <T>(path: string, body?: unknown, token?: string | null) =>
     request<T>(path, { method: "POST", body, token }),
   patch: <T>(path: string, body?: unknown, token?: string | null) =>
     request<T>(path, { method: "PATCH", body, token }),
+  /** For binary responses (e.g. the proposal's PDF) — every other endpoint returns JSON. */
+  downloadBlob,
 };

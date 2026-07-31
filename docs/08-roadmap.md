@@ -68,11 +68,9 @@ um produto comercial horizontal para:
   computado automaticamente ao gerar o Diagnóstico Criativo e persistido em
   `Proposal.wowScore`. Documento final da proposta via
   `GET /creative/proposals/:proposalId/document`, que combina a `Proposal`
-  e seus 18 `ProposalComponent`s ordenados num único JSON estruturado —
-  deliberadamente não gera um arquivo binário (PDF), já que ainda não
-  existe layout/UI de produto definido para renderizar contra; a
-  responsabilidade de virar isso num PDF/apresentação fica com o frontend
-  (ou com um Sprint futuro, quando o design existir).
+  e seus 18 `ProposalComponent`s ordenados num único JSON estruturado. O
+  artefato binário real (PDF) foi implementado no item 7 do sequenciamento
+  abaixo.
 - **Auth/RBAC (concluído):** autenticação real via JWT (`POST
   /auth/register`, `POST /auth/login`, ver `07-architecture-book.md`) e um
   modelo `User` (papel via `UserRole`). Todos os controllers de negócio
@@ -218,8 +216,29 @@ prioridade de negócio:
    adicionar/remover etapas nesta primeira versão), Investimento (itens
    incluídos, valor, moeda), e o par título/descrição (ou nome/texto,
    conforme o que já existir) para os demais componentes narrativos.
-7. **PDF/apresentação real** da proposta (hoje `GET
-   /creative/proposals/:proposalId/document` é só um JSON estruturado).
+7. **PDF/apresentação real (concluído):**
+   `GET /creative/proposals/:proposalId/document/pdf`
+   (`apps/api/src/modules/creative/proposal-pdf-builder.ts`, via `pdfkit`)
+   gera o arquivo binário de verdade, um componente por página, na mesma
+   ordem já usada pelo JSON (`ProposalComponent.order`, que já codifica as
+   regras de ouro de `02-brand-bible.md` — nunca abrir com preço, conceito
+   nomeado antes de tudo, moodboard incluso, investimento por último).
+   Recebe só os componentes (nunca a `Proposal` inteira) — o WOW Score é
+   interno e nunca deve chegar a um artefato client-facing
+   (`04-ai-bible.md`: "Nunca exposto ao cliente"). Cada render conceitual
+   já gerado é buscado por bytes reais (`StoragePort.download`, novo — só
+   existia `getSignedDownloadUrl`, que serve para um `<img src>` no
+   navegador mas não para embutir a imagem dentro de um PDF) e embutido na
+   página do componente; um render ausente/expirado/corrompido é
+   simplesmente pulado (nunca derruba o documento inteiro). A Paleta
+   renderiza os nomes das cores como texto — nunca inventa um valor hex
+   para pintar um swatch visual que não existe nos dados reais. Gerado
+   síncrono via HTTP (não RabbitMQ, apesar de `07-architecture-book.md`
+   cogitar mensageria para esse fluxo) — layout de texto + poucas imagens
+   já geradas não é lento o bastante para justificar essa complexidade
+   agora, mesmo padrão pragmático já usado pelo resto da API. Tela
+   `apps/web` em `/projects/:eventId/proposta` ganhou um botão "Baixar
+   PDF".
 8. **Canvas do Evento** completo (quadro interativo conectando espaço,
    flores, luz, música, gastronomia, mobiliário e experiência).
 9. **`apps/admin`** e **`apps/mobile`** — hoje são só scaffolds Next.js/Expo,

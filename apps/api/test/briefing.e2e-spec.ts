@@ -21,6 +21,7 @@ const FAKE_EMBEDDING = new Array(1536).fill(0).map((_, i) => (i % 7) / 7);
 const storageMock: jest.Mocked<StoragePort> = {
   upload: jest.fn().mockResolvedValue(undefined),
   getSignedDownloadUrl: jest.fn().mockResolvedValue("https://example.com/signed-url"),
+  download: jest.fn().mockResolvedValue(Buffer.from("fake-bytes")),
 };
 const visionMock: jest.Mocked<VisionAnalysisPort> = {
   analyze: jest.fn().mockResolvedValue({

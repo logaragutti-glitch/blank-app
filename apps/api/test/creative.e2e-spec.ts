@@ -33,6 +33,7 @@ const conceptualRenderMock: jest.Mocked<ConceptualRenderPort> = {
 const storageMock: jest.Mocked<StoragePort> = {
   upload: jest.fn().mockResolvedValue(undefined),
   getSignedDownloadUrl: jest.fn().mockImplementation(async (key: string) => `https://storage.example.com/${key}`),
+  download: jest.fn().mockResolvedValue(Buffer.from("fake-png-bytes")),
 };
 
 function buildNarrativeBlock(label: string) {
@@ -616,6 +617,75 @@ describe("Creative / Proposal Components (e2e)", () => {
       .patch(`/creative/proposals/${proposalId}/components/CONCEPT`)
       .set(...otherOrgAuth)
       .send({ content: { name: "Should not apply" } })
+      .expect(404);
+  });
+
+  it("returns 404 for the PDF endpoint when the proposal does not exist", async () => {
+    await request(app.getHttpServer())
+      .get("/creative/proposals/00000000-0000-0000-0000-000000009999/document/pdf")
+      .set(...auth)
+      .expect(404);
+  });
+
+  it("returns 400 for the PDF endpoint before any component has been generated", async () => {
+    const briefingResponse = await request(app.getHttpServer())
+      .post("/briefing")
+      .set(...auth)
+      .send({ partnerOneName: "Rita", partnerTwoName: "Sami", venueId })
+      .expect(201);
+    diagnosticoCriativoMock.generate.mockResolvedValueOnce({
+      diagnosis: {
+        perfilCasal: "Romântico contemporâneo",
+        atmosferaDesejada: "Elegância leve e acolhedora",
+        estiloPredominante: "Garden Fine Art",
+        paletaSugerida: ["rosé"],
+        mobiliarioSugerido: ["madeira clara"],
+        iluminacaoSugerida: "Luz quente e velas",
+        materiaisRecomendados: ["Peônia"],
+        compatibilidadeComEspaco: "A Villa Massari favorece cerimônia externa.",
+        justificativa: "O casal indicou preferência natural e romântica.",
+        promptVersion: "v1",
+      },
+      matchedEventStyleId: gardenFineArtStyleId,
+    });
+    const noComponentsProposalResponse = await request(app.getHttpServer())
+      .post(`/creative/${briefingResponse.body.event.id}/diagnostico-criativo`)
+      .set(...auth)
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/creative/proposals/${noComponentsProposalResponse.body.id}/document/pdf`)
+      .set(...auth)
+      .expect(400);
+    expect(response.body.message).toMatch(/no components yet/);
+  });
+
+  it("returns a real PDF file, embedding whatever renders already exist and grounded in the same components as the JSON document", async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/document/pdf`)
+      .set(...auth)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    expect(response.headers["content-type"]).toBe("application/pdf");
+    expect(response.headers["content-disposition"]).toContain(`proposta-${proposalId}.pdf`);
+    const pdfBuffer = response.body as Buffer;
+    expect(pdfBuffer.subarray(0, 4).toString("ascii")).toBe("%PDF");
+    // The Capa's render bytes get fetched and (attempted to be) embedded —
+    // storageMock.download is exercised even though the fake bytes aren't a
+    // real image and get skipped inside the PDF, never failing the request.
+    expect(storageMock.download).toHaveBeenCalled();
+  });
+
+  it("does not let another organization download this proposal's PDF", async () => {
+    await request(app.getHttpServer())
+      .get(`/creative/proposals/${proposalId}/document/pdf`)
+      .set(...otherOrgAuth)
       .expect(404);
   });
 });
