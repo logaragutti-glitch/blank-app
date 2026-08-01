@@ -315,9 +315,11 @@ dashboard. Password recovery is implemented too:
 `POST /auth/forgot-password` / `POST /auth/reset-password`, with the
 same "never reveal whether the email exists" principle as login, a
 single-use token (only its hash is ever persisted), and a new
-`EmailPort` — no real email provider is configured in this sandbox, so
-it logs the reset link instead of fabricating a delivery, the same
-honesty pattern as every other AI/storage port here. `apps/web` got
+`EmailPort` with a real provider option: `GmailEmailProvider` sends
+through Gmail/Google Workspace SMTP (`nodemailer`) when `GMAIL_USER`/
+`GMAIL_APP_PASSWORD` are set, falling back to logging the link
+(`ConsoleEmailProvider`) otherwise — no credentials configured in this
+sandbox, so it currently logs. `apps/web` got
 `/forgot-password` and `/reset-password` screens, verified end to end
 in a real browser against a real local Postgres. Team member invites
 are implemented too: `POST /auth/invite` (any authenticated member,
