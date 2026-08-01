@@ -188,6 +188,11 @@ To run the full stack containerized instead (including apps), use:
 docker compose --profile full up -d --build
 ```
 
+`apps/api`'s container applies pending Prisma migrations automatically on
+every boot, then seeds the Knowledge Graph sample data too (`SEED_ON_BOOT`
+is set for this local profile — never do that in a real deployment, see
+`docs/11-deployment-guide.md`).
+
 ## Common scripts
 
 | Command              | Description                                  |

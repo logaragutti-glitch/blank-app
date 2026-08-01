@@ -116,6 +116,10 @@ services:
       S3_BUCKET: ${S3_BUCKET:-eve-os-inspiration}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Local dev only — auto-seeds the Knowledge Graph sample data on every
+      # boot (idempotent). Never set this for a real deployment: see the
+      # Dockerfile's CMD for why.
+      SEED_ON_BOOT: "true"
     ports:
       - "${API_PORT:-4000}:4000"
     depends_on:
