@@ -30,7 +30,7 @@ infraestrutura ociosa:
 | Postgres + pgvector | Sim (todo o domínio + busca semântica de estilos) | **Sim** |
 | Armazenamento S3-compatível (MinIO local) | Sim (imagens de inspiração, renders conceituais) | **Sim** (via um provedor real) |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | Sim (Agentes 1/3/4, embeddings, renders) | **Sim** |
-| Provedor de e-mail transacional (Resend/SES/SendGrid) | Não — `EmailPort` hoje usa `ConsoleEmailProvider`, que só loga o link de redefinição de senha em vez de enviar (nenhum provedor está configurado/credenciado neste ambiente) | **Sim, para recuperação de senha funcionar de verdade em produção** — trocar `ConsoleEmailProvider` por um provider real atrás do mesmo `EmailPort` (`apps/api/src/infrastructure/email/`), sem mudar quem chama |
+| E-mail real (Gmail/Google Workspace via SMTP) | Sim, se `GMAIL_USER`/`GMAIL_APP_PASSWORD` estiverem configuradas — `EmailModule` escolhe `GmailEmailProvider` nesse caso, senão cai em `ConsoleEmailProvider` (só loga o link) | **Sim, para recuperação de senha e convite de equipe entregarem e-mail de verdade** — ver seção abaixo para gerar a App Password |
 | Redis | Não — nenhum módulo o injeta ainda | Não, por enquanto |
 | RabbitMQ | Não — cogitado em `07-architecture-book.md` para geração assíncrona de PDF/propostas, mas todo esse fluxo hoje é HTTP síncrono | Não, por enquanto |
 | OpenSearch | Não — a busca semântica real usa pgvector, não OpenSearch | Não, por enquanto |
@@ -113,15 +113,43 @@ AWS S3 direto, ou Cloudflare R2 (mais barato, sem custo de egress). Só
 trocar `S3_ENDPOINT`/`S3_ACCESS_KEY`/`S3_SECRET_KEY`/`S3_BUCKET` pelas
 credenciais reais — nenhuma mudança de código necessária.
 
+## E-mail real via Gmail/Google Workspace
+
+`EmailPort` (`apps/api/src/infrastructure/email/`) tem dois providers:
+`ConsoleEmailProvider` (loga o link, usado quando nada está configurado) e
+`GmailEmailProvider` (SMTP de verdade via `nodemailer`, mesma implementação
+para conta pessoal do Gmail ou Google Workspace — são os mesmos
+servidores). `EmailModule` escolhe entre os dois automaticamente conforme
+as env vars abaixo estiverem presentes ou não — nenhuma mudança de código
+necessária para ligar o envio real.
+
+1. Habilitar a Verificação em duas etapas na conta Google que vai enviar
+   os e-mails (Google Account → Security → 2-Step Verification) — é
+   pré-requisito para o próximo passo.
+2. Gerar uma **App Password**: Google Account → Security → App Passwords
+   (com 2-Step Verification ligado, essa opção aparece). Escolher
+   qualquer nome (ex.: "EVE OS") e copiar a senha de 16 caracteres gerada
+   — **não é a senha normal da conta**.
+3. Configurar `GMAIL_USER` (o endereço completo, ex.:
+   `contato@tiabiafestas.com`) e `GMAIL_APP_PASSWORD` (a senha gerada, sem
+   espaços) nas env vars do deploy de `apps/api`.
+4. Testar: chamar `POST /auth/forgot-password` com um e-mail real
+   cadastrado e conferir se o e-mail chega (inclusive na caixa de spam na
+   primeira vez).
+
+Isso não foi validado com uma conta Google real neste ambiente (sem
+acesso a credenciais de nuvem aqui) — a integração via `nodemailer` com
+`service: "gmail"` é o padrão documentado e amplamente usado para esse
+caso, e a lógica de negócio (`GmailEmailProvider`) tem testes unitários
+cobrindo o envio e a propagação de erro, mas a entrega de e-mail de
+verdade só pode ser confirmada com uma conta real.
+
 ## O que ainda falta para "produção completa" (fora do alcance deste guia)
 
 - Provisionar de fato as contas/credenciais acima — decisão e execução de
   quem tem acesso a elas, não deste ambiente de desenvolvimento.
 - Deploy automático de `apps/api` a cada merge em `main` (hoje só o
   preview de `apps/web` via Vercel é automático neste repositório).
-- Um provedor de e-mail transacional real (ver tabela acima) — sem ele,
-  a recuperação de senha e o convite de membros de equipe funcionam
-  (o link é gerado e logado), mas ninguém recebe o e-mail de verdade.
 - Tracing e alertas — `GET /metrics` (Prometheus) e health checks reais
   já existem, mas não há Prometheus/Grafana nem destino de alerta
   (Slack/PagerDuty/e-mail) provisionado em lugar nenhum.
