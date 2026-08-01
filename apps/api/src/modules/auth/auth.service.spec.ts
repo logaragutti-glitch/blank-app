@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import type { User } from "@eve-os/types";
 import type { EmailPort } from "../../infrastructure/email/email.port";
 import { AuthService } from "./auth.service";
+import type { InviteRepository } from "./repositories/invite.repository";
 import type { UserRepository } from "./repositories/user.repository";
 
 function buildUser(overrides: Partial<User> = {}): User {
@@ -29,8 +30,9 @@ function buildUser(overrides: Partial<User> = {}): User {
 
 describe("AuthService", () => {
   let users: jest.Mocked<UserRepository>;
+  let invites: jest.Mocked<InviteRepository>;
   let jwt: jest.Mocked<JwtService>;
-  let prisma: { organization: { findUnique: jest.Mock } };
+  let prisma: { organization: { findUnique: jest.Mock; findUniqueOrThrow: jest.Mock } };
   let email: jest.Mocked<EmailPort>;
   let service: AuthService;
 
@@ -43,10 +45,15 @@ describe("AuthService", () => {
       findByPasswordResetTokenHash: jest.fn(),
       completePasswordReset: jest.fn(),
     };
+    invites = {
+      create: jest.fn(),
+      findByTokenHash: jest.fn(),
+      markAccepted: jest.fn(),
+    };
     jwt = { sign: jest.fn().mockReturnValue("signed.jwt.token") } as unknown as jest.Mocked<JwtService>;
-    prisma = { organization: { findUnique: jest.fn() } };
-    email = { sendPasswordResetEmail: jest.fn() };
-    service = new AuthService(users, jwt, prisma as never, email);
+    prisma = { organization: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn() } };
+    email = { sendPasswordResetEmail: jest.fn(), sendInviteEmail: jest.fn() };
+    service = new AuthService(users, invites, jwt, prisma as never, email);
   });
 
   describe("register", () => {
@@ -211,6 +218,108 @@ describe("AuthService", () => {
       const lookedUpHash = users.findByPasswordResetTokenHash.mock.calls[0]![0];
       expect(lookedUpHash).not.toBe("raw-token-value");
       expect(lookedUpHash).toBe(createHash("sha256").update("raw-token-value").digest("hex"));
+    });
+  });
+
+  describe("inviteMember", () => {
+    it("throws ConflictException when a user already exists for the invited email", async () => {
+      const inviter = buildUser({ id: "inviter-1" });
+      users.findById.mockResolvedValue(inviter);
+      users.findWithPasswordHashByEmail.mockResolvedValue({ user: buildUser(), passwordHash: "hash" });
+
+      await expect(
+        service.inviteMember(inviter.id, { email: "already-here@evefestas.com" }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(invites.create).not.toHaveBeenCalled();
+      expect(email.sendInviteEmail).not.toHaveBeenCalled();
+    });
+
+    it("creates an invite scoped to the inviter's org/tenant and emails a link with the raw token", async () => {
+      const inviter = buildUser({ id: "inviter-1", tenantId: "tenant-1", organizationId: "org-1", name: "Bia" });
+      users.findById.mockResolvedValue(inviter);
+      users.findWithPasswordHashByEmail.mockResolvedValue(null);
+      prisma.organization.findUniqueOrThrow.mockResolvedValue({ id: "org-1", name: "Tia Bia Festas" });
+
+      const result = await service.inviteMember(inviter.id, { email: "new-member@evefestas.com" });
+
+      expect(result).toEqual({ message: "Invite sent" });
+      expect(invites.create).toHaveBeenCalledTimes(1);
+      const createInput = invites.create.mock.calls[0]![0];
+      expect(createInput).toMatchObject({
+        tenantId: "tenant-1",
+        organizationId: "org-1",
+        email: "new-member@evefestas.com",
+        invitedBy: "inviter-1",
+      });
+      expect(createInput.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+      expect(email.sendInviteEmail).toHaveBeenCalledTimes(1);
+      const emailCall = email.sendInviteEmail.mock.calls[0]![0];
+      expect(emailCall.to).toBe("new-member@evefestas.com");
+      expect(emailCall.organizationName).toBe("Tia Bia Festas");
+      expect(emailCall.invitedByName).toBe("Bia");
+      const rawToken = new URL(emailCall.inviteUrl).searchParams.get("token");
+      expect(rawToken).not.toBeNull();
+      expect(createHash("sha256").update(rawToken!).digest("hex")).toBe(createInput.tokenHash);
+    });
+  });
+
+  describe("acceptInvite", () => {
+    it("throws BadRequestException when the invite token is invalid or expired", async () => {
+      invites.findByTokenHash.mockResolvedValue(null);
+
+      await expect(service.acceptInvite({ token: "bogus", name: "New Person", password: "newsecret1" })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(users.create).not.toHaveBeenCalled();
+    });
+
+    it("creates a user scoped to the invite's org/tenant, marks the invite accepted, and returns a token", async () => {
+      const invite = {
+        id: "invite-1",
+        tenantId: "tenant-1",
+        organizationId: "org-1",
+        email: "invited@evefestas.com",
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+        invitedBy: "inviter-1",
+        acceptedAt: null,
+        createdAt: new Date(),
+      };
+      invites.findByTokenHash.mockResolvedValue(invite);
+      const createdUser = buildUser({ id: "new-user-1", email: invite.email, name: "New Person" });
+      users.create.mockResolvedValue(createdUser);
+
+      const result = await service.acceptInvite({ token: "a-valid-raw-token", name: "New Person", password: "newsecret1" });
+
+      expect(users.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: "tenant-1", organizationId: "org-1", email: invite.email, name: "New Person" }),
+      );
+      const createInput = users.create.mock.calls[0]![0];
+      expect(await bcrypt.compare("newsecret1", createInput.passwordHash)).toBe(true);
+      expect(invites.markAccepted).toHaveBeenCalledWith("invite-1");
+      expect(result).toEqual({ accessToken: "signed.jwt.token", user: createdUser });
+    });
+
+    it("throws ConflictException when the invited email was registered independently in the meantime", async () => {
+      const invite = {
+        id: "invite-1",
+        tenantId: "tenant-1",
+        organizationId: "org-1",
+        email: "invited@evefestas.com",
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+        invitedBy: "inviter-1",
+        acceptedAt: null,
+        createdAt: new Date(),
+      };
+      invites.findByTokenHash.mockResolvedValue(invite);
+      users.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Unique constraint failed", { code: "P2002", clientVersion: "test" }),
+      );
+
+      await expect(
+        service.acceptInvite({ token: "a-valid-raw-token", name: "New Person", password: "newsecret1" }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(invites.markAccepted).not.toHaveBeenCalled();
     });
   });
 });

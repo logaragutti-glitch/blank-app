@@ -19,6 +19,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { organizationId: string; email: string; password: string; name: string }) => Promise<void>;
+  acceptInvite: (input: { token: string; name: string; password: string }) => Promise<void>;
   logout: () => void;
 }
 
@@ -56,6 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist(result);
   }
 
+  async function acceptInvite(input: { token: string; name: string; password: string }) {
+    const result = await apiClient.post<AuthResponse>("/auth/accept-invite", input);
+    persist(result);
+  }
+
   function logout() {
     setAuth(null);
     localStorage.removeItem(STORAGE_KEY);
@@ -69,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         login,
         register,
+        acceptInvite,
         logout,
       }}
     >

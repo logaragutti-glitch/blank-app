@@ -38,6 +38,7 @@ model Organization {
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
   users     User[]
+  invites   Invite[]
   clients   Client[]
   venues    Venue[]
   suppliers Supplier[]
@@ -91,6 +92,32 @@ model User {
   @@index([organizationId])
   @@index([passwordResetTokenHash])
   @@map("users")
+}
+
+// Convite de um novo membro para uma Organization já existente — a única
+// forma hoje de entrar numa organização sem ser o autorregistro original
+// (RegisterDto, que exige já saber o organizationId). Sem RBAC real
+// (nenhum usuário tem hoje papel OWNER/ADMIN — ver roles.guard.ts, que
+// existe mas não é usado em lugar nenhum), então qualquer membro
+// autenticado pode convidar, não só um "admin" — o mesmo raciocínio já
+// usado para as rotas de escrita do Knowledge Graph (apps/admin).
+model Invite {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  email      String
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  invitedBy  String    @map("invited_by") @db.Uuid
+  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("invites")
 }
 
 // ---------------------------------------------------------------------------

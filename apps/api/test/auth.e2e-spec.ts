@@ -13,6 +13,7 @@ const ORGANIZATION_ID = "00000000-0000-0000-0000-000000000002";
 // reset link's raw token and exercise the real forgot/reset round trip.
 const emailMock: jest.Mocked<EmailPort> = {
   sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+  sendInviteEmail: jest.fn().mockResolvedValue(undefined),
 };
 
 describe("Auth (e2e)", () => {
@@ -163,6 +164,89 @@ describe("Auth (e2e)", () => {
     await request(app.getHttpServer())
       .post("/auth/reset-password")
       .send({ token: "not-a-real-token", newPassword: "whatever-pass1" })
+      .expect(400);
+  });
+
+  it("completes the invite/accept round trip: an existing member invites, the invitee logs in afterwards", async () => {
+    const inviterEmail = `inviter-${Date.now()}@evefestas.com`;
+    const inviterRegister = await request(app.getHttpServer())
+      .post("/auth/register")
+      .send({ organizationId: ORGANIZATION_ID, email: inviterEmail, password: "inviter-pass1", name: "Convidadora" })
+      .expect(201);
+    const inviterToken = inviterRegister.body.accessToken as string;
+
+    await request(app.getHttpServer()).post("/auth/invite").expect(401);
+
+    emailMock.sendInviteEmail.mockClear();
+    const inviteeEmail = `invitee-${Date.now()}@evefestas.com`;
+    const inviteResponse = await request(app.getHttpServer())
+      .post("/auth/invite")
+      .set("Authorization", `Bearer ${inviterToken}`)
+      .send({ email: inviteeEmail })
+      .expect(201);
+    expect(inviteResponse.body.message).toMatch(/invite sent/i);
+    expect(emailMock.sendInviteEmail).toHaveBeenCalledTimes(1);
+
+    const inviteCall = emailMock.sendInviteEmail.mock.calls[0]![0];
+    expect(inviteCall.to).toBe(inviteeEmail);
+    expect(inviteCall.invitedByName).toBe("Convidadora");
+    const token = new URL(inviteCall.inviteUrl).searchParams.get("token");
+    expect(token).not.toBeNull();
+
+    const acceptResponse = await request(app.getHttpServer())
+      .post("/auth/accept-invite")
+      .send({ token, name: "Convidada", password: "invitee-pass1" })
+      .expect(201);
+    expect(acceptResponse.body.user.email).toBe(inviteeEmail);
+    expect(acceptResponse.body.user.role).toBe("MEMBER");
+    expect(typeof acceptResponse.body.accessToken).toBe("string");
+
+    // The new member ends up in the same organization as the inviter.
+    await request(app.getHttpServer())
+      .get("/knowledge-graph/styles")
+      .set("Authorization", `Bearer ${acceptResponse.body.accessToken}`)
+      .expect(200);
+
+    // Logging in with the credentials set during acceptance works too.
+    await request(app.getHttpServer())
+      .post("/auth/login")
+      .send({ email: inviteeEmail, password: "invitee-pass1" })
+      .expect(201);
+
+    // The invite token is single-use.
+    await request(app.getHttpServer())
+      .post("/auth/accept-invite")
+      .send({ token, name: "Replay Attempt", password: "another-pass1" })
+      .expect(400);
+  });
+
+  it("rejects an invite for an email that's already a registered user", async () => {
+    const inviterEmail = `inviter2-${Date.now()}@evefestas.com`;
+    const inviterRegister = await request(app.getHttpServer())
+      .post("/auth/register")
+      .send({ organizationId: ORGANIZATION_ID, email: inviterEmail, password: "inviter-pass1", name: "Convidadora 2" })
+      .expect(201);
+    const inviterToken = inviterRegister.body.accessToken as string;
+
+    const existingEmail = `already-registered-${Date.now()}@evefestas.com`;
+    await request(app.getHttpServer())
+      .post("/auth/register")
+      .send({ organizationId: ORGANIZATION_ID, email: existingEmail, password: "existing-pass1", name: "Já Existe" })
+      .expect(201);
+
+    emailMock.sendInviteEmail.mockClear();
+    await request(app.getHttpServer())
+      .post("/auth/invite")
+      .set("Authorization", `Bearer ${inviterToken}`)
+      .send({ email: existingEmail })
+      .expect(409);
+    expect(emailMock.sendInviteEmail).not.toHaveBeenCalled();
+  });
+
+  it("rejects accept-invite with an unknown token", async () => {
+    await request(app.getHttpServer())
+      .post("/auth/accept-invite")
+      .send({ token: "not-a-real-token", name: "Nobody", password: "whatever-pass1" })
       .expect(400);
   });
 });

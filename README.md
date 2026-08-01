@@ -319,5 +319,23 @@ single-use token (only its hash is ever persisted), and a new
 it logs the reset link instead of fabricating a delivery, the same
 honesty pattern as every other AI/storage port here. `apps/web` got
 `/forgot-password` and `/reset-password` screens, verified end to end
-in a real browser against a real local Postgres. Still open: team
-member invites.
+in a real browser against a real local Postgres. Team member invites
+are implemented too: `POST /auth/invite` (any authenticated member,
+scoped to their own org — there's no OWNER/ADMIN role gate since no
+promotion path exists anywhere yet) and `POST /auth/accept-invite`
+(public), reusing `EmailPort`, with `/team` and `/accept-invite`
+screens in `apps/web`. This closes out every item in
+`docs/08-roadmap.md`'s independent list. Validating the invite flow
+end to end in a real browser also caught a real, pre-existing bug:
+`AuthModule` built `JwtModule` with `JwtModule.register({ secret:
+process.env.JWT_SECRET })`, which reads that env var at module-decorator
+evaluation time — before `ConfigModule.forRoot()` loads `.env` — while
+`JwtStrategy` (instantiated later by the DI container) read the
+already-loaded value. Tokens ended up signed with the
+`"change-me-in-production"` fallback but verified against the real
+`.env` value, silently rejecting every login whenever `JWT_SECRET` was
+customized. Fixed with `JwtModule.registerAsync({ useFactory: ... })`,
+deferring the read to the right time. The e2e suite never caught this
+because it always sets `JWT_SECRET` as a real process env var rather
+than via `.env`, which sidesteps the race — it only surfaced testing
+for real with `pnpm dev` in an actual browser.
