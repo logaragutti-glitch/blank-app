@@ -119,6 +119,9 @@ credenciais reais — nenhuma mudança de código necessária.
   quem tem acesso a elas, não deste ambiente de desenvolvimento.
 - Deploy automático de `apps/api` a cada merge em `main` (hoje só o
   preview de `apps/web` via Vercel é automático neste repositório).
-- Observabilidade além de logs (`nestjs-pino` já está configurado) —
-  métricas, tracing, alertas.
-- O `PrismaHealthIndicator` mencionado acima.
+- Um provedor de e-mail transacional real (ver tabela acima) — sem ele,
+  a recuperação de senha e o convite de membros de equipe funcionam
+  (o link é gerado e logado), mas ninguém recebe o e-mail de verdade.
+- Tracing e alertas — `GET /metrics` (Prometheus) e health checks reais
+  já existem, mas não há Prometheus/Grafana nem destino de alerta
+  (Slack/PagerDuty/e-mail) provisionado em lugar nenhum.
