@@ -4,6 +4,11 @@ WORKDIR /repo
 
 FROM base AS build
 COPY . .
+# Only needed to satisfy the root postinstall hook's `prisma generate`
+# (which requires DATABASE_URL to be resolvable, though it never connects
+# to it) — the real DATABASE_URL is supplied at runtime via docker-compose.
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV DATABASE_URL=$DATABASE_URL
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @eve-os/api... build
 
