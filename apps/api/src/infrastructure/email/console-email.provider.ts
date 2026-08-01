@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { EmailPort, type PasswordResetEmailParams } from "./email.port";
+import { EmailPort, type InviteEmailParams, type PasswordResetEmailParams } from "./email.port";
 
 /**
  * No real email provider (SES/Resend/SendGrid/etc.) is configured or
@@ -16,6 +16,19 @@ export class ConsoleEmailProvider implements EmailPort {
   async sendPasswordResetEmail({ to, resetUrl, expiresInMinutes }: PasswordResetEmailParams): Promise<void> {
     this.logger.log(
       `[email:not-sent, no provider configured] Password reset for ${to}: ${resetUrl} (expires in ${expiresInMinutes}min)`,
+    );
+  }
+
+  async sendInviteEmail({
+    to,
+    inviteUrl,
+    organizationName,
+    invitedByName,
+    expiresInDays,
+  }: InviteEmailParams): Promise<void> {
+    this.logger.log(
+      `[email:not-sent, no provider configured] Invite for ${to} to join ${organizationName} ` +
+        `(invited by ${invitedByName}): ${inviteUrl} (expires in ${expiresInDays}d)`,
     );
   }
 }

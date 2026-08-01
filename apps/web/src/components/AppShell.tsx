@@ -27,6 +27,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link href="/projects/new" style={{ color: colors.textPrimary, textDecoration: "none" }}>
             Novo Projeto
           </Link>
+          <Link href="/team" style={{ color: colors.textPrimary, textDecoration: "none" }}>
+            Equipe
+          </Link>
         </nav>
         <div style={{ display: "flex", alignItems: "center", gap: spacing.md }}>
           {user && <span style={{ color: colors.textMuted, fontSize: "0.9rem" }}>{user.name}</span>}

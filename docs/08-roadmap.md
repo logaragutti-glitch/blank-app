@@ -358,7 +358,32 @@ item acima, pode entrar em paralelo a qualquer momento):
   quem chama. Telas `apps/web` em `/forgot-password` e `/reset-password`
   (com link "Esqueci minha senha" na tela de login), validado no
   navegador de ponta a ponta com um Postgres local de verdade.
-- Convite de membros de equipe — ainda não iniciado.
+- **Convite de membros de equipe (concluído):** `POST /auth/invite`
+  (autenticado) e `POST /auth/accept-invite` (público). Sem RBAC real
+  aplicado (mesma limitação já documentada nas rotas de escrita do
+  Knowledge Graph — nenhum usuário tem hoje papel OWNER/ADMIN, e não há
+  fluxo de promoção), então qualquer membro autenticado pode convidar,
+  escopado à própria organização. Token aleatório (32 bytes), só o hash
+  persistido (`Invite.tokenHash`), expira em 7 dias, uso único. Reaproveita
+  o `EmailPort` já criado para recuperação de senha (novo método
+  `sendInviteEmail`). Tela `apps/web` em `/team` (link "Equipe" no menu)
+  para convidar, e `/accept-invite` (pública) para o convidado definir
+  nome/senha e entrar automaticamente. Ao validar o fluxo de ponta a
+  ponta num navegador real, foi encontrado e corrigido um bug real e
+  pré-existente: `AuthModule` construía o `JwtModule` com
+  `JwtModule.register({ secret: process.env.JWT_SECRET })`, que lê a env
+  var no momento em que os *decorators* do módulo são avaliados —
+  **antes** do `ConfigModule.forRoot()` carregar o `.env` — enquanto
+  `JwtStrategy` (instanciada depois, pelo container de DI) lia a mesma
+  env var já carregada corretamente. Resultado: tokens eram assinados
+  com o fallback `"change-me-in-production"` mas verificados contra o
+  valor real do `.env`, rejeitando todo login sempre que alguém
+  customizasse `JWT_SECRET` — silenciosamente, sem nenhum erro nos logs.
+  Corrigido trocando para `JwtModule.registerAsync({ useFactory: ... })`,
+  que adia a leitura para o momento certo. Não foi pego pelos testes e2e
+  porque eles sempre setam `JWT_SECRET` como variável de ambiente real do
+  processo (não via `.env`), o que mascara a corrida — só apareceu
+  testando de verdade com `pnpm dev` num navegador real.
 
 Este sequenciamento é uma sugestão de trabalho, não uma regra da
 Constituição — pode ser ajustado conforme prioridade de negócio.
