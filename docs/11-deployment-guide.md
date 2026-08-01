@@ -79,12 +79,15 @@ Railway/Render, os dois mais simples para uma API NestJS + Postgres:
    montar o link de redefinição de senha — apontar para a URL real de
    `apps/web`). `REDIS_URL`/`RABBITMQ_URL`/`OPENSEARCH_URL` podem ficar de
    fora — nada os lê hoje (ver tabela acima).
-3. Migrações: rodar `npx prisma migrate deploy` (não `migrate dev`) contra
-   o `DATABASE_URL` de produção antes do primeiro boot bem-sucedido — a
-   maioria dos provedores tem um "release command"/"pre-deploy command"
-   para isso. Rodar `npx prisma db seed` uma única vez depois, se quiser
-   os dados de exemplo do Knowledge Graph (`prisma/seed.ts`) como ponto de
-   partida real (o seed é idempotente).
+3. Migrações: `apps/api/Dockerfile` já roda `prisma migrate deploy`
+   automaticamente antes de subir o servidor (idempotente, seguro em todo
+   restart) — não precisa configurar um "release command"/"pre-deploy
+   command" separado no provedor só para isso. O seed (dados de exemplo do
+   Knowledge Graph) é **opt-in**, controlado pela env var `SEED_ON_BOOT`:
+   deixar de fora (ou `false`) em produção real — nunca semear dados
+   fictícios (Villa Massari etc.) num banco de cliente de verdade. Se
+   quiser mesmo assim um ponto de partida com dados de exemplo, rodar
+   `npx prisma db seed` manualmente uma única vez.
 4. Health check do provedor: `GET /health` (`apps/api/src/health`) já
    existe e é público (`@Public()`) e verifica conectividade real com o
    Postgres e com o bucket S3 configurado, não só heap de memória.

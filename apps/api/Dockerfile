@@ -16,7 +16,16 @@ FROM base AS runtime
 ENV NODE_ENV=production
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
 COPY --from=build /repo/apps/api/package.json ./apps/api/package.json
+COPY --from=build /repo/apps/api/prisma ./apps/api/prisma
+COPY --from=build /repo/apps/api/prisma.config.ts ./apps/api/prisma.config.ts
 COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/apps/api/node_modules ./apps/api/node_modules
 EXPOSE 4000
-CMD ["node", "apps/api/dist/main.js"]
+# Applies pending migrations before serving, always — a fresh Postgres
+# volume (or a first cloud deploy) would otherwise fail on missing tables.
+# Seeding the Knowledge Graph sample data is opt-in via SEED_ON_BOOT
+# (docker-compose.yml's local dev profile turns it on): auto-seeding by
+# default would silently write fake demo data (Villa Massari, etc.) into
+# a real production database on every restart, which is exactly the kind
+# of fabricated data this project's Knowledge Graph is built to avoid.
+CMD ["sh", "-c", "cd apps/api && npx prisma migrate deploy && ( [ \"$SEED_ON_BOOT\" = \"true\" ] && npx prisma db seed || true ) && cd /repo && node apps/api/dist/main.js"]
