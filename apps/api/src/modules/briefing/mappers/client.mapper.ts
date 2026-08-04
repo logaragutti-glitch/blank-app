@@ -1,5 +1,5 @@
 import type { Client as ClientPrismaModel } from "@prisma/client";
-import type { Client } from "@eve-os/types";
+import type { BriefingAdditionalDetails, Client } from "@eve-os/types";
 
 export function toClientDomain(model: ClientPrismaModel): Client {
   return {
@@ -16,6 +16,8 @@ export function toClientDomain(model: ClientPrismaModel): Client {
     partnerTwoName: model.partnerTwoName,
     partnerOneProfession: model.partnerOneProfession,
     partnerTwoProfession: model.partnerTwoProfession,
+    email: model.email,
+    phone: model.phone,
     city: model.city,
     religion: model.religion,
     hobbies: model.hobbies,
@@ -29,6 +31,6 @@ export function toClientDomain(model: ClientPrismaModel): Client {
     budgetCurrency: model.budgetCurrency,
     dietaryRestrictions: model.dietaryRestrictions,
     accessibilityNeeds: model.accessibilityNeeds,
-    additionalDetails: model.additionalDetails,
+    additionalDetails: model.additionalDetails as BriefingAdditionalDetails | null,
   };
 }

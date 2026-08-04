@@ -22,6 +22,8 @@ const CLIENT: Client = {
   partnerTwoName: "Daniel",
   partnerOneProfession: null,
   partnerTwoProfession: null,
+  email: null,
+  phone: null,
   city: null,
   religion: null,
   hobbies: [],

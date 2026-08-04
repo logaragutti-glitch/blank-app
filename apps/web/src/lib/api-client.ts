@@ -37,6 +37,29 @@ async function request<T>(path: string, { method, body, token }: RequestOptions)
   return (await response.json()) as T;
 }
 
+/** For multipart uploads (e.g. inspiration photos) — every other endpoint sends JSON. */
+async function uploadFile<T>(path: string, file: File, token?: string | null): Promise<T> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    // No Content-Type here on purpose — the browser sets multipart/form-data
+    // with the right boundary itself; setting it manually breaks the upload.
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const rawMessage = (payload as { message?: string | string[] } | null)?.message;
+    const message = Array.isArray(rawMessage) ? rawMessage.join(", ") : (rawMessage ?? response.statusText);
+    throw new ApiError(message, response.status);
+  }
+
+  return (await response.json()) as T;
+}
+
 async function downloadBlob(path: string, token?: string | null): Promise<Blob> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -58,4 +81,5 @@ export const apiClient = {
     request<T>(path, { method: "PATCH", body, token }),
   /** For binary responses (e.g. the proposal's PDF) — every other endpoint returns JSON. */
   downloadBlob,
+  uploadFile,
 };

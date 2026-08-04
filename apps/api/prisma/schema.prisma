@@ -141,6 +141,8 @@ model Client {
   partnerTwoName       String?  @map("partner_two_name")
   partnerOneProfession String?  @map("partner_one_profession")
   partnerTwoProfession String?  @map("partner_two_profession")
+  email                String?
+  phone                String?
   city                 String?
   religion             String?
   hobbies              String[]
@@ -161,9 +163,15 @@ model Client {
   dietaryRestrictions String[] @map("dietary_restrictions")
   accessibilityNeeds  String?  @map("accessibility_needs")
 
-  // 5-8. Dimensões ainda não detalhadas na documentação (visão do evento,
-  // referências visuais, convidados/capacidade, preferências musicais) —
-  // capturadas de forma flexível até serem normalizadas.
+  // 5-8. Dimensões do questionário real da Bia ("Decoração de Casamento")
+  // que não têm uma coluna própria ainda: como conheceu o trabalho, se
+  // cerimônia e festa são no mesmo local, paleta de cores desejada,
+  // inspirações (texto/link — as fotos em si vão para InspirationImage),
+  // o que definitivamente não querem, preferência floral (mista/só
+  // natural), quais espaços querem decorados, cerimonialista contratada,
+  // fornecedores já fechados, confirmação da faixa de investimento e
+  // observações finais — ver packages/types/src/client.ts
+  // (BriefingAdditionalDetails) para o formato exato.
   additionalDetails Json? @map("additional_details")
 
   organization Organization @relation(fields: [organizationId], references: [id])

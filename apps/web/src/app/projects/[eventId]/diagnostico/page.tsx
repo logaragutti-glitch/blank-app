@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button, Card, colors, spacing } from "@eve-os/ui";
 import { AppShell } from "../../../../components/AppShell";
 import { AiThought } from "../../../../components/AiThought";
+import { InspirationImageUploader } from "../../../../components/InspirationImageUploader";
 import { AuthGuard } from "../../../../lib/auth-guard";
 import { apiClient, ApiError } from "../../../../lib/api-client";
 import { useAuth } from "../../../../lib/auth-context";
@@ -70,10 +71,15 @@ function DiagnosticoContent({ eventId }: { eventId: string }) {
       )}
 
       {!generating && proposal === null && (
-        <Card>
-          <p>Ainda não interpretamos o briefing deste casal.</p>
-          <Button onClick={handleGenerate}>Gerar diagnóstico criativo</Button>
-        </Card>
+        <>
+          <div style={{ marginBottom: spacing.md }}>
+            <InspirationImageUploader eventId={eventId} />
+          </div>
+          <Card>
+            <p>Ainda não interpretamos o briefing deste casal.</p>
+            <Button onClick={handleGenerate}>Gerar diagnóstico criativo</Button>
+          </Card>
+        </>
       )}
 
       {error && <p style={{ color: colors.danger }}>{error}</p>}

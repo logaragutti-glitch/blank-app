@@ -1,4 +1,4 @@
-import type { Client } from "@eve-os/types";
+import type { BriefingAdditionalDetails, Client } from "@eve-os/types";
 
 export interface CreateClientInput {
   tenantId: string;
@@ -7,6 +7,8 @@ export interface CreateClientInput {
   partnerTwoName?: string | null;
   partnerOneProfession?: string | null;
   partnerTwoProfession?: string | null;
+  email?: string | null;
+  phone?: string | null;
   city?: string | null;
   religion?: string | null;
   hobbies?: string[];
@@ -20,7 +22,7 @@ export interface CreateClientInput {
   budgetCurrency?: string;
   dietaryRestrictions?: string[];
   accessibilityNeeds?: string | null;
-  additionalDetails?: unknown;
+  additionalDetails?: BriefingAdditionalDetails;
 }
 
 export abstract class ClientRepository {
