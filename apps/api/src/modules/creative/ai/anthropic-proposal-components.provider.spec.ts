@@ -92,4 +92,37 @@ describe("AnthropicProposalComponentsProvider", () => {
       /did not return structured proposal components/,
     );
   });
+
+  it("throws a clear error instead of returning truncated components when max_tokens is hit", async () => {
+    // Real Anthropic responses can exhaust max_tokens mid-JSON for a tool
+    // call this large (12 narrative blocks) — the SDK still returns a
+    // tool_use block, just with an incomplete/malformed `input`. This must
+    // fail loudly here, not crash downstream reading `.title` off undefined.
+    createMock.mockResolvedValue({
+      stop_reason: "max_tokens",
+      content: [{ type: "tool_use", name: "record_proposal_components", input: {} }],
+    });
+    const provider = new AnthropicProposalComponentsProvider();
+    await expect(provider.generate(buildInput())).rejects.toThrow(/truncated/);
+  });
+
+  it("throws a clear error when the tool_use input is missing required components", async () => {
+    const incomplete: Partial<ProposalComponentsResult> = buildToolResult();
+    delete incomplete.concept;
+    createMock.mockResolvedValue({
+      content: [{ type: "tool_use", name: "record_proposal_components", input: incomplete }],
+    });
+    const provider = new AnthropicProposalComponentsProvider();
+    await expect(provider.generate(buildInput())).rejects.toThrow(/missing or malformed: concept/);
+  });
+
+  it("throws a clear error when a component is malformed (missing title/description)", async () => {
+    const toolResult = buildToolResult();
+    const malformed = { ...toolResult, bar: { title: "Bar" } };
+    createMock.mockResolvedValue({
+      content: [{ type: "tool_use", name: "record_proposal_components", input: malformed }],
+    });
+    const provider = new AnthropicProposalComponentsProvider();
+    await expect(provider.generate(buildInput())).rejects.toThrow(/missing or malformed: bar/);
+  });
 });
