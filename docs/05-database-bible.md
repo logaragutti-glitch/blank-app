@@ -22,10 +22,19 @@ um retrato completo do casal/cliente, organizado em 8 dimensões:
    Motor de Interpretação.
 4. **Restrições** — orçamento, restrições do local, clima, logística,
    preferências alimentares, acessibilidade.
-5–8. *(dimensões adicionais a detalhar conforme o formulário evolui:
-   visão de evento desejada, referências visuais, convidados/capacidade,
-   preferências gastronômicas/musicais — ver formulário atual da Bia como
-   ponto de partida.)*
+5–8. **Decoração e logística** — capturadas a partir do formulário real da
+   Bia ("Decoração de Casamento"): contato (e-mail, telefone — colunas
+   próprias em `Client`, ver abaixo), como conheceu o trabalho, se
+   cerimônia e festa são no mesmo local, estilo de decoração desejado
+   (reaproveita `lifestyleTags`), paleta de cores, referências visuais
+   (texto/link — as fotos em si viram `InspirationImage` de verdade, com
+   análise de IA, não só um link salvo num campo), o que definitivamente
+   não querem, preferência floral (mista/só natural), quais espaços
+   querem decorados, cerimonialista contratada, fornecedores já
+   fechados, confirmação da faixa de investimento e observações finais.
+   Sem coluna própria para cada uma (evolui independente do domínio
+   central) — guardadas em `Client.additionalDetails` (JSON), formato
+   exato em `packages/types/src/client.ts` (`BriefingAdditionalDetails`).
 
 ## Capítulo — Cadastro de Espaços (Venues)
 

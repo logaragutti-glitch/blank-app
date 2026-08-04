@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import type { BriefingAdditionalDetails, InspirationImage } from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
@@ -40,6 +41,33 @@ export class BriefingController {
 
   @Post()
   async createBriefing(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateBriefingDto) {
+    // Fields with no column of their own yet (see the additionalDetails
+    // comment on Client in schema.prisma) — collected into one JSON blob
+    // instead of a migration per question, since this questionnaire evolves
+    // independently of the core domain model. Every key is left out (not
+    // set to null/undefined) when the couple didn't answer it, so an old
+    // briefing predating a given question looks the same as one that
+    // genuinely skipped it.
+    const additionalDetails: BriefingAdditionalDetails = {
+      ...(dto.leadSource && { leadSource: dto.leadSource }),
+      ...(dto.ceremonyAndReceptionSameVenue !== undefined && {
+        ceremonyAndReceptionSameVenue: dto.ceremonyAndReceptionSameVenue,
+      }),
+      ...(dto.venueNoteIfNotListed && { venueNoteIfNotListed: dto.venueNoteIfNotListed }),
+      ...(dto.colorPaletteNotes && { colorPaletteNotes: dto.colorPaletteNotes }),
+      ...(dto.inspirationNotes && { inspirationNotes: dto.inspirationNotes }),
+      ...(dto.thingsToAvoid && { thingsToAvoid: dto.thingsToAvoid }),
+      ...(dto.floralPreference && { floralPreference: dto.floralPreference }),
+      ...(dto.desiredDecorAreas && { desiredDecorAreas: dto.desiredDecorAreas }),
+      ...(dto.hasWeddingPlanner !== undefined && { hasWeddingPlanner: dto.hasWeddingPlanner }),
+      ...(dto.weddingPlannerName && { weddingPlannerName: dto.weddingPlannerName }),
+      ...(dto.bookedSuppliersNotes && { bookedSuppliersNotes: dto.bookedSuppliersNotes }),
+      ...(dto.investmentRangeConfirmed !== undefined && {
+        investmentRangeConfirmed: dto.investmentRangeConfirmed,
+      }),
+      ...(dto.additionalNotes && { additionalNotes: dto.additionalNotes }),
+    };
+
     const client = await this.clients.create({
       tenantId: user.tenantId,
       organizationId: user.organizationId,
@@ -47,6 +75,8 @@ export class BriefingController {
       partnerTwoName: dto.partnerTwoName,
       partnerOneProfession: dto.partnerOneProfession,
       partnerTwoProfession: dto.partnerTwoProfession,
+      email: dto.email,
+      phone: dto.phone,
       city: dto.city,
       religion: dto.religion,
       hobbies: dto.hobbies,
@@ -60,6 +90,7 @@ export class BriefingController {
       budgetCurrency: dto.budgetCurrency,
       dietaryRestrictions: dto.dietaryRestrictions,
       accessibilityNeeds: dto.accessibilityNeeds,
+      ...(Object.keys(additionalDetails).length > 0 && { additionalDetails }),
     });
 
     const event = await this.events.create({
@@ -132,11 +163,30 @@ export class BriefingController {
       });
     }
 
-    return image;
+    return this.attachImageUrl(image);
   }
 
   @Get(":eventId/inspiration-images")
   async listInspirationImages(@CurrentUser() user: AuthenticatedUser, @Param("eventId") eventId: string) {
-    return this.images.findByEvent(user.organizationId, eventId);
+    const images = await this.images.findByEvent(user.organizationId, eventId);
+    return Promise.all(images.map((image) => this.attachImageUrl(image)));
+  }
+
+  // Every photo across every project in the org, newest first — powers the
+  // "Inspiração" gallery in the web app (a single cross-project view, unlike
+  // the per-event list above which the Diagnóstico screen uses).
+  @Get("inspiration-images")
+  async listAllInspirationImages(@CurrentUser() user: AuthenticatedUser) {
+    const images = await this.images.findByOrganization(user.organizationId);
+    return Promise.all(images.map((image) => this.attachImageUrl(image)));
+  }
+
+  // Computes a fresh signed download URL for the uploaded photo, so the web
+  // UI can render a thumbnail — never persisted, since a signed URL
+  // eventually expires but the S3 key does not (same pattern as
+  // CreativeController.attachRenderUrls).
+  private async attachImageUrl(image: InspirationImage): Promise<InspirationImage> {
+    const imageUrl = await this.storage.getSignedDownloadUrl(image.storageKey);
+    return { ...image, imageUrl };
   }
 }

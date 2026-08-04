@@ -21,6 +21,8 @@ export abstract class InspirationImageRepository {
   abstract create(input: CreateInspirationImageInput): Promise<InspirationImage>;
   abstract findById(organizationId: string, id: string): Promise<InspirationImage | null>;
   abstract findByEvent(organizationId: string, eventId: string): Promise<InspirationImage[]>;
+  /** Every photo across every event in the org — powers the "Inspiração" gallery, newest first. */
+  abstract findByOrganization(organizationId: string): Promise<InspirationImage[]>;
   abstract updateAnalysis(
     id: string,
     input: UpdateInspirationImageAnalysisInput,
