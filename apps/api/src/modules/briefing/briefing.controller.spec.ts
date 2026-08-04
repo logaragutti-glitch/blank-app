@@ -49,7 +49,13 @@ describe("BriefingController", () => {
         { provide: EventRepository, useValue: { create: jest.fn(), findById: jest.fn() } },
         {
           provide: InspirationImageRepository,
-          useValue: { create: jest.fn(), findByEvent: jest.fn(), updateAnalysis: jest.fn(), setEmbedding: jest.fn() },
+          useValue: {
+            create: jest.fn(),
+            findByEvent: jest.fn(),
+            findByOrganization: jest.fn(),
+            updateAnalysis: jest.fn(),
+            setEmbedding: jest.fn(),
+          },
         },
         { provide: StoragePort, useValue: { upload: jest.fn(), getSignedDownloadUrl: jest.fn() } },
         { provide: VisionAnalysisPort, useValue: { analyze: jest.fn() } },
@@ -192,6 +198,19 @@ describe("BriefingController", () => {
 
       const result = await controller.listInspirationImages(user, eventId);
 
+      expect(result).toHaveLength(2);
+      expect(result.every((image) => image.imageUrl === "https://minio.local/signed-url")).toBe(true);
+    });
+  });
+
+  describe("listAllInspirationImages", () => {
+    it("returns every image in the org (across events) with a signed URL attached", async () => {
+      images.findByOrganization.mockResolvedValue([fakeImage, { ...fakeImage, id: "image-2", eventId: "event-2" }]);
+      storage.getSignedDownloadUrl.mockResolvedValue("https://minio.local/signed-url");
+
+      const result = await controller.listAllInspirationImages(user);
+
+      expect(images.findByOrganization).toHaveBeenCalledWith(user.organizationId);
       expect(result).toHaveLength(2);
       expect(result.every((image) => image.imageUrl === "https://minio.local/signed-url")).toBe(true);
     });

@@ -33,6 +33,14 @@ export class PrismaInspirationImageRepository implements InspirationImageReposit
     return images.map(toInspirationImageDomain);
   }
 
+  async findByOrganization(organizationId: string): Promise<InspirationImage[]> {
+    const images = await this.prisma.inspirationImage.findMany({
+      where: { organizationId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+    return images.map(toInspirationImageDomain);
+  }
+
   async updateAnalysis(
     id: string,
     input: UpdateInspirationImageAnalysisInput,

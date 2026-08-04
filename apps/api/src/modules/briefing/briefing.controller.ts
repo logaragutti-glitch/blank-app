@@ -172,6 +172,15 @@ export class BriefingController {
     return Promise.all(images.map((image) => this.attachImageUrl(image)));
   }
 
+  // Every photo across every project in the org, newest first — powers the
+  // "Inspiração" gallery in the web app (a single cross-project view, unlike
+  // the per-event list above which the Diagnóstico screen uses).
+  @Get("inspiration-images")
+  async listAllInspirationImages(@CurrentUser() user: AuthenticatedUser) {
+    const images = await this.images.findByOrganization(user.organizationId);
+    return Promise.all(images.map((image) => this.attachImageUrl(image)));
+  }
+
   // Computes a fresh signed download URL for the uploaded photo, so the web
   // UI can render a thumbnail — never persisted, since a signed URL
   // eventually expires but the S3 key does not (same pattern as

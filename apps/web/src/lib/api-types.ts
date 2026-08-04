@@ -9,6 +9,8 @@ import type {
   Proposal,
   ProposalComponent,
   ProposalStatus,
+  Supplier,
+  SupplierCategory,
   User,
   Venue,
 } from "@eve-os/types";
@@ -81,6 +83,8 @@ export type {
   Proposal,
   ProposalComponent,
   ProposalStatus,
+  Supplier,
+  SupplierCategory,
   User,
   Venue,
 };
