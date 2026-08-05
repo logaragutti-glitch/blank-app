@@ -18,6 +18,8 @@ export interface UserWithPasswordHash {
 export abstract class UserRepository {
   abstract create(input: CreateUserInput): Promise<User>;
   abstract findById(id: string): Promise<User | null>;
+  /** All active-or-not members of an organization (e.g. for an assignee picker) — ordered by name. */
+  abstract findByOrganization(organizationId: string): Promise<User[]>;
   abstract findWithPasswordHashByEmail(email: string): Promise<UserWithPasswordHash | null>;
   abstract setPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
   /** Only matches an unexpired token — an expired or unknown hash returns null, same as "not found". */

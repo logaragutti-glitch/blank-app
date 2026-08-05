@@ -266,4 +266,7 @@ de um evento, ver mapeamento acima) · Project/Proposal (Diagnóstico
 Criativo + componentes selecionados + WOW Score) · ProposalComponent (um
 dos componentes reutilizáveis do Capítulo 7) · ProductionPlan (lista de
 materiais + cronograma de montagem + checklist gerados pelo Agente 4, um
-por Proposal) · PostEventFeedback.
+por Proposal) · PostEventFeedback · ProjectTask (checklist manual do
+projeto — título, responsável, prazo, status; independente do checklist
+gerado pelo Agente 4 em ProductionPlan, que é regenerado por inteiro a
+cada Proposal em vez de editado item a item).

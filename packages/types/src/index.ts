@@ -14,3 +14,4 @@ export * from "./post-event-feedback";
 export * from "./production-plan";
 export * from "./budget-analysis";
 export * from "./supplier";
+export * from "./project-task";

@@ -31,6 +31,14 @@ export class PrismaUserRepository implements UserRepository {
     return user ? toUserDomain(user) : null;
   }
 
+  async findByOrganization(organizationId: string): Promise<User[]> {
+    const users = await this.prisma.user.findMany({
+      where: { organizationId, deletedAt: null },
+      orderBy: { name: "asc" },
+    });
+    return users.map(toUserDomain);
+  }
+
   async findWithPasswordHashByEmail(email: string): Promise<UserWithPasswordHash | null> {
     const user = await this.prisma.user.findFirst({ where: { email, deletedAt: null } });
     if (!user) return null;
