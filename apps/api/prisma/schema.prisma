@@ -474,6 +474,7 @@ model Event {
   inspirationImages InspirationImage[]
   tasks             ProjectTask[]
   teamMembers       ProjectTeamMember[]
+  files             ProjectFile[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -503,6 +504,37 @@ model ProjectTeamMember {
 
   @@id([eventId, userId])
   @@map("project_team_members")
+}
+
+// ---------------------------------------------------------------------------
+// ProjectFile — Arquivos do Projeto (Bucket C): a generic file attached to
+// an Event (contract, floor plan, supplier quote, etc.), reusing the same
+// StoragePort/bucket already used by InspirationImage — no vision
+// analysis or embedding here, since these aren't decoration photos.
+// ---------------------------------------------------------------------------
+
+model ProjectFile {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  eventId        String    @map("event_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  storageKey       String @map("storage_key")
+  originalFilename String @map("original_filename")
+  mimeType         String @map("mime_type")
+  sizeBytes        Int    @map("size_bytes")
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@index([tenantId])
+  @@index([eventId])
+  @@map("project_files")
 }
 
 // ---------------------------------------------------------------------------
