@@ -157,6 +157,9 @@ function ModoProducao({ eventId, project }: { eventId: string; project: NonNulla
         <Link href={`/projects/${eventId}/tarefas`} style={{ color: colors.textMuted }}>
           Ver Tarefas do Projeto
         </Link>
+        <Link href={`/projects/${eventId}/equipe`} style={{ color: colors.textMuted }}>
+          Ver Equipe do Projeto
+        </Link>
       </div>
     </>
   );
@@ -260,6 +263,16 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
           </p>
           <Link href={`/projects/${eventId}/tarefas`}>
             <Button variant="ghost">Abrir Tarefas</Button>
+          </Link>
+        </Card>
+
+        <Card>
+          <h3 style={{ marginTop: 0 }}>Equipe do Projeto</h3>
+          <p style={{ color: colors.textMuted }}>
+            Quem da sua equipe está envolvido neste projeto, e em que papel.
+          </p>
+          <Link href={`/projects/${eventId}/equipe`}>
+            <Button variant="ghost">Abrir Equipe</Button>
           </Link>
         </Card>
       </div>

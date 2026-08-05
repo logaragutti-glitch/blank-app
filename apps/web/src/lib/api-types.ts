@@ -82,6 +82,16 @@ export interface EventCanvas {
   nodes: EventCanvasNode[];
 }
 
+/** GET /events/:eventId/team — a membership record composed with the assignee's name/e-mail (see apps/api/src/modules/team). */
+export interface TeamMember {
+  eventId: string;
+  userId: string;
+  role: string;
+  addedAt: string;
+  name: string;
+  email: string | null;
+}
+
 /** GET /production/financial-summary — a read model, not a single domain entity (see apps/api/src/modules/production). */
 export interface FinancialSummary {
   totalEvents: number;

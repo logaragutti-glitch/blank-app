@@ -14,6 +14,7 @@ import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.
 import { ProductionModule } from "./modules/production/production.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
 import { TasksModule } from "./modules/tasks/tasks.module";
+import { TeamModule } from "./modules/team/team.module";
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { TasksModule } from "./modules/tasks/tasks.module";
     ProjectsModule,
     ProductionModule,
     TasksModule,
+    TeamModule,
   ],
 })
 export class AppModule {}

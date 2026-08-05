@@ -272,4 +272,7 @@ gerado pelo Agente 4 em ProductionPlan, que é regenerado por inteiro a
 cada Proposal em vez de editado item a item) · ClientInteraction (timeline
 de contato real com o casal — ligação, reunião, e-mail, marco; separado
 do additionalDetails do Client, que é uma foto do questionário, não um
-log ao longo do tempo).
+log ao longo do tempo) · ProjectTeamMember (associação leve entre um User
+da equipe da Bia e um Event, com papel em texto livre — ex.: "Decoradora",
+"Fotógrafa" — mesmo estilo de VenuePreferredSupplier, sem trilha de
+auditoria própria).
