@@ -11,6 +11,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { Material, Supplier, SupplierCategory } from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
+import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
@@ -28,6 +29,7 @@ export class ProductionController {
   constructor(
     private readonly proposals: ProposalRepository,
     private readonly events: EventRepository,
+    private readonly clients: ClientRepository,
     private readonly venues: VenueRepository,
     private readonly materials: MaterialRepository,
     private readonly suppliers: SupplierRepository,
@@ -36,6 +38,59 @@ export class ProductionController {
     private readonly budgetAnalysisAi: BudgetAnalysisPort,
     private readonly budgetAnalyses: BudgetAnalysisRepository,
   ) {}
+
+  // Real financial rollup across every event/proposal in the org — no
+  // invented revenue figure. Proposal.investmentAmount exists in the domain
+  // model but nothing in this app ever sets it yet (no endpoint writes to
+  // it), so a "receita confirmada" KPI built on it would always read zero
+  // and mislead. Instead this aggregates what actually gets populated: the
+  // budget the couple stated during the briefing (Event.budgetAmount) and
+  // the estimated cost Agente 4 computes on demand
+  // (BudgetAnalysis.totalEstimatedCost) — the latter only exists for
+  // proposals where someone actually generated it, which shows up honestly
+  // as null/excluded here rather than assumed to be zero.
+  @Get("financial-summary")
+  async getFinancialSummary(@CurrentUser() user: AuthenticatedUser) {
+    const { organizationId } = user;
+    const events = await this.events.findAll(organizationId);
+
+    const projects = await Promise.all(
+      events.map(async (event) => {
+        const [client, eventProposals] = await Promise.all([
+          this.clients.findById(organizationId, event.clientId),
+          this.proposals.findByEvent(organizationId, event.id),
+        ]);
+        const latestProposal = eventProposals[0] ?? null;
+        const budgetAnalysis = latestProposal
+          ? await this.budgetAnalyses.findByProposal(latestProposal.id)
+          : null;
+
+        return {
+          eventId: event.id,
+          clientNames: client
+            ? [client.partnerOneName, client.partnerTwoName].filter(Boolean).join(" & ")
+            : "Cliente não encontrado",
+          budgetAmount: event.budgetAmount,
+          totalEstimatedCost: budgetAnalysis?.totalEstimatedCost ?? null,
+          fitsBudget: budgetAnalysis?.fitsBudget ?? null,
+        };
+      }),
+    );
+
+    const withBudget = projects.filter((p) => p.budgetAmount !== null);
+    const withAnalysis = projects.filter((p) => p.totalEstimatedCost !== null);
+
+    return {
+      totalEvents: events.length,
+      eventsWithBudget: withBudget.length,
+      totalBudgetAmount: withBudget.reduce((sum, p) => sum + (p.budgetAmount ?? 0), 0),
+      eventsWithBudgetAnalysis: withAnalysis.length,
+      totalEstimatedCost: withAnalysis.reduce((sum, p) => sum + (p.totalEstimatedCost ?? 0), 0),
+      fitsBudgetCount: projects.filter((p) => p.fitsBudget === true).length,
+      overBudgetCount: projects.filter((p) => p.fitsBudget === false).length,
+      projects,
+    };
+  }
 
   // Agente 4 / Diretor de Producao (04-ai-bible.md): turns an already-
   // diagnosed Proposal into the materials list, day-of assembly schedule,

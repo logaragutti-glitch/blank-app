@@ -1,7 +1,8 @@
 import { BadRequestException, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import type { BudgetAnalysis, Event, Material, ProductionPlan, Proposal, Supplier, Venue } from "@eve-os/types";
+import type { BudgetAnalysis, Client, Event, Material, ProductionPlan, Proposal, Supplier, Venue } from "@eve-os/types";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
+import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
@@ -121,6 +122,7 @@ describe("ProductionController", () => {
   let controller: ProductionController;
   let proposals: jest.Mocked<ProposalRepository>;
   let events: jest.Mocked<EventRepository>;
+  let clients: jest.Mocked<ClientRepository>;
   let venues: jest.Mocked<VenueRepository>;
   let materials: jest.Mocked<MaterialRepository>;
   let suppliers: jest.Mocked<SupplierRepository>;
@@ -133,8 +135,9 @@ describe("ProductionController", () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [ProductionController],
       providers: [
-        { provide: ProposalRepository, useValue: { findById: jest.fn() } },
-        { provide: EventRepository, useValue: { findById: jest.fn() } },
+        { provide: ProposalRepository, useValue: { findById: jest.fn(), findByEvent: jest.fn() } },
+        { provide: EventRepository, useValue: { findById: jest.fn(), findAll: jest.fn() } },
+        { provide: ClientRepository, useValue: { findById: jest.fn() } },
         { provide: VenueRepository, useValue: { findById: jest.fn() } },
         { provide: MaterialRepository, useValue: { findAll: jest.fn() } },
         { provide: SupplierRepository, useValue: { findAll: jest.fn() } },
@@ -148,6 +151,7 @@ describe("ProductionController", () => {
     controller = moduleRef.get(ProductionController);
     proposals = moduleRef.get(ProposalRepository);
     events = moduleRef.get(EventRepository);
+    clients = moduleRef.get(ClientRepository);
     venues = moduleRef.get(VenueRepository);
     materials = moduleRef.get(MaterialRepository);
     suppliers = moduleRef.get(SupplierRepository);
@@ -324,6 +328,50 @@ describe("ProductionController", () => {
       budgetAnalyses.findByProposal.mockResolvedValue(fakeAnalysis);
       const result = await controller.getBudgetAnalysis(user, proposalId);
       expect(result).toEqual(fakeAnalysis);
+    });
+  });
+
+  describe("getFinancialSummary", () => {
+    const eventWithBudget = { id: "event-1", clientId: "client-1", budgetAmount: 10000 } as Event;
+    const eventWithoutBudget = { id: "event-2", clientId: "client-2", budgetAmount: null } as Event;
+
+    it("aggregates budgetAmount and totalEstimatedCost across every event, skipping proposals/analyses that don't exist yet", async () => {
+      events.findAll.mockResolvedValue([eventWithBudget, eventWithoutBudget]);
+      clients.findById.mockImplementation(
+        async (_org, id) => ({ partnerOneName: id, partnerTwoName: null }) as Client,
+      );
+      proposals.findByEvent.mockImplementation(async (_org, eventId) =>
+        eventId === "event-1" ? [{ id: "proposal-1" } as Proposal] : [],
+      );
+      budgetAnalyses.findByProposal.mockResolvedValue({ totalEstimatedCost: 6000, fitsBudget: true } as BudgetAnalysis);
+
+      const result = await controller.getFinancialSummary(user);
+
+      expect(result.totalEvents).toBe(2);
+      expect(result.eventsWithBudget).toBe(1);
+      expect(result.totalBudgetAmount).toBe(10000);
+      expect(result.eventsWithBudgetAnalysis).toBe(1);
+      expect(result.totalEstimatedCost).toBe(6000);
+      expect(result.fitsBudgetCount).toBe(1);
+      expect(result.overBudgetCount).toBe(0);
+      expect(result.projects).toHaveLength(2);
+      expect(result.projects[1]).toMatchObject({
+        eventId: "event-2",
+        budgetAmount: null,
+        totalEstimatedCost: null,
+        fitsBudget: null,
+      });
+    });
+
+    it("returns all zeros instead of throwing when the org has no events yet", async () => {
+      events.findAll.mockResolvedValue([]);
+      const result = await controller.getFinancialSummary(user);
+      expect(result).toMatchObject({
+        totalEvents: 0,
+        totalBudgetAmount: 0,
+        totalEstimatedCost: 0,
+        projects: [],
+      });
     });
   });
 });

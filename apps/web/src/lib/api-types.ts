@@ -77,6 +77,24 @@ export interface EventCanvas {
   nodes: EventCanvasNode[];
 }
 
+/** GET /production/financial-summary — a read model, not a single domain entity (see apps/api/src/modules/production). */
+export interface FinancialSummary {
+  totalEvents: number;
+  eventsWithBudget: number;
+  totalBudgetAmount: number;
+  eventsWithBudgetAnalysis: number;
+  totalEstimatedCost: number;
+  fitsBudgetCount: number;
+  overBudgetCount: number;
+  projects: {
+    eventId: string;
+    clientNames: string;
+    budgetAmount: number | null;
+    totalEstimatedCost: number | null;
+    fitsBudget: boolean | null;
+  }[];
+}
+
 export type {
   BudgetAnalysis,
   Client,
