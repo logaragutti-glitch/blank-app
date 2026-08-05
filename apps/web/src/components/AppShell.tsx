@@ -19,7 +19,7 @@ const NAV_ITEMS: { label: string; href?: string; icon: string }[] = [
   { label: "Fornecedores", href: "/fornecedores", icon: "🚚" },
   { label: "Financeiro", icon: "💰" },
   { label: "Relatórios", icon: "📊" },
-  { label: "Biblioteca", icon: "📚" },
+  { label: "Biblioteca", href: "/biblioteca", icon: "📚" },
   { label: "Configurações", href: "/team", icon: "⚙️" },
 ];
 
