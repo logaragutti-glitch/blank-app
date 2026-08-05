@@ -9,10 +9,46 @@ import { AuthGuard } from "../../lib/auth-guard";
 import { apiClient, ApiError } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import type { ProjectSummary } from "../../lib/api-types";
+import { PROPOSAL_STATUS_COLOR, PROPOSAL_STATUS_LABEL } from "../../lib/labels";
+
+const PAGE_SIZE = 6;
 
 function matches(project: ProjectSummary, query: string): boolean {
   const haystack = `${project.clientNames} ${project.venueName ?? ""}`.toLowerCase();
   return haystack.includes(query.toLowerCase());
+}
+
+function StatusPill({ project }: { project: ProjectSummary }) {
+  if (!project.latestProposal) {
+    return (
+      <span
+        style={{
+          fontSize: "0.75rem",
+          color: colors.textMuted,
+          border: `1px solid ${colors.border}`,
+          borderRadius: radii.full,
+          padding: "2px 10px",
+        }}
+      >
+        Sem proposta ainda
+      </span>
+    );
+  }
+  const tone = PROPOSAL_STATUS_COLOR[project.latestProposal.status];
+  const toneColor = tone === "primary" ? colors.primary : tone === "danger" ? colors.danger : colors.textMuted;
+  return (
+    <span
+      style={{
+        fontSize: "0.75rem",
+        color: toneColor,
+        border: `1px solid ${toneColor}`,
+        borderRadius: radii.full,
+        padding: "2px 10px",
+      }}
+    >
+      {PROPOSAL_STATUS_LABEL[project.latestProposal.status]}
+    </span>
+  );
 }
 
 // Real stages derived straight from ProposalStatus (+ "sem proposta ainda")
@@ -148,6 +184,7 @@ function ProjectsContent() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [view, setView] = useState<"list" | "kanban">("list");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -157,10 +194,17 @@ function ProjectsContent() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Não conseguimos carregar seus projetos."));
   }, [accessToken]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
   if (error) return <p style={{ color: colors.danger }}>Encontrei um ponto que merece atenção: {error}</p>;
   if (!projects) return <p style={{ color: colors.textMuted }}>Reunindo seus projetos...</p>;
 
   const filtered = query.trim() ? projects.filter((p) => matches(p, query.trim())) : projects;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <>
@@ -193,23 +237,66 @@ function ProjectsContent() {
       ) : view === "kanban" ? (
         <KanbanBoard projects={filtered} />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
-          {filtered.map((project) => (
-            <Link key={project.eventId} href={`/projects/${project.eventId}`} style={{ textDecoration: "none" }}>
-              <Card>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <strong style={{ color: colors.textPrimary }}>{project.clientNames}</strong>
-                  <span style={{ color: colors.textMuted, fontSize: "0.85rem" }}>
-                    {project.latestProposal?.conceptName ?? "Sem conceito ainda"}
-                  </span>
-                </div>
-                <p style={{ color: colors.textMuted, margin: `${spacing.xs} 0 0` }}>
-                  {project.venueName ?? "Espaço não definido"}
-                </p>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
+            {paginated.map((project) => (
+              <Link key={project.eventId} href={`/projects/${project.eventId}`} style={{ textDecoration: "none" }}>
+                <Card>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
+                      <Avatar name={project.clientNames} />
+                      <div>
+                        <strong style={{ color: colors.textPrimary }}>{project.clientNames}</strong>
+                        <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.85rem" }}>
+                          {project.venueName ?? "Espaço não definido"}
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
+                      {project.latestProposal?.wowScore != null && (
+                        <span style={{ color: colors.textMuted, fontSize: "0.8rem" }}>
+                          ✨ {project.latestProposal.wowScore}
+                        </span>
+                      )}
+                      <StatusPill project={project} />
+                    </div>
+                  </div>
+                  {project.latestProposal?.conceptName && (
+                    <p style={{ color: colors.textMuted, margin: `${spacing.sm} 0 0`, fontStyle: "italic" }}>
+                      {project.latestProposal.conceptName}
+                    </p>
+                  )}
+                </Card>
+              </Link>
+            ))}
+          </div>
+
+          {pageCount > 1 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginTop: spacing.lg,
+                color: colors.textMuted,
+                fontSize: "0.85rem",
+              }}
+            >
+              <span>
+                Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} de{" "}
+                {filtered.length} projetos
+              </span>
+              <div style={{ display: "flex", gap: spacing.sm }}>
+                <Button variant="ghost" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+                  ← Anterior
+                </Button>
+                <Button variant="ghost" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>
+                  Próxima →
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </>
   );
