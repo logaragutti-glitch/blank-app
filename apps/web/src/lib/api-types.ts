@@ -83,6 +83,7 @@ export type {
   DiagnosticoCriativo,
   Event,
   EventStyle,
+  EventType,
   InspirationImage,
   Material,
   MaterialCategory,
