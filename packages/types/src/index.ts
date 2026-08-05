@@ -17,3 +17,4 @@ export * from "./supplier";
 export * from "./project-task";
 export * from "./client-interaction";
 export * from "./project-file";
+export * from "./chat-message";
