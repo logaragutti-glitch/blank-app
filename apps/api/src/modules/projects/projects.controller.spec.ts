@@ -83,8 +83,8 @@ describe("ProjectsController", () => {
 
   it("assembles a project summary per event, with the latest proposal when one exists", async () => {
     events.findAll.mockResolvedValue([
-      { id: "event-1", clientId: "client-1", venueId: "venue-1" } as Event,
-      { id: "event-2", clientId: "client-2", venueId: "venue-2" } as Event,
+      { id: "event-1", clientId: "client-1", venueId: "venue-1", budgetAmount: 25000 } as Event,
+      { id: "event-2", clientId: "client-2", venueId: "venue-2", budgetAmount: null } as Event,
     ]);
     clients.findById.mockImplementation(async (_org, id) =>
       id === "client-1"
@@ -106,6 +106,7 @@ describe("ProjectsController", () => {
       clientId: "client-1",
       clientNames: "Karen & Daniel",
       venueName: "Villa Massari",
+      budgetAmount: 25000,
       latestProposal: { id: "proposal-1", status: "DRAFT", conceptName: "Jardim Atemporal", wowScore: 82 },
     });
     expect(result[1]).toMatchObject({

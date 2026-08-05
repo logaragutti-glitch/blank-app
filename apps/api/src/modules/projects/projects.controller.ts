@@ -62,6 +62,7 @@ export class ProjectsController {
           venueName: venue?.name ?? null,
           type: event.type,
           status: event.status,
+          budgetAmount: event.budgetAmount,
           guestsExpected: event.guestsExpected,
           ceremonyDateTime: event.ceremonyDateTime,
           createdAt: event.createdAt,
