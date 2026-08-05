@@ -55,6 +55,7 @@ export class ProjectsController {
 
         return {
           eventId: event.id,
+          clientId: event.clientId,
           clientNames: client
             ? [client.partnerOneName, client.partnerTwoName].filter(Boolean).join(" & ")
             : "Cliente não encontrado",

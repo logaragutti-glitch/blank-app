@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AnthropicVisionAnalysisProvider } from "./ai/anthropic-vision-analysis.provider";
 import { VisionAnalysisPort } from "./ai/vision-analysis.port";
 import { BriefingController } from "./briefing.controller";
+import { ClientsController } from "./clients.controller";
 import { ClientRepository } from "./repositories/client.repository";
 import { EventRepository } from "./repositories/event.repository";
 import { InspirationImageRepository } from "./repositories/inspiration-image.repository";
@@ -13,7 +14,7 @@ import { PrismaInspirationImageRepository } from "./repositories/prisma-inspirat
 // it's shared with the Knowledge Graph's EventStyle semantic search, not
 // owned by Briefing specifically.
 @Module({
-  controllers: [BriefingController],
+  controllers: [BriefingController, ClientsController],
   providers: [
     { provide: ClientRepository, useClass: PrismaClientRepository },
     { provide: EventRepository, useClass: PrismaEventRepository },

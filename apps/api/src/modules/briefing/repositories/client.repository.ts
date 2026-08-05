@@ -28,4 +28,6 @@ export interface CreateClientInput {
 export abstract class ClientRepository {
   abstract create(input: CreateClientInput): Promise<Client>;
   abstract findById(organizationId: string, id: string): Promise<Client | null>;
+  /** Every client in the org, newest first — powers the "Clientes" list screen. */
+  abstract findByOrganization(organizationId: string): Promise<Client[]>;
 }
