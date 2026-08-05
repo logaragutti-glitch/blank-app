@@ -309,6 +309,7 @@ model Supplier {
 
   organization Organization             @relation(fields: [organizationId], references: [id])
   venues       VenuePreferredSupplier[]
+  projects     ProjectSupplier[]
 
   @@unique([organizationId, name])
   @@index([tenantId])
@@ -475,6 +476,7 @@ model Event {
   tasks             ProjectTask[]
   teamMembers       ProjectTeamMember[]
   files             ProjectFile[]
+  suppliers         ProjectSupplier[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -535,6 +537,36 @@ model ProjectFile {
   @@index([tenantId])
   @@index([eventId])
   @@map("project_files")
+}
+
+// ---------------------------------------------------------------------------
+// ProjectSupplier — Fornecedores do Projeto (Bucket C): which Knowledge
+// Graph Suppliers are actually engaged for a given Event, and at what
+// stage — separate from Supplier.preferredVenueIds (a venue-level
+// recommendation) and from the best-value suppliers BudgetAnalysis
+// computes (an AI suggestion, not a confirmed hire). Lightweight join with
+// metadata, same style as ProjectTeamMember.
+// ---------------------------------------------------------------------------
+
+enum ProjectSupplierStatus {
+  CONTACTED
+  NEGOTIATING
+  BOOKED
+  CANCELLED
+}
+
+model ProjectSupplier {
+  eventId    String                @map("event_id") @db.Uuid
+  supplierId String                @map("supplier_id") @db.Uuid
+  status     ProjectSupplierStatus @default(CONTACTED)
+  notes      String?
+  addedAt    DateTime              @default(now()) @map("added_at") @db.Timestamptz(6)
+
+  event    Event    @relation(fields: [eventId], references: [id])
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@id([eventId, supplierId])
+  @@map("project_suppliers")
 }
 
 // ---------------------------------------------------------------------------

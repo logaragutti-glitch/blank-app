@@ -277,4 +277,9 @@ da equipe da Bia e um Event, com papel em texto livre — ex.: "Decoradora",
 "Fotógrafa" — mesmo estilo de VenuePreferredSupplier, sem trilha de
 auditoria própria) · ProjectFile (arquivo genérico anexado a um Event —
 contrato, planta, orçamento de fornecedor — reaproveitando o mesmo
-StoragePort/bucket de InspirationImage, mas sem análise de visão).
+StoragePort/bucket de InspirationImage, mas sem análise de visão) ·
+ProjectSupplier (associação leve entre um Supplier do Knowledge Graph e um
+Event, com status real de contratação — Contatado/Em negociação/
+Contratado/Cancelado — separado de Supplier.preferredVenueIds, que é uma
+recomendação por espaço, e de BudgetAnalysis.bestValueSuppliers, que é uma
+sugestão da IA, não uma contratação confirmada).
