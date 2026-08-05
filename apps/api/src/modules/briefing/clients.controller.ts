@@ -1,7 +1,9 @@
-import { Controller, Get, NotFoundException, Param } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
+import { CreateClientInteractionDto } from "./dto/create-client-interaction.dto";
+import { ClientInteractionRepository } from "./repositories/client-interaction.repository";
 import { ClientRepository } from "./repositories/client.repository";
 
 // A CRM-flavored view of the same Client records the briefing wizard
@@ -14,7 +16,10 @@ import { ClientRepository } from "./repositories/client.repository";
 @ApiBearerAuth()
 @Controller("clients")
 export class ClientsController {
-  constructor(private readonly clients: ClientRepository) {}
+  constructor(
+    private readonly clients: ClientRepository,
+    private readonly interactions: ClientInteractionRepository,
+  ) {}
 
   @Get()
   async listClients(@CurrentUser() user: AuthenticatedUser) {
@@ -26,5 +31,48 @@ export class ClientsController {
     const client = await this.clients.findById(user.organizationId, id);
     if (!client) throw new NotFoundException("Client not found");
     return client;
+  }
+
+  private async requireClient(organizationId: string, clientId: string) {
+    const client = await this.clients.findById(organizationId, clientId);
+    if (!client) throw new NotFoundException("Client not found");
+    return client;
+  }
+
+  // Timeline de Interações (Bucket C) — real contact history with the
+  // couple, separate from the one-time briefing snapshot.
+  @Get(":clientId/interactions")
+  async listInteractions(@CurrentUser() user: AuthenticatedUser, @Param("clientId") clientId: string) {
+    await this.requireClient(user.organizationId, clientId);
+    return this.interactions.findByClient(clientId);
+  }
+
+  @Post(":clientId/interactions")
+  async logInteraction(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("clientId") clientId: string,
+    @Body() dto: CreateClientInteractionDto,
+  ) {
+    await this.requireClient(user.organizationId, clientId);
+    return this.interactions.create(user.tenantId, user.organizationId, clientId, {
+      type: dto.type,
+      occurredAt: dto.occurredAt,
+      notes: dto.notes,
+      createdBy: user.sub,
+    });
+  }
+
+  @Delete(":clientId/interactions/:interactionId")
+  @HttpCode(204)
+  async deleteInteraction(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("clientId") clientId: string,
+    @Param("interactionId") interactionId: string,
+  ) {
+    await this.requireClient(user.organizationId, clientId);
+    const existing = await this.interactions.findById(interactionId);
+    if (!existing || existing.clientId !== clientId) throw new NotFoundException("Interaction not found");
+
+    await this.interactions.softDelete(interactionId, user.sub);
   }
 }

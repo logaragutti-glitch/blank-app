@@ -1,6 +1,8 @@
 import type {
   BudgetAnalysis,
   Client,
+  ClientInteraction,
+  ClientInteractionType,
   DiagnosticoCriativo,
   Event,
   EventStyle,
@@ -101,6 +103,8 @@ export interface FinancialSummary {
 export type {
   BudgetAnalysis,
   Client,
+  ClientInteraction,
+  ClientInteractionType,
   DiagnosticoCriativo,
   Event,
   EventStyle,

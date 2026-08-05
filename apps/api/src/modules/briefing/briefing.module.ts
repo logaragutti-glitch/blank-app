@@ -3,9 +3,11 @@ import { AnthropicVisionAnalysisProvider } from "./ai/anthropic-vision-analysis.
 import { VisionAnalysisPort } from "./ai/vision-analysis.port";
 import { BriefingController } from "./briefing.controller";
 import { ClientsController } from "./clients.controller";
+import { ClientInteractionRepository } from "./repositories/client-interaction.repository";
 import { ClientRepository } from "./repositories/client.repository";
 import { EventRepository } from "./repositories/event.repository";
 import { InspirationImageRepository } from "./repositories/inspiration-image.repository";
+import { PrismaClientInteractionRepository } from "./repositories/prisma-client-interaction.repository";
 import { PrismaClientRepository } from "./repositories/prisma-client.repository";
 import { PrismaEventRepository } from "./repositories/prisma-event.repository";
 import { PrismaInspirationImageRepository } from "./repositories/prisma-inspiration-image.repository";
@@ -19,8 +21,9 @@ import { PrismaInspirationImageRepository } from "./repositories/prisma-inspirat
     { provide: ClientRepository, useClass: PrismaClientRepository },
     { provide: EventRepository, useClass: PrismaEventRepository },
     { provide: InspirationImageRepository, useClass: PrismaInspirationImageRepository },
+    { provide: ClientInteractionRepository, useClass: PrismaClientInteractionRepository },
     { provide: VisionAnalysisPort, useClass: AnthropicVisionAnalysisProvider },
   ],
-  exports: [ClientRepository, EventRepository, InspirationImageRepository],
+  exports: [ClientRepository, EventRepository, InspirationImageRepository, ClientInteractionRepository],
 })
 export class BriefingModule {}

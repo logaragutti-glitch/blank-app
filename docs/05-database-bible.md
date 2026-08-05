@@ -269,4 +269,7 @@ materiais + cronograma de montagem + checklist gerados pelo Agente 4, um
 por Proposal) · PostEventFeedback · ProjectTask (checklist manual do
 projeto — título, responsável, prazo, status; independente do checklist
 gerado pelo Agente 4 em ProductionPlan, que é regenerado por inteiro a
-cada Proposal em vez de editado item a item).
+cada Proposal em vez de editado item a item) · ClientInteraction (timeline
+de contato real com o casal — ligação, reunião, e-mail, marco; separado
+do additionalDetails do Client, que é uma foto do questionário, não um
+log ao longo do tempo).
