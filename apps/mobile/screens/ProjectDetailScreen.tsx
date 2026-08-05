@@ -18,9 +18,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export function ProjectDetailScreen({
   project,
   onBack,
+  onOpenTasks,
 }: {
   project: ProjectSummary;
   onBack: () => void;
+  onOpenTasks: () => void;
 }) {
   const { accessToken } = useAuth();
   const [plan, setPlan] = useState<ProductionPlan | null | undefined>(undefined);
@@ -55,6 +57,10 @@ export function ProjectDetailScreen({
       {project.guestsExpected != null && (
         <Text style={styles.subtitle}>{project.guestsExpected} convidados esperados</Text>
       )}
+
+      <TouchableOpacity style={styles.tasksButton} onPress={onOpenTasks}>
+        <Text style={styles.tasksButtonLabel}>Ver tarefas do projeto</Text>
+      </TouchableOpacity>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -145,6 +151,17 @@ const styles = StyleSheet.create({
   },
   notice: {
     color: colors.textMuted,
+  },
+  tasksButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: spacing.md,
+    alignItems: "center",
+  },
+  tasksButtonLabel: {
+    color: colors.primary,
+    fontWeight: "600",
   },
   error: {
     color: colors.danger,

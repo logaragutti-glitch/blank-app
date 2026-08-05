@@ -6,19 +6,30 @@ import type { ProjectSummary } from "./lib/api-types";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProjectListScreen } from "./screens/ProjectListScreen";
 import { ProjectDetailScreen } from "./screens/ProjectDetailScreen";
+import { ProjectTasksScreen } from "./screens/ProjectTasksScreen";
 import { colors } from "./lib/tokens";
 
-// No dedicated router library — only 3 screens, so a simple state machine
+// No dedicated router library — only 4 screens, so a simple state machine
 // (which screen + which project are we on) is enough and avoids adding a
 // native-dependency-heavy navigation stack this sandbox has no way to
 // exercise in a real simulator.
 function AppContent() {
   const { accessToken } = useAuth();
   const [selectedProject, setSelectedProject] = useState<ProjectSummary | null>(null);
+  const [showTasks, setShowTasks] = useState(false);
 
   if (!accessToken) return <LoginScreen />;
+  if (selectedProject && showTasks) {
+    return <ProjectTasksScreen project={selectedProject} onBack={() => setShowTasks(false)} />;
+  }
   if (selectedProject) {
-    return <ProjectDetailScreen project={selectedProject} onBack={() => setSelectedProject(null)} />;
+    return (
+      <ProjectDetailScreen
+        project={selectedProject}
+        onBack={() => setSelectedProject(null)}
+        onOpenTasks={() => setShowTasks(true)}
+      />
+    );
   }
   return <ProjectListScreen onSelectProject={setSelectedProject} />;
 }

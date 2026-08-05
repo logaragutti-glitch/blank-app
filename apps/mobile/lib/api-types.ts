@@ -1,4 +1,4 @@
-import type { EventType, ProductionPlan, ProposalStatus, User } from "@eve-os/types";
+import type { EventType, ProductionPlan, ProjectTask, ProjectTaskStatus, ProposalStatus, User } from "@eve-os/types";
 
 export interface AuthResponse {
   accessToken: string;
@@ -23,4 +23,4 @@ export interface ProjectSummary {
   } | null;
 }
 
-export type { ProductionPlan };
+export type { ProductionPlan, ProjectTask, ProjectTaskStatus };
