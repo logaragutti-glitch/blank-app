@@ -93,6 +93,19 @@ export interface TeamMember {
   email: string | null;
 }
 
+export type ProjectSupplierStatus = "CONTACTED" | "NEGOTIATING" | "BOOKED" | "CANCELLED";
+
+/** GET /events/:eventId/suppliers — a membership record composed with the supplier's name/category (see apps/api/src/modules/project-suppliers). */
+export interface ProjectSupplierAssignment {
+  eventId: string;
+  supplierId: string;
+  status: ProjectSupplierStatus;
+  notes: string | null;
+  addedAt: string;
+  name: string;
+  category: SupplierCategory | null;
+}
+
 /** GET /production/financial-summary — a read model, not a single domain entity (see apps/api/src/modules/production). */
 export interface FinancialSummary {
   totalEvents: number;

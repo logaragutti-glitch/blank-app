@@ -13,6 +13,7 @@ import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { FilesModule } from "./modules/files/files.module";
 import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.module";
 import { ProductionModule } from "./modules/production/production.module";
+import { ProjectSuppliersModule } from "./modules/project-suppliers/project-suppliers.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
 import { TasksModule } from "./modules/tasks/tasks.module";
 import { TeamModule } from "./modules/team/team.module";
@@ -45,6 +46,7 @@ import { TeamModule } from "./modules/team/team.module";
     TasksModule,
     TeamModule,
     FilesModule,
+    ProjectSuppliersModule,
   ],
 })
 export class AppModule {}

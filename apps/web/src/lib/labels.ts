@@ -1,4 +1,4 @@
-import type { EventType, ProposalStatus } from "./api-types";
+import type { EventType, ProjectSupplierStatus, ProposalStatus, SupplierCategory } from "./api-types";
 
 export const EVENT_TYPE_LABEL: Record<EventType, string> = {
   WEDDING: "Casamento",
@@ -26,4 +26,29 @@ export const PROPOSAL_STATUS_COLOR: Record<ProposalStatus, "primary" | "muted" |
   SENT: "muted",
   APPROVED: "primary",
   REJECTED: "danger",
+};
+
+export const SUPPLIER_CATEGORY_LABEL: Record<SupplierCategory, string> = {
+  FLORIST: "Florista",
+  CATERING: "Buffet",
+  LIGHTING: "Iluminação",
+  FURNITURE_RENTAL: "Locação de mobiliário",
+  PHOTOGRAPHY: "Fotografia",
+  MUSIC: "Música",
+  ASSEMBLY_CREW: "Equipe de montagem",
+  OTHER: "Outro",
+};
+
+export const PROJECT_SUPPLIER_STATUS_LABEL: Record<ProjectSupplierStatus, string> = {
+  CONTACTED: "Contatado",
+  NEGOTIATING: "Em negociação",
+  BOOKED: "Contratado",
+  CANCELLED: "Cancelado",
+};
+
+export const PROJECT_SUPPLIER_STATUS_COLOR: Record<ProjectSupplierStatus, "primary" | "muted" | "danger"> = {
+  CONTACTED: "muted",
+  NEGOTIATING: "muted",
+  BOOKED: "primary",
+  CANCELLED: "danger",
 };

@@ -6,18 +6,8 @@ import { AppShell } from "../../components/AppShell";
 import { AuthGuard } from "../../lib/auth-guard";
 import { apiClient, ApiError } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
-import type { Supplier, SupplierCategory } from "../../lib/api-types";
-
-const CATEGORY_LABEL: Record<SupplierCategory, string> = {
-  FLORIST: "Florista",
-  CATERING: "Buffet",
-  LIGHTING: "Iluminação",
-  FURNITURE_RENTAL: "Locação de mobiliário",
-  PHOTOGRAPHY: "Fotografia",
-  MUSIC: "Música",
-  ASSEMBLY_CREW: "Equipe de montagem",
-  OTHER: "Outro",
-};
+import type { Supplier } from "../../lib/api-types";
+import { SUPPLIER_CATEGORY_LABEL } from "../../lib/labels";
 
 /**
  * Read-only view of the same Knowledge Graph supplier catalog the admin app
@@ -63,7 +53,7 @@ function FornecedoresContent() {
               {suppliers.map((supplier) => (
                 <tr key={supplier.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
                   <td style={{ padding: spacing.sm }}>{supplier.name}</td>
-                  <td style={{ padding: spacing.sm }}>{CATEGORY_LABEL[supplier.category]}</td>
+                  <td style={{ padding: spacing.sm }}>{SUPPLIER_CATEGORY_LABEL[supplier.category]}</td>
                   <td style={{ padding: spacing.sm }}>
                     {supplier.estimatedCost != null
                       ? `R$ ${supplier.estimatedCost.toLocaleString("pt-BR")}`
