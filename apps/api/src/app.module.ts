@@ -13,6 +13,7 @@ import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.module";
 import { ProductionModule } from "./modules/production/production.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
+import { TasksModule } from "./modules/tasks/tasks.module";
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ProjectsModule } from "./modules/projects/projects.module";
     FeedbackModule,
     ProjectsModule,
     ProductionModule,
+    TasksModule,
   ],
 })
 export class AppModule {}

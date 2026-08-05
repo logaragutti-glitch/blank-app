@@ -40,6 +40,7 @@ describe("AuthService", () => {
     users = {
       create: jest.fn(),
       findById: jest.fn(),
+      findByOrganization: jest.fn(),
       findWithPasswordHashByEmail: jest.fn(),
       setPasswordResetToken: jest.fn(),
       findByPasswordResetTokenHash: jest.fn(),

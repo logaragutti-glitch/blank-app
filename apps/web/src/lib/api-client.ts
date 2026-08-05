@@ -11,7 +11,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method: "GET" | "POST" | "PATCH";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
   token?: string | null;
 }
@@ -79,6 +79,7 @@ export const apiClient = {
     request<T>(path, { method: "POST", body, token }),
   patch: <T>(path: string, body?: unknown, token?: string | null) =>
     request<T>(path, { method: "PATCH", body, token }),
+  delete: <T>(path: string, token?: string | null) => request<T>(path, { method: "DELETE", token }),
   /** For binary responses (e.g. the proposal's PDF) — every other endpoint returns JSON. */
   downloadBlob,
   uploadFile,
