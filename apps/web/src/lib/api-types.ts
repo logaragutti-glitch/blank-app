@@ -1,5 +1,6 @@
 import type {
   BudgetAnalysis,
+  ChatMessage,
   Client,
   ClientInteraction,
   ClientInteractionType,
@@ -126,6 +127,7 @@ export interface FinancialSummary {
 
 export type {
   BudgetAnalysis,
+  ChatMessage,
   Client,
   ClientInteraction,
   ClientInteractionType,

@@ -166,6 +166,9 @@ function ModoProducao({ eventId, project }: { eventId: string; project: NonNulla
         <Link href={`/projects/${eventId}/fornecedores`} style={{ color: colors.textMuted }}>
           Ver Fornecedores do Projeto
         </Link>
+        <Link href={`/projects/${eventId}/chat`} style={{ color: colors.textMuted }}>
+          Conversar com a EVE
+        </Link>
       </div>
     </>
   );
@@ -299,6 +302,16 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
           </p>
           <Link href={`/projects/${eventId}/fornecedores`}>
             <Button variant="ghost">Abrir Fornecedores</Button>
+          </Link>
+        </Card>
+
+        <Card>
+          <h3 style={{ marginTop: 0 }}>✨ Chat com a EVE</h3>
+          <p style={{ color: colors.textMuted }}>
+            Converse sobre este projeto — status, tarefas, equipe, fornecedores. Ainda não realiza ações.
+          </p>
+          <Link href={`/projects/${eventId}/chat`}>
+            <Button variant="ghost">Abrir Chat</Button>
           </Link>
         </Card>
       </div>

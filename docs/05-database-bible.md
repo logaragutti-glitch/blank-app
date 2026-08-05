@@ -282,4 +282,5 @@ ProjectSupplier (associação leve entre um Supplier do Knowledge Graph e um
 Event, com status real de contratação — Contatado/Em negociação/
 Contratado/Cancelado — separado de Supplier.preferredVenueIds, que é uma
 recomendação por espaço, e de BudgetAnalysis.bestValueSuppliers, que é uma
-sugestão da IA, não uma contratação confirmada).
+sugestão da IA, não uma contratação confirmada) · ChatMessage (transcript
+append-only do Chat com a EVE por Event — ver 04-ai-bible.md).

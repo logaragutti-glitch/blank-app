@@ -8,6 +8,7 @@ import { PrismaModule } from "./infrastructure/prisma/prisma.module";
 import { StorageModule } from "./infrastructure/storage/storage.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BriefingModule } from "./modules/briefing/briefing.module";
+import { ChatModule } from "./modules/chat/chat.module";
 import { CreativeModule } from "./modules/creative/creative.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { FilesModule } from "./modules/files/files.module";
@@ -47,6 +48,7 @@ import { TeamModule } from "./modules/team/team.module";
     TeamModule,
     FilesModule,
     ProjectSuppliersModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

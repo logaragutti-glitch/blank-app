@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, colors, radii, spacing } from "@eve-os/ui";
+import { Button, Card, colors, radii, spacing } from "@eve-os/ui";
 import { AppShell } from "../components/AppShell";
 import { AuthGuard } from "../lib/auth-guard";
 import { apiClient, ApiError } from "../lib/api-client";
@@ -31,15 +31,15 @@ function StatCard({ value, label }: { value: number; label: string }) {
 }
 
 /**
- * "Converse com a EVE" — visible in the target dashboard layout, but there's
- * no conversational agent backend yet (today's AI is invoked per-action,
- * e.g. "Gerar diagnóstico"). Shown disabled with an honest label instead of
- * a chat box that goes nowhere — see the "em breve" sidebar items for the
- * same reasoning.
+ * "Converse com a EVE" now exists for real (events/:eventId/chat/messages),
+ * but it's scoped to a single project — there's no "chat about everything"
+ * without a project's real data to ground it in. So the Home card points
+ * at the most recent project's chat instead of a dead-end global box, or
+ * explains where to find it when there's no project yet.
  */
-function EveChatTeaser() {
+function EveChatTeaser({ latestProjectId }: { latestProjectId: string | null }) {
   return (
-    <Card style={{ opacity: 0.6 }}>
+    <Card>
       <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
         <span aria-hidden style={{ fontSize: "1.4rem" }}>
           ✨
@@ -47,11 +47,18 @@ function EveChatTeaser() {
         <div>
           <strong>Converse com a EVE</strong>
           <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.85rem" }}>
-            Chat com a IA em breve — hoje cada etapa (diagnóstico, proposta, produção) já usa IA de verdade
-            dentro do próprio projeto.
+            O chat vive dentro de cada projeto, com o contexto real dele — abra um projeto e procure
+            &ldquo;Chat com a EVE&rdquo;.
           </p>
         </div>
       </div>
+      {latestProjectId && (
+        <Link href={`/projects/${latestProjectId}/chat`}>
+          <Button variant="ghost" style={{ marginTop: spacing.sm }}>
+            Abrir no projeto mais recente
+          </Button>
+        </Link>
+      )}
     </Card>
   );
 }
@@ -178,7 +185,7 @@ function HomeContent() {
             </Link>
           </Card>
 
-          <EveChatTeaser />
+          <EveChatTeaser latestProjectId={recent[0]?.eventId ?? null} />
         </div>
       </div>
     </>

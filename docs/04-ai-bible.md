@@ -218,6 +218,39 @@ rastreabilidade entre docs e implementação:
   que já são numerados — não representa uma ordem de execução ou
   prioridade declarada na sessão.)*
 
+  > **Implementação (escopo inicial, manual — sem IA):** o "acompanhamento
+  > do projeto" descrito acima hoje existe como registro manual, não como
+  > comportamento de agente: `ProjectTask` (checklist livre),
+  > `ClientInteraction` (timeline de contatos), `ProjectTeamMember`
+  > (equipe atribuída), `ProjectSupplier` (fornecedores contratados) e
+  > `ProjectFile` (arquivos) — todos CRUD simples em
+  > `apps/api/src/modules/{tasks,briefing,team,project-suppliers,files}`,
+  > sem geração ou sugestão por IA. Fica como trabalho futuro qualquer
+  > automação sobre esses dados (ex.: sugerir uma tarefa a partir de uma
+  > mudança de status).
+
+### Chat com a EVE
+
+Complementar aos Agentes 1–5 (que agem em pontos específicos do fluxo),
+o Chat com a EVE é uma camada de conversa por cima de tudo que o sistema
+já sabe sobre um projeto — pensado para responder perguntas ("qual o
+status da proposta?", "quem está na equipe?"), não para substituir os
+agentes especializados nem para agir sobre o sistema.
+
+> **Implementação (escopo inicial):** `GET`/`POST /events/:eventId/chat/messages`
+> (`apps/api/src/modules/chat`) mantém um transcript por projeto
+> (`ChatMessage`, apenas leitura depois de criado) e responde via
+> `AnthropicEveChatProvider` (`ai/prompts/eve-chat.prompt.ts`,
+> `EVE_CHAT_PROMPT_VERSION`). O contexto passado ao modelo é montado a
+> partir de dados já reais do projeto (cliente, espaço, proposta,
+> tarefas, equipe, fornecedores) — a mesma regra de ouro do resto do
+> sistema se aplica: a EVE nunca inventa dado que não esteja no contexto,
+> e o prompt deixa explícito que ela ainda não pode realizar ações
+> (criar tarefa, mudar status, etc.), só responder. Isso é uma limitação
+> de escopo deliberada, não uma limitação técnica — dar à EVE capacidade
+> de agir sobre o sistema é uma decisão de produto maior, deixada para
+> depois.
+
 ### Aprendizado incremental (exemplo de referência)
 
 > A Bia sempre troca Tulipas por Lisianthus.
