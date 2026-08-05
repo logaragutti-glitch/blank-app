@@ -6,26 +6,8 @@ import { AppShell } from "../../components/AppShell";
 import { AuthGuard } from "../../lib/auth-guard";
 import { apiClient, ApiError } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
-import type { Client, EventType, ProjectSummary, ProposalStatus } from "../../lib/api-types";
-
-const EVENT_TYPE_LABEL: Record<EventType, string> = {
-  WEDDING: "Casamento",
-  CORPORATE: "Corporativo",
-  KIDS: "Infantil",
-  DESTINATION: "Destination",
-  VENUE_MANAGED: "Gerenciado pelo espaço",
-  HOTEL: "Hotel",
-  CONVENTION: "Convenção",
-};
-
-const PROPOSAL_STATUS_LABEL: Record<ProposalStatus, string> = {
-  DRAFT: "Rascunho",
-  INTERNAL_REVIEW: "Revisão interna",
-  READY: "Pronta",
-  SENT: "Enviada",
-  APPROVED: "Aprovada",
-  REJECTED: "Rejeitada",
-};
+import type { Client, ProjectSummary } from "../../lib/api-types";
+import { EVENT_TYPE_LABEL, PROPOSAL_STATUS_LABEL } from "../../lib/labels";
 
 const LEAD_SOURCE_LABEL: Record<string, string> = {
   INSTAGRAM: "Instagram",
@@ -69,6 +51,63 @@ function BarList({ entries, labels }: { entries: [string, number][]; labels: Rec
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+const DONUT_COLORS = [colors.primary, colors.danger, colors.border];
+
+function DonutChart({ segments }: { segments: { label: string; value: number; color: string }[] }) {
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+  if (total === 0) return <p style={{ color: colors.textMuted }}>Sem dados ainda.</p>;
+
+  let cursor = 0;
+  const stops = segments
+    .map((segment) => {
+      const start = (cursor / total) * 360;
+      cursor += segment.value;
+      const end = (cursor / total) * 360;
+      return `${segment.color} ${start}deg ${end}deg`;
+    })
+    .join(", ");
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: spacing.lg, flexWrap: "wrap" }}>
+      <div
+        style={{
+          width: 120,
+          height: 120,
+          borderRadius: radii.full,
+          background: `conic-gradient(${stops})`,
+          flexShrink: 0,
+          position: "relative",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 18,
+            borderRadius: radii.full,
+            backgroundColor: colors.surface,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 700,
+            fontSize: "1.1rem",
+          }}
+        >
+          {Math.round(((segments[0]?.value ?? 0) / total) * 100)}%
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: spacing.xs }}>
+        {segments.map((segment) => (
+          <div key={segment.label} style={{ display: "flex", alignItems: "center", gap: spacing.sm, fontSize: "0.85rem" }}>
+            <span style={{ width: 10, height: 10, borderRadius: radii.full, backgroundColor: segment.color }} />
+            <span>{segment.label}</span>
+            <span style={{ color: colors.textMuted }}>({segment.value})</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -122,6 +161,13 @@ function RelatoriosContent() {
     .filter((score): score is number => score != null);
   const avgWowScore = wowScores.length > 0 ? String(Math.round(wowScores.reduce((a, b) => a + b, 0) / wowScores.length)) : "—";
 
+  const inProgress = projects.length - approved - rejected;
+  const donutSegments = [
+    { label: "Aprovadas", value: approved, color: DONUT_COLORS[0]! },
+    { label: "Rejeitadas", value: rejected, color: DONUT_COLORS[1]! },
+    { label: "Em andamento", value: inProgress, color: DONUT_COLORS[2]! },
+  ];
+
   const statusCounts = countBy(projects, (p) => p.latestProposal?.status ?? "SEM_PROPOSTA");
   const statusEntries = [...statusCounts.entries()].sort((a, b) => b[1] - a[1]);
   const statusLabels = { ...PROPOSAL_STATUS_LABEL, SEM_PROPOSTA: "Sem proposta ainda" };
@@ -163,6 +209,11 @@ function RelatoriosContent() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: spacing.lg }}>
+        <Card>
+          <h3 style={{ marginTop: 0 }}>Situação das propostas</h3>
+          <DonutChart segments={donutSegments} />
+        </Card>
+
         <Card>
           <h3 style={{ marginTop: 0 }}>Funil de propostas</h3>
           <BarList entries={statusEntries} labels={statusLabels} />
