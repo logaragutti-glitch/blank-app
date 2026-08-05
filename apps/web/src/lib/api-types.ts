@@ -31,6 +31,7 @@ export interface ProjectSummary {
   venueName: string | null;
   type: EventType;
   status: Event["status"];
+  budgetAmount: number | null;
   guestsExpected: number | null;
   ceremonyDateTime: string | null;
   createdAt: string;
