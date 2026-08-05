@@ -25,4 +25,12 @@ export class PrismaClientRepository implements ClientRepository {
     });
     return client ? toClientDomain(client) : null;
   }
+
+  async findByOrganization(organizationId: string): Promise<Client[]> {
+    const clients = await this.prisma.client.findMany({
+      where: { organizationId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+    return clients.map(toClientDomain);
+  }
 }

@@ -23,6 +23,7 @@ export interface AuthResponse {
 /** GET /projects — a read model, not a single domain entity (see apps/api/src/modules/projects). */
 export interface ProjectSummary {
   eventId: string;
+  clientId: string;
   clientNames: string;
   venueName: string | null;
   type: EventType;

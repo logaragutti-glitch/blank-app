@@ -103,12 +103,14 @@ describe("ProjectsController", () => {
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       eventId: "event-1",
+      clientId: "client-1",
       clientNames: "Karen & Daniel",
       venueName: "Villa Massari",
       latestProposal: { id: "proposal-1", status: "DRAFT", conceptName: "Jardim Atemporal", wowScore: 82 },
     });
     expect(result[1]).toMatchObject({
       eventId: "event-2",
+      clientId: "client-2",
       clientNames: "Iris",
       latestProposal: null,
     });
