@@ -174,12 +174,58 @@ model Client {
   // (BriefingAdditionalDetails) para o formato exato.
   additionalDetails Json? @map("additional_details")
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization        @relation(fields: [organizationId], references: [id])
   events       Event[]
+  interactions ClientInteraction[]
 
   @@index([tenantId])
   @@index([organizationId])
   @@map("clients")
+}
+
+// ---------------------------------------------------------------------------
+// ClientInteraction — Timeline de Interações (Bucket C): a chronological log
+// of real contact with the couple (calls, meetings, e-mails, milestones),
+// separate from Client.additionalDetails (a snapshot of the briefing
+// answers, not a log over time). Append-only in spirit — no update
+// endpoint, only create/list/delete — same reasoning as PostEventFeedback:
+// this records what happened, it isn't a mutable business entity meant to
+// be edited after the fact, but a delete is offered for outright mistakes.
+// ---------------------------------------------------------------------------
+
+enum ClientInteractionType {
+  CALL
+  MEETING
+  EMAIL
+  WHATSAPP
+  MILESTONE
+  NOTE
+  OTHER
+}
+
+model ClientInteraction {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  clientId       String    @map("client_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  version        Int       @default(1)
+
+  type       ClientInteractionType
+  // When the interaction actually happened — may be logged after the fact,
+  // so this is independent from createdAt.
+  occurredAt DateTime              @map("occurred_at") @db.Timestamptz(6)
+  notes      String
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@map("client_interactions")
 }
 
 // ---------------------------------------------------------------------------
