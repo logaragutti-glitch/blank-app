@@ -10,6 +10,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { BriefingModule } from "./modules/briefing/briefing.module";
 import { CreativeModule } from "./modules/creative/creative.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
+import { FilesModule } from "./modules/files/files.module";
 import { KnowledgeGraphModule } from "./modules/knowledge-graph/knowledge-graph.module";
 import { ProductionModule } from "./modules/production/production.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
@@ -43,6 +44,7 @@ import { TeamModule } from "./modules/team/team.module";
     ProductionModule,
     TasksModule,
     TeamModule,
+    FilesModule,
   ],
 })
 export class AppModule {}

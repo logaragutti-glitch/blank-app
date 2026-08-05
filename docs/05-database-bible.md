@@ -275,4 +275,6 @@ do additionalDetails do Client, que é uma foto do questionário, não um
 log ao longo do tempo) · ProjectTeamMember (associação leve entre um User
 da equipe da Bia e um Event, com papel em texto livre — ex.: "Decoradora",
 "Fotógrafa" — mesmo estilo de VenuePreferredSupplier, sem trilha de
-auditoria própria).
+auditoria própria) · ProjectFile (arquivo genérico anexado a um Event —
+contrato, planta, orçamento de fornecedor — reaproveitando o mesmo
+StoragePort/bucket de InspirationImage, mas sem análise de visão).
