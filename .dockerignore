@@ -1,0 +1,36 @@
+# Every service Dockerfile builds with the repo root as context (see
+# docker-compose.yml) and does its own `pnpm install`/`pnpm build` inside
+# the image — so none of this needs to be sent to the Docker daemon. There
+# was no .dockerignore before, so every build was shipping every
+# workspace's node_modules (and .git, build output, etc.) as build
+# context: hundreds of MB and minutes of otherwise pointless work.
+node_modules
+**/node_modules
+
+.git
+.turbo
+**/.turbo
+
+# Build output — regenerated inside the image, never useful from the host.
+dist
+**/dist
+.next
+**/.next
+apps/mobile/dist
+apps/mobile/.expo
+**/.expo
+
+coverage
+**/coverage
+*.log
+npm-debug.log*
+
+# Local env files — real secrets never belong in an image layer; runtime
+# config is supplied via docker-compose environment/env_file instead.
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+.DS_Store
