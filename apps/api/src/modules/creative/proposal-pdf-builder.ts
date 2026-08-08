@@ -34,21 +34,27 @@ const MOODBOARD_SECTIONS: [label: string, key: string][] = [
   ["Arquitetura", "architecture"],
 ];
 
-// Mirrored from packages/ui/src/tokens.ts ("branco quente / grafite /
-// champagne gold", per 02-brand-bible.md) — apps/api has no dependency on
-// @eve-os/ui (a browser-facing package), so these are copied here rather
-// than imported, but they're the same real, already-designed brand colors
-// used everywhere else in the product. Deliberately NOT used to invent a
-// swatch for the couple's own PALETTE component (see the PALETTE case
-// below) — this is chrome/decoration for the document itself, not a stand-
-// in for real event data.
-const BRAND = {
+// Neutral tones mirrored from packages/ui/src/tokens.ts (02-brand-bible.md)
+// — apps/api has no dependency on @eve-os/ui (a browser-facing package), so
+// these are copied here rather than imported. Text/border colors stay fixed
+// for legibility; the *accent* color (rules, section labels, headings) is
+// no longer one of these — see deriveAccent() below.
+const NEUTRAL = {
   border: "#EAE1D6",
-  gold: "#B8935E",
-  goldDark: "#A17F4E",
   ink: "#2F2B27",
   muted: "#8A8078",
 } as const;
+
+// Used only when a proposal has no PALETTE component yet, or none of its
+// color names are recognized below — the same champagne gold the rest of
+// the product already uses, so an unstyled proposal still looks intentional
+// rather than broken.
+const DEFAULT_ACCENT: Accent = { main: "#B8935E", dark: "#A17F4E" };
+
+interface Accent {
+  main: string;
+  dark: string;
+}
 
 // pdfkit's 14 standard fonts need no embedded font file, so Times gives a
 // real serif for headings (closer to the product's Georgia/serif brand
@@ -85,12 +91,15 @@ export interface ProposalPdfComponent {
  * 02-brand-bible.md), one per page, mirroring the same content-shape
  * switch used by ProposalComponentCard in apps/web.
  *
- * Visual language: a thin gold top rule + numbered gold section label on
- * every page, serif headings, full-bleed hero images (via pdfkit's `cover`
- * fit, so a mostly-square AI render fills the whole banner instead of
- * shrinking to fit inside it), and a page-number footer — an editorial
+ * Visual language: a thin accent-colored top rule + numbered section label
+ * on every page, serif headings, full-bleed hero images (via pdfkit's
+ * `cover` fit, so a mostly-square AI render fills the whole banner instead
+ * of shrinking to fit inside it), and a page-number footer — an editorial
  * "keepsake booklet" feel instead of the earlier plain black-on-white text
- * dump, using only the product's own already-established brand colors.
+ * dump. The one accent color used throughout is derived once per proposal
+ * from its own PALETTE component (see deriveAccent) — a different couple's
+ * proposal is styled differently, instead of every document sharing one
+ * fixed template regardless of the event's own decor.
  */
 export async function buildProposalPdf(components: ProposalPdfComponent[]): Promise<Buffer> {
   // Uncompressed content streams: a proposal PDF is mostly text with a
@@ -105,19 +114,22 @@ export async function buildProposalPdf(components: ProposalPdfComponent[]): Prom
   });
 
   const sorted = [...components].sort((a, b) => a.order - b.order);
+  const palette = sorted.find((component) => component.type === "PALETTE");
+  const accent = deriveAccent(palette?.content.colors as string[] | undefined);
+
   if (sorted.length === 0) {
-    renderTopRule(doc);
+    renderTopRule(doc, accent);
     doc
       .font(SERIF_ITALIC)
       .fontSize(13)
-      .fillColor(BRAND.muted)
+      .fillColor(NEUTRAL.muted)
       .text("Esta proposta ainda não tem componentes gerados.", { align: "center" });
     drawFooter(doc, 1, 1);
   } else {
     sorted.forEach((component, index) => {
       if (index > 0) doc.addPage();
-      renderTopRule(doc);
-      renderComponent(doc, component);
+      renderTopRule(doc, accent);
+      renderComponent(doc, component, accent);
       drawFooter(doc, index + 1, sorted.length);
     });
   }
@@ -126,11 +138,82 @@ export async function buildProposalPdf(components: ProposalPdfComponent[]): Prom
   return done;
 }
 
-// A slim gold band at the very top edge of every page — the one constant
-// brand touch that ties all pages together regardless of content type.
-function renderTopRule(doc: PDFKit.PDFDocument): void {
-  doc.rect(0, 0, doc.page.width, 6).fillColor(BRAND.gold).fill();
-  doc.fillColor(BRAND.ink);
+// Turns the couple's own diagnosed palette (e.g. ["Verde-sálvia",
+// "Champagne", ...] — free text from the Creative Engine, see
+// diagnosticoCriativo/PALETTE component) into ONE accent color for this
+// proposal's document chrome. This is a styling choice, not a factual
+// claim: it never touches how the PALETTE component itself is rendered
+// (still the couple's exact color names, joined as plain text — see the
+// PALETTE case below), and it never claims "verde-sálvia IS #8A9A7B". It's
+// the same kind of judgment call as picking "champagne gold" as the
+// product's own brand accent in the first place — just applied per-
+// proposal instead of once, so the keepsake feels inspired by that
+// specific event instead of every proposal sharing one fixed template.
+// Pale/white-ish tones (branco, creme, marfim...) are skipped as accent
+// candidates — real palette entries, just too low-contrast to decorate
+// gold rules and headings with — falling through to the next color, or to
+// the default brand accent if nothing usable is found.
+const ACCENT_SKIP = /\b(branco|off-?white|creme|marfim|ivory|nude)\b/;
+
+const ACCENT_HINTS: [pattern: RegExp, hex: string][] = [
+  [/sage|verde.?salvia/, "#8A9A7B"],
+  [/champagne/, "#C9A876"],
+  [/dourado|gold/, "#B8935E"],
+  [/blush|ros[e]/, "#D9A9A0"],
+  [/terracot/, "#B5654A"],
+  [/lavanda|lilas/, "#9B8AC4"],
+  [/vinho|bordo|burgund/, "#6E2C36"],
+  [/coral/, "#E0745A"],
+  [/pessego|peach/, "#E8B48A"],
+  [/menta|mint/, "#8FC1A9"],
+  [/oliva|olive/, "#7C7A42"],
+  [/prata|silver/, "#ABABA5"],
+  [/azul.?marinho|navy/, "#2E3A59"],
+  [/azul|blue/, "#6B8CAE"],
+  [/amarelo|yellow/, "#D9B84A"],
+  [/laranja|orange/, "#D98A3D"],
+  [/vermelho|red/, "#B4453C"],
+  [/rosa|pink/, "#D69AB0"],
+  [/roxo|purple/, "#7A5C99"],
+  [/verde|green/, "#7C9070"],
+  [/marrom|brown/, "#8A6A50"],
+  [/bege|beige/, "#C9B08C"],
+  [/cinza|grey|gray/, "#9C9C97"],
+  [/preto|black/, "#403C37"],
+];
+
+function normalizeColorName(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+function darken(hex: string, factor: number): string {
+  const n = hex.replace("#", "");
+  const channel = (offset: number) => Math.max(0, Math.min(255, Math.round(parseInt(n.slice(offset, offset + 2), 16) * factor)));
+  const toHex = (value: number) => value.toString(16).padStart(2, "0");
+  return `#${toHex(channel(0))}${toHex(channel(2))}${toHex(channel(4))}`;
+}
+
+function deriveAccent(colors: string[] | undefined): Accent {
+  for (const raw of colors ?? []) {
+    const name = normalizeColorName(raw);
+    if (ACCENT_SKIP.test(name)) continue;
+    const hit = ACCENT_HINTS.find(([pattern]) => pattern.test(name));
+    if (hit) {
+      const [, main] = hit;
+      return { main, dark: darken(main, 0.78) };
+    }
+  }
+  return DEFAULT_ACCENT;
+}
+
+// A slim accent-colored band at the very top edge of every page — the one
+// constant visual touch that ties all pages of a given proposal together.
+function renderTopRule(doc: PDFKit.PDFDocument, accent: Accent): void {
+  doc.rect(0, 0, doc.page.width, 6).fillColor(accent.main).fill();
+  doc.fillColor(NEUTRAL.ink);
 }
 
 // Absolute-positioned so it never fights with wherever the page's content
@@ -143,34 +226,34 @@ function drawFooter(doc: PDFKit.PDFDocument, pageNumber: number, pageCount: numb
   const y = doc.page.height - doc.page.margins.bottom - 22;
   const left = doc.page.margins.left;
   const right = doc.page.width - doc.page.margins.right;
-  doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(BRAND.border).stroke();
+  doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(NEUTRAL.border).stroke();
   doc
     .font(SANS)
     .fontSize(8)
-    .fillColor(BRAND.muted)
+    .fillColor(NEUTRAL.muted)
     .text("EVE OS · PROPOSTA DE EVENTO", left, y + 10, { characterSpacing: 0.5, width: 260 });
   doc
     .font(SANS)
     .fontSize(8)
-    .fillColor(BRAND.muted)
+    .fillColor(NEUTRAL.muted)
     .text(`${pageNumber} / ${pageCount}`, right - 260, y + 10, { width: 260, align: "right" });
 }
 
-// A short gold rule under a heading/label — the one recurring decorative
-// motif standing in for the "delicate, boutique" feel from the Brand Bible
-// without needing an embedded illustration asset.
-function goldRule(doc: PDFKit.PDFDocument, width: number): void {
+// A short accent-colored rule under a heading/label — the one recurring
+// decorative motif standing in for the "delicate, boutique" feel from the
+// Brand Bible without needing an embedded illustration asset.
+function accentRule(doc: PDFKit.PDFDocument, width: number, accent: Accent): void {
   const y = doc.y;
   const left = doc.page.margins.left;
-  doc.moveTo(left, y).lineTo(left + width, y).lineWidth(1.4).strokeColor(BRAND.gold).stroke();
+  doc.moveTo(left, y).lineTo(left + width, y).lineWidth(1.4).strokeColor(accent.main).stroke();
   doc.moveDown(0.5);
 }
 
-function renderSectionLabel(doc: PDFKit.PDFDocument, order: number, componentType: ComponentType): void {
+function renderSectionLabel(doc: PDFKit.PDFDocument, order: number, componentType: ComponentType, accent: Accent): void {
   const label = `${String(order).padStart(2, "0")}  —  ${COMPONENT_LABELS[componentType]}`.toUpperCase();
-  doc.font(SANS).fontSize(9).fillColor(BRAND.gold).text(label, { characterSpacing: 1.2 });
-  goldRule(doc, 40);
-  doc.fillColor(BRAND.ink);
+  doc.font(SANS).fontSize(9).fillColor(accent.main).text(label, { characterSpacing: 1.2 });
+  accentRule(doc, 40, accent);
+  doc.fillColor(NEUTRAL.ink);
 }
 
 // Fills the whole hero banner edge to edge (pdfkit's `cover`, like CSS
@@ -190,62 +273,63 @@ function renderHeroImage(doc: PDFKit.PDFDocument, imageBuffer: Buffer | undefine
   }
 }
 
-function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponent): void {
-  renderSectionLabel(doc, component.order, component.type);
+function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponent, accent: Accent): void {
+  renderSectionLabel(doc, component.order, component.type, accent);
 
   switch (component.type) {
     case "COVER":
       renderHeroImage(doc, component.imageBuffer, 320);
-      goldRule(doc, 60);
-      doc.font(SERIF_BOLD).fontSize(30).fillColor(BRAND.ink).text(String(component.content.conceptName ?? ""));
+      accentRule(doc, 60, accent);
+      doc.font(SERIF_BOLD).fontSize(30).fillColor(NEUTRAL.ink).text(String(component.content.conceptName ?? ""));
       doc.moveDown(0.2);
       doc
         .font(SANS)
         .fontSize(11)
-        .fillColor(BRAND.goldDark)
+        .fillColor(accent.dark)
         .text(String(component.content.coupleNames ?? ""), { characterSpacing: 0.8 });
-      doc.font(SERIF_ITALIC).fontSize(12).fillColor(BRAND.muted).text(String(component.content.venueName ?? ""));
+      doc.font(SERIF_ITALIC).fontSize(12).fillColor(NEUTRAL.muted).text(String(component.content.venueName ?? ""));
       break;
     case "PALETTE": {
-      // Free-text tones from the diagnosis (e.g. "verde-sálvia"), never a
-      // guessed hex swatch — no real color value backs these names, and
-      // fabricating one would violate the same "never invent data" rule
-      // applied everywhere else in the product.
+      // Free-text tones from the diagnosis (e.g. "verde-sálvia"), shown
+      // exactly as named — never a guessed hex swatch. No real color value
+      // backs these names, and fabricating one here (as opposed to the
+      // *decorative* accent derived above) would violate the same "never
+      // invent data" rule applied everywhere else in the product.
       const colors = (component.content.colors as string[] | undefined) ?? [];
       doc
         .font(SERIF)
         .fontSize(16)
-        .fillColor(BRAND.ink)
+        .fillColor(NEUTRAL.ink)
         .text(colors.length > 0 ? colors.join(", ") : "—", { characterSpacing: 0.3, width: BODY_WIDTH });
       break;
     }
     case "MOODBOARD":
       for (const [label, key] of MOODBOARD_SECTIONS) {
         const items = (component.content[key] as string[] | undefined) ?? [];
-        doc.font(SERIF_BOLD).fontSize(13).fillColor(BRAND.goldDark).text(label);
+        doc.font(SERIF_BOLD).fontSize(13).fillColor(accent.dark).text(label);
         doc
           .font(items.length > 0 ? SERIF : SERIF_ITALIC)
           .fontSize(11)
-          .fillColor(items.length > 0 ? BRAND.ink : BRAND.muted)
+          .fillColor(items.length > 0 ? NEUTRAL.ink : NEUTRAL.muted)
           .text(items.length > 0 ? items.join(", ") : "—", { width: BODY_WIDTH });
         doc.moveDown(0.5);
         const y = doc.y;
         const left = doc.page.margins.left;
         const right = doc.page.width - doc.page.margins.right;
-        doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(BRAND.border).stroke();
+        doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(NEUTRAL.border).stroke();
         doc.moveDown(0.6);
       }
       break;
     case "TIMELINE": {
       const steps = (component.content.steps as { label: string; description: string }[] | undefined) ?? [];
       steps.forEach((step, index) => {
-        doc.font(SERIF_BOLD).fontSize(13).fillColor(BRAND.goldDark).text(`${index + 1}. ${step.label}`);
-        doc.font(SERIF).fontSize(11).fillColor(BRAND.ink).text(step.description, { width: BODY_WIDTH });
+        doc.font(SERIF_BOLD).fontSize(13).fillColor(accent.dark).text(`${index + 1}. ${step.label}`);
+        doc.font(SERIF).fontSize(11).fillColor(NEUTRAL.ink).text(step.description, { width: BODY_WIDTH });
         doc.moveDown(0.4);
         const y = doc.y;
         const left = doc.page.margins.left;
         const right = doc.page.width - doc.page.margins.right;
-        doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(BRAND.border).stroke();
+        doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(NEUTRAL.border).stroke();
         doc.moveDown(0.5);
       });
       break;
@@ -254,7 +338,7 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
       const includes = (component.content.includes as string[] | undefined) ?? [];
       const amount = component.content.amount as number | null;
       const currency = component.content.currency as string | undefined;
-      doc.font(SERIF).fontSize(12).fillColor(BRAND.ink);
+      doc.font(SERIF).fontSize(12).fillColor(NEUTRAL.ink);
       for (const item of includes) {
         doc.text(`• ${item}`, { width: BODY_WIDTH });
         doc.moveDown(0.15);
@@ -264,16 +348,16 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
         const boxY = doc.y;
         const boxWidth = 260;
         const left = doc.page.margins.left;
-        doc.roundedRect(left, boxY, boxWidth, 60, 6).lineWidth(1).strokeColor(BRAND.gold).stroke();
+        doc.roundedRect(left, boxY, boxWidth, 60, 6).lineWidth(1).strokeColor(accent.main).stroke();
         doc
           .font(SANS)
           .fontSize(8)
-          .fillColor(BRAND.muted)
+          .fillColor(NEUTRAL.muted)
           .text("INVESTIMENTO TOTAL", left + 18, boxY + 12, { characterSpacing: 1 });
         doc
           .font(SERIF_BOLD)
           .fontSize(20)
-          .fillColor(BRAND.ink)
+          .fillColor(NEUTRAL.ink)
           .text(`${currency ?? ""} ${amount.toLocaleString("pt-BR")}`.trim(), left + 18, boxY + 26);
         doc.y = boxY + 70;
       }
@@ -284,11 +368,11 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
       const title = String(component.content.title ?? component.content.name ?? "");
       const description = String(component.content.description ?? component.content.text ?? "");
       if (title) {
-        doc.font(SERIF_BOLD).fontSize(18).fillColor(BRAND.ink).text(title);
-        goldRule(doc, 36);
+        doc.font(SERIF_BOLD).fontSize(18).fillColor(NEUTRAL.ink).text(title);
+        accentRule(doc, 36, accent);
       }
       if (description) {
-        doc.font(SERIF).fontSize(12).fillColor(BRAND.ink).text(description, { width: BODY_WIDTH, lineGap: 3 });
+        doc.font(SERIF).fontSize(12).fillColor(NEUTRAL.ink).text(description, { width: BODY_WIDTH, lineGap: 3 });
       }
     }
   }

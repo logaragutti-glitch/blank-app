@@ -27,6 +27,17 @@ function containsText(buffer: Buffer, text: string): boolean {
   return extractPdfText(buffer).includes(text);
 }
 
+// pdfkit writes .fillColor(hex) as a literal "<r> <g> <b> scn" operator in
+// the (uncompressed) content stream, each channel as component/255 — so,
+// unlike text, no decoding is needed: reproducing that same division here
+// gives the exact same float representation pdfkit itself wrote, and we can
+// just look for it as a plain substring.
+function usesFillColor(buffer: Buffer, hex: string): boolean {
+  const n = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((offset) => parseInt(n.slice(offset, offset + 2), 16) / 255);
+  return buffer.toString("latin1").includes(`${r} ${g} ${b} scn`);
+}
+
 describe("buildProposalPdf", () => {
   it("produces a real PDF file", async () => {
     const buffer = await buildProposalPdf([
@@ -145,6 +156,38 @@ describe("buildProposalPdf", () => {
 
     const text = extractPdfText(buffer);
     expect(text.indexOf("Primeiro")).toBeLessThan(text.indexOf("INVESTIMENTO"));
+  });
+
+  it("derives the document's accent color from a recognizable palette color", async () => {
+    const buffer = await buildProposalPdf([
+      { type: "COVER", order: 1, content: { conceptName: "Teste" } },
+      { type: "PALETTE", order: 6, content: { colors: ["Verde-sálvia", "Champagne"] } },
+    ]);
+    // "Verde-sálvia" matches before "Champagne" — same order as the couple's
+    // own list, so the earliest recognizable tone wins.
+    expect(usesFillColor(buffer, "#8A9A7B")).toBe(true);
+    expect(usesFillColor(buffer, "#B8935E")).toBe(false);
+  });
+
+  it("falls back to the default brand accent when there is no usable palette color", async () => {
+    const withoutPalette = await buildProposalPdf([{ type: "COVER", order: 1, content: { conceptName: "Teste" } }]);
+    expect(usesFillColor(withoutPalette, "#B8935E")).toBe(true);
+
+    // "Branco" and "Creme" are real palette entries, just too pale to
+    // decorate gold rules and headings with — never a reason to invent a
+    // color for them, only to skip them as accent candidates.
+    const paleOnly = await buildProposalPdf([
+      { type: "COVER", order: 1, content: { conceptName: "Teste" } },
+      { type: "PALETTE", order: 6, content: { colors: ["Branco", "Creme"] } },
+    ]);
+    expect(usesFillColor(paleOnly, "#B8935E")).toBe(true);
+  });
+
+  it("still renders the palette's colors as plain text, never a swatch, once an accent is derived", async () => {
+    const buffer = await buildProposalPdf([
+      { type: "PALETTE", order: 6, content: { colors: ["Verde-sálvia", "Champagne"] } },
+    ]);
+    expect(containsText(buffer, "Verde-sálvia, Champagne")).toBe(true);
   });
 
   it("renders a placeholder when there are no components yet", async () => {
