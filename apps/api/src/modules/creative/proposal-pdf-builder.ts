@@ -1,3 +1,4 @@
+import path from "node:path";
 import PDFDocument from "pdfkit";
 import type { ComponentType } from "@eve-os/types";
 
@@ -36,12 +37,12 @@ const MOODBOARD_SECTIONS: [label: string, key: string][] = [
 
 // Neutral tones mirrored from packages/ui/src/tokens.ts (02-brand-bible.md)
 // — apps/api has no dependency on @eve-os/ui (a browser-facing package), so
-// these are copied here rather than imported. Text/border colors stay fixed
-// for legibility; the *accent* color (rules, section labels, headings) is
-// no longer one of these — see deriveAccent() below.
+// these are copied here rather than imported. Body text stays this fixed,
+// legible ink; the *accent* color (script kicker, headings, rules, bands)
+// is not one of these — see deriveAccent() below.
 const NEUTRAL = {
   border: "#EAE1D6",
-  ink: "#2F2B27",
+  ink: "#332E2A",
   muted: "#8A8078",
 } as const;
 
@@ -56,16 +57,33 @@ interface Accent {
   dark: string;
 }
 
-// pdfkit's 14 standard fonts need no embedded font file, so Times gives a
-// real serif for headings (closer to the product's Georgia/serif brand
-// typeface than the previous all-Helvetica look) without adding an asset
-// dependency to the API.
-const SERIF = "Times-Roman";
-const SERIF_BOLD = "Times-Bold";
-const SERIF_ITALIC = "Times-Italic";
-const SANS = "Helvetica";
+// Embedded so the document can have a script kicker word and a warm,
+// rounded body font — the "boutique wedding deck" look of Bia's own
+// hand-made proposals (script + tracked serif heading + soft sans body)
+// isn't achievable with pdfkit's 14 built-in fonts alone. See fonts/README.md
+// for source/license (Google Fonts, SIL OFL — free to embed).
+const FONT_DIR = path.join(__dirname, "fonts");
+const FONT_SCRIPT = "Script";
+const FONT_HEADING = "Heading";
+const FONT_HEADING_SEMIBOLD = "HeadingSemiBold";
+const FONT_BODY = "Body";
+const FONT_BODY_MEDIUM = "BodyMedium";
+
+function registerFonts(doc: PDFKit.PDFDocument): void {
+  doc.registerFont(FONT_SCRIPT, path.join(FONT_DIR, "GreatVibes-Regular.ttf"));
+  doc.registerFont(FONT_HEADING, path.join(FONT_DIR, "CormorantGaramond-Regular.ttf"));
+  doc.registerFont(FONT_HEADING_SEMIBOLD, path.join(FONT_DIR, "CormorantGaramond-SemiBold.ttf"));
+  doc.registerFont(FONT_BODY, path.join(FONT_DIR, "Poppins-Regular.ttf"));
+  doc.registerFont(FONT_BODY_MEDIUM, path.join(FONT_DIR, "Poppins-Medium.ttf"));
+}
 
 const BODY_WIDTH = 460;
+
+// Minimum vertical room a stacked (non-image) component needs before its
+// kicker + heading is worth starting on the current page rather than a
+// fresh one — enough for the category label, the script numeral and its
+// swoosh, the heading and its rule, and roughly one line of body text.
+const MIN_STACKED_COMPONENT_SPACE = 150;
 
 export interface ProposalPdfComponent {
   type: ComponentType;
@@ -88,38 +106,39 @@ export interface ProposalPdfComponent {
  * components in their existing `order` (already encodes the Brand
  * Bible's golden rules — never open with price, concept named before
  * anything else, moodboard included, investment last, see
- * 02-brand-bible.md), one per page, mirroring the same content-shape
- * switch used by ProposalComponentCard in apps/web.
+ * 02-brand-bible.md).
  *
- * Visual language: a thin accent-colored top rule + numbered section label
- * on every page, serif headings, full-bleed hero images (via pdfkit's
- * `cover` fit, so a mostly-square AI render fills the whole banner instead
- * of shrinking to fit inside it), and a page-number footer — an editorial
- * "keepsake booklet" feel instead of the earlier plain black-on-white text
- * dump. The one accent color used throughout is derived once per proposal
- * from its own PALETTE component (see deriveAccent) — a different couple's
- * proposal is styled differently, instead of every document sharing one
- * fixed template regardless of the event's own decor.
+ * Visual language modeled on Bia's own hand-made Canva decks (a real
+ * example: "Casamento Karen e Daniel"): a full-bleed cover photo behind a
+ * soft white veil, a script-numeral kicker + tracked serif heading above
+ * each section, a warm rounded body font, a light accent-tinted band under
+ * photo pages, and a small corner flourish — instead of the flat black-on-
+ * white text dump this replaced. The one accent color used throughout is
+ * derived once per proposal from its own PALETTE component (see
+ * deriveAccent) — a different couple's proposal is styled differently,
+ * instead of every document sharing one fixed template. One honest gap:
+ * this is a simplified geometric approximation of a botanical corner
+ * illustration, not a copy of any specific artwork — pdfkit draws vector
+ * shapes, not hand-drawn line art.
  *
  * Pagination: a component with a conceptual render gets its own full page
  * (the hero-image treatment earns that much room); components without one
  * — the narrative-only ones (História da Bia, Conceito...) and the data
  * ones (Moodboard, Paleta, Cronograma...) — stack onto a shared page
- * instead of each claiming a mostly-empty one, which is what made the
- * pre-grouping version feel flat no matter how the chrome was styled.
- * pdfkit's own bottom-margin overflow check (still in effect, see
- * drawFooter's comment) is the safety net if a particularly long story
- * ever doesn't fit on the page it's sharing.
+ * instead of each claiming a mostly-empty one. pdfkit's own bottom-margin
+ * overflow check (still in effect, see drawFooter's comment) is the safety
+ * net if a particularly long story doesn't fit the page it's sharing.
  */
 export async function buildProposalPdf(components: ProposalPdfComponent[]): Promise<Buffer> {
   // Uncompressed content streams: a proposal PDF is mostly text with a
   // handful of images, so the size cost is negligible, and it keeps the
   // file's raw bytes inspectable (see proposal-pdf-builder.spec.ts).
   // bufferPages: page numbering below only knows the final page count
-  // after everything is laid out (pagination is now content-driven, not
+  // after everything is laid out (pagination is content-driven, not
   // 1-page-per-component), so footers are added in a second pass over the
   // already-drawn pages rather than while each one is first rendered.
   const doc = new PDFDocument({ margin: 54, compress: false, bufferPages: true });
+  registerFonts(doc);
   const chunks: Buffer[] = [];
   doc.on("data", (chunk: Buffer) => chunks.push(chunk));
   const done = new Promise<Buffer>((resolve, reject) => {
@@ -136,7 +155,7 @@ export async function buildProposalPdf(components: ProposalPdfComponent[]): Prom
 
   if (sorted.length === 0) {
     doc
-      .font(SERIF_ITALIC)
+      .font(FONT_BODY)
       .fontSize(13)
       .fillColor(NEUTRAL.muted)
       .text("Esta proposta ainda não tem componentes gerados.", { align: "center" });
@@ -146,9 +165,16 @@ export async function buildProposalPdf(components: ProposalPdfComponent[]): Prom
       const hasImage = Boolean(component.imageBuffer);
       // A hero-image page always starts fresh, and so does the first
       // text-only page right after one (no text crammed under a photo
-      // spread) — but two components without images in a row share a page.
-      if (index > 0 && (hasImage || previousHadImage)) doc.addPage();
-      else if (index > 0) doc.moveDown(1.2);
+      // spread) — but two components without images in a row share a page,
+      // unless there's no longer enough room for a whole kicker+heading
+      // block: those are drawn with raw vector shapes (the script numeral's
+      // swoosh, the heading's rule), which — unlike flowing text — pdfkit
+      // never auto-breaks a page for, so without this check a heading
+      // could end up drawn on top of the footer instead of on a new page.
+      const remainingSpace = doc.page.height - doc.page.margins.bottom - doc.y;
+      const wouldCrowdFooter = remainingSpace < MIN_STACKED_COMPONENT_SPACE;
+      if (index > 0 && (hasImage || previousHadImage || wouldCrowdFooter)) doc.addPage();
+      else if (index > 0) doc.moveDown(1.4);
       renderComponent(doc, component, accent);
       previousHadImage = hasImage;
     });
@@ -236,9 +262,10 @@ function deriveAccent(colors: string[] | undefined): Accent {
 }
 
 // A slim accent-colored band at the very top edge of every page — the one
-// constant visual touch that ties all pages of a given proposal together.
+// constant brand touch tying together every page of a given proposal,
+// including the cover (whose photo already carries most of the identity).
 function renderTopRule(doc: PDFKit.PDFDocument, accent: Accent): void {
-  doc.rect(0, 0, doc.page.width, 6).fillColor(accent.main).fill();
+  doc.rect(0, 0, doc.page.width, 5).fillColor(accent.main).fill();
   doc.fillColor(NEUTRAL.ink);
 }
 
@@ -254,68 +281,159 @@ function drawFooter(doc: PDFKit.PDFDocument, pageNumber: number, pageCount: numb
   const right = doc.page.width - doc.page.margins.right;
   doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(NEUTRAL.border).stroke();
   doc
-    .font(SANS)
+    .font(FONT_BODY)
     .fontSize(8)
     .fillColor(NEUTRAL.muted)
     .text("EVE OS · PROPOSTA DE EVENTO", left, y + 10, { characterSpacing: 0.5, width: 260 });
   doc
-    .font(SANS)
+    .font(FONT_BODY)
     .fontSize(8)
     .fillColor(NEUTRAL.muted)
     .text(`${pageNumber} / ${pageCount}`, right - 260, y + 10, { width: 260, align: "right" });
 }
 
-// A short accent-colored rule under a heading/label — the one recurring
-// decorative motif standing in for the "delicate, boutique" feel from the
-// Brand Bible without needing an embedded illustration asset.
+// A short accent-colored rule under a heading — the other recurring
+// decorative motif, alongside the script kicker (see renderKicker below).
 function accentRule(doc: PDFKit.PDFDocument, width: number, accent: Accent): void {
   const y = doc.y;
   const left = doc.page.margins.left;
-  doc.moveTo(left, y).lineTo(left + width, y).lineWidth(1.4).strokeColor(accent.main).stroke();
+  doc.moveTo(left, y).lineTo(left + width, y).lineWidth(1.2).strokeColor(accent.main).stroke();
   doc.moveDown(0.5);
 }
 
-function renderSectionLabel(doc: PDFKit.PDFDocument, order: number, componentType: ComponentType, accent: Accent): void {
-  const label = `${String(order).padStart(2, "0")}  —  ${COMPONENT_LABELS[componentType]}`.toUpperCase();
-  doc.font(SANS).fontSize(9).fillColor(accent.main).text(label, { characterSpacing: 1.2 });
-  accentRule(doc, 40, accent);
-  doc.fillColor(NEUTRAL.ink);
+// A simplified, geometric stand-in for a botanical corner illustration —
+// three curved accent-colored strokes fanning from one point, faint enough
+// not to compete with a page's own photo or text. Not a copy of any
+// specific artwork, just an abstraction of the same "delicate branch in
+// the corner" motif Bia's own decks use throughout.
+function renderCornerFlourish(doc: PDFKit.PDFDocument, accent: Accent): void {
+  const cx = doc.page.width - doc.page.margins.right - 6;
+  const cy = doc.page.margins.top + 4;
+  doc.opacity(0.4);
+  for (const [dx, dy, bend] of [
+    [-46, 30, -14],
+    [-30, 40, 6],
+    [-14, 34, 18],
+  ] as const) {
+    doc
+      .moveTo(cx, cy)
+      .quadraticCurveTo(cx + dx * 0.6 + bend, cy + dy * 0.3, cx + dx, cy + dy)
+      .lineWidth(1.1)
+      .strokeColor(accent.main)
+      .stroke();
+  }
+  doc.opacity(1);
 }
 
-// Fills the whole hero banner edge to edge (pdfkit's `cover`, like CSS
-// background-size:cover) instead of the previous `fit`, which shrank a
-// mostly-square AI render to whichever dimension was smaller and left the
-// rest of the box blank — the flat, "sem vida" look this replaces.
-function renderHeroImage(doc: PDFKit.PDFDocument, imageBuffer: Buffer | undefined, height: number): void {
-  if (!imageBuffer) return;
+// The small script numeral above a heading (e.g. a cursive "02") plus its
+// underline swoosh — the two-tier "kicker word / big heading" rhythm from
+// the reference deck, built from the component's own real order number
+// instead of an invented connector word.
+function renderKicker(doc: PDFKit.PDFDocument, order: number, accent: Accent): void {
+  const left = doc.page.margins.left;
+  doc.font(FONT_SCRIPT).fontSize(30).fillColor(accent.main).text(String(order).padStart(2, "0"));
+  const y = doc.y - 6;
+  doc
+    .moveTo(left, y)
+    .bezierCurveTo(left + 28, y + 9, left + 66, y - 7, left + 104, y + 1)
+    .lineWidth(1)
+    .strokeColor(accent.main)
+    .stroke();
+  doc.moveDown(0.4);
+}
+
+function renderHeading(doc: PDFKit.PDFDocument, text: string, accent: Accent, ruleWidth = 46): void {
+  if (!text) return;
+  doc.font(FONT_HEADING_SEMIBOLD).fontSize(25).fillColor(accent.dark).text(text, { characterSpacing: 1.1 });
+  accentRule(doc, ruleWidth, accent);
+}
+
+function renderCategoryLabel(doc: PDFKit.PDFDocument, componentType: ComponentType): void {
+  const label = COMPONENT_LABELS[componentType].toUpperCase();
+  doc.font(FONT_BODY_MEDIUM).fontSize(8).fillColor(NEUTRAL.muted).text(label, { characterSpacing: 1.8 });
+  doc.moveDown(0.6);
+}
+
+// A light accent-tinted strip at the very bottom of a photo page, echoing
+// the solid color blocks under some pages of the reference deck. Sits
+// below the footer's own position (see drawFooter) so the two never
+// overlap — the footer draws after, on top of the tint, still legible.
+function renderBottomBand(doc: PDFKit.PDFDocument, accent: Accent): void {
+  const height = 42;
+  doc.opacity(0.16);
+  doc.rect(0, doc.page.height - height, doc.page.width, height).fillColor(accent.main).fill();
+  doc.opacity(1);
+}
+
+// Fills the whole page edge to edge behind a soft white veil (so title
+// text stays legible over any photo) — the cover treatment from the
+// reference deck. Returns whether an image was actually drawn, so the
+// caller knows whether to place the title over the photo or, lacking one
+// yet, fall back to a plain page.
+function renderFullBleedCover(doc: PDFKit.PDFDocument, imageBuffer: Buffer | undefined): boolean {
+  if (!imageBuffer) return false;
+  try {
+    doc.image(imageBuffer, 0, 0, { cover: [doc.page.width, doc.page.height], align: "center", valign: "center" });
+  } catch {
+    // Intentionally swallowed — an undecodable/corrupt/expired image must
+    // never fail the whole PDF: the title text is still real and worth
+    // delivering on its own, just on a plain page instead of a photo one.
+    return false;
+  }
+  doc.rect(0, 0, doc.page.width, doc.page.height).fillColor("#FFFFFF").fillOpacity(0.45).fill();
+  doc.fillOpacity(1);
+  return true;
+}
+
+// Fills the hero banner edge to edge (pdfkit's `cover`, like CSS
+// background-size:cover) instead of `fit`, which shrinks a mostly-square
+// AI render to whichever dimension is smaller and leaves the rest blank.
+function renderHeroImage(doc: PDFKit.PDFDocument, imageBuffer: Buffer | undefined, height: number): boolean {
+  if (!imageBuffer) return false;
   const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   try {
     doc.image(imageBuffer, { cover: [width, height], align: "center", valign: "center" });
     doc.moveDown(0.8);
+    return true;
   } catch {
-    // Intentionally swallowed — an undecodable/corrupt/expired image must
-    // never fail the whole PDF: the text content around it is still real
-    // and worth delivering on its own.
+    // Intentionally swallowed — see renderFullBleedCover's comment.
+    return false;
   }
 }
 
 function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponent, accent: Accent): void {
-  renderSectionLabel(doc, component.order, component.type, accent);
+  if (component.type !== "COVER") {
+    renderCornerFlourish(doc, accent);
+    renderCategoryLabel(doc, component.type);
+  }
 
   switch (component.type) {
-    case "COVER":
-      renderHeroImage(doc, component.imageBuffer, 320);
-      accentRule(doc, 60, accent);
-      doc.font(SERIF_BOLD).fontSize(30).fillColor(NEUTRAL.ink).text(String(component.content.conceptName ?? ""));
-      doc.moveDown(0.2);
+    case "COVER": {
+      const hasPhoto = renderFullBleedCover(doc, component.imageBuffer);
+      if (hasPhoto) doc.y = doc.page.height * 0.6;
+      const titleColor = hasPhoto ? accent.dark : NEUTRAL.ink;
+      const align = hasPhoto ? "center" : "left";
       doc
-        .font(SANS)
+        .font(FONT_HEADING_SEMIBOLD)
+        .fontSize(29)
+        .fillColor(titleColor)
+        .text(String(component.content.conceptName ?? ""), { align, characterSpacing: 0.6 });
+      doc.moveDown(0.3);
+      doc
+        .font(FONT_BODY_MEDIUM)
+        .fontSize(12)
+        .fillColor(titleColor)
+        .text(String(component.content.coupleNames ?? ""), { align, characterSpacing: 0.5 });
+      doc
+        .font(FONT_BODY)
         .fontSize(11)
-        .fillColor(accent.dark)
-        .text(String(component.content.coupleNames ?? ""), { characterSpacing: 0.8 });
-      doc.font(SERIF_ITALIC).fontSize(12).fillColor(NEUTRAL.muted).text(String(component.content.venueName ?? ""));
+        .fillColor(hasPhoto ? titleColor : NEUTRAL.muted)
+        .text(String(component.content.venueName ?? ""), { align });
       break;
+    }
     case "PALETTE": {
+      renderKicker(doc, component.order, accent);
+      renderHeading(doc, COMPONENT_LABELS.PALETTE, accent);
       // Free-text tones from the diagnosis (e.g. "verde-sálvia"), shown
       // exactly as named — never a guessed hex swatch. No real color value
       // backs these names, and fabricating one here (as opposed to the
@@ -323,18 +441,20 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
       // invent data" rule applied everywhere else in the product.
       const colors = (component.content.colors as string[] | undefined) ?? [];
       doc
-        .font(SERIF)
-        .fontSize(16)
+        .font(FONT_BODY)
+        .fontSize(13)
         .fillColor(NEUTRAL.ink)
-        .text(colors.length > 0 ? colors.join(", ") : "—", { characterSpacing: 0.3, width: BODY_WIDTH });
+        .text(colors.length > 0 ? colors.join(", ") : "—", { characterSpacing: 0.2, width: BODY_WIDTH });
       break;
     }
     case "MOODBOARD":
+      renderKicker(doc, component.order, accent);
+      renderHeading(doc, COMPONENT_LABELS.MOODBOARD, accent);
       for (const [label, key] of MOODBOARD_SECTIONS) {
         const items = (component.content[key] as string[] | undefined) ?? [];
-        doc.font(SERIF_BOLD).fontSize(13).fillColor(accent.dark).text(label);
+        doc.font(FONT_BODY_MEDIUM).fontSize(12).fillColor(accent.dark).text(label);
         doc
-          .font(items.length > 0 ? SERIF : SERIF_ITALIC)
+          .font(FONT_BODY)
           .fontSize(11)
           .fillColor(items.length > 0 ? NEUTRAL.ink : NEUTRAL.muted)
           .text(items.length > 0 ? items.join(", ") : "—", { width: BODY_WIDTH });
@@ -347,10 +467,12 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
       }
       break;
     case "TIMELINE": {
+      renderKicker(doc, component.order, accent);
+      renderHeading(doc, COMPONENT_LABELS.TIMELINE, accent);
       const steps = (component.content.steps as { label: string; description: string }[] | undefined) ?? [];
       steps.forEach((step, index) => {
-        doc.font(SERIF_BOLD).fontSize(13).fillColor(accent.dark).text(`${index + 1}. ${step.label}`);
-        doc.font(SERIF).fontSize(11).fillColor(NEUTRAL.ink).text(step.description, { width: BODY_WIDTH });
+        doc.font(FONT_BODY_MEDIUM).fontSize(12).fillColor(accent.dark).text(`${index + 1}. ${step.label}`);
+        doc.font(FONT_BODY).fontSize(11).fillColor(NEUTRAL.ink).text(step.description, { width: BODY_WIDTH });
         doc.moveDown(0.4);
         const y = doc.y;
         const left = doc.page.margins.left;
@@ -361,10 +483,12 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
       break;
     }
     case "INVESTMENT": {
+      renderKicker(doc, component.order, accent);
+      renderHeading(doc, COMPONENT_LABELS.INVESTMENT, accent);
       const includes = (component.content.includes as string[] | undefined) ?? [];
       const amount = component.content.amount as number | null;
       const currency = component.content.currency as string | undefined;
-      doc.font(SERIF).fontSize(12).fillColor(NEUTRAL.ink);
+      doc.font(FONT_BODY).fontSize(12).fillColor(NEUTRAL.ink);
       for (const item of includes) {
         doc.text(`• ${item}`, { width: BODY_WIDTH });
         doc.moveDown(0.15);
@@ -376,30 +500,29 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
         const left = doc.page.margins.left;
         doc.roundedRect(left, boxY, boxWidth, 60, 6).lineWidth(1).strokeColor(accent.main).stroke();
         doc
-          .font(SANS)
+          .font(FONT_BODY_MEDIUM)
           .fontSize(8)
           .fillColor(NEUTRAL.muted)
           .text("INVESTIMENTO TOTAL", left + 18, boxY + 12, { characterSpacing: 1 });
         doc
-          .font(SERIF_BOLD)
-          .fontSize(20)
+          .font(FONT_HEADING_SEMIBOLD)
+          .fontSize(21)
           .fillColor(NEUTRAL.ink)
-          .text(`${currency ?? ""} ${amount.toLocaleString("pt-BR")}`.trim(), left + 18, boxY + 26);
+          .text(`${currency ?? ""} ${amount.toLocaleString("pt-BR")}`.trim(), left + 18, boxY + 25);
         doc.y = boxY + 70;
       }
       break;
     }
     default: {
-      renderHeroImage(doc, component.imageBuffer, 260);
+      const hasPhoto = renderHeroImage(doc, component.imageBuffer, 260);
+      renderKicker(doc, component.order, accent);
       const title = String(component.content.title ?? component.content.name ?? "");
       const description = String(component.content.description ?? component.content.text ?? "");
-      if (title) {
-        doc.font(SERIF_BOLD).fontSize(18).fillColor(NEUTRAL.ink).text(title);
-        accentRule(doc, 36, accent);
-      }
+      renderHeading(doc, title, accent, 40);
       if (description) {
-        doc.font(SERIF).fontSize(12).fillColor(NEUTRAL.ink).text(description, { width: BODY_WIDTH, lineGap: 3 });
+        doc.font(FONT_BODY).fontSize(12).fillColor(NEUTRAL.ink).text(description, { width: BODY_WIDTH, lineGap: 3 });
       }
+      if (hasPhoto) renderBottomBand(doc, accent);
     }
   }
 }
