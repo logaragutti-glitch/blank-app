@@ -1,10 +1,11 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import type { ChatMessage, Client, Event, ProjectTask, Supplier, User, Venue } from "@eve-os/types";
+import type { ChatMessage, Client, Event, Proposal, ProjectTask, Supplier, User, Venue } from "@eve-os/types";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { UserRepository } from "../auth/repositories/user.repository";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
+import { ProposalComponentRepository } from "../creative/repositories/proposal-component.repository";
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
@@ -47,6 +48,7 @@ describe("ChatController", () => {
   let clients: jest.Mocked<ClientRepository>;
   let venues: jest.Mocked<VenueRepository>;
   let proposals: jest.Mocked<ProposalRepository>;
+  let proposalComponents: jest.Mocked<ProposalComponentRepository>;
   let tasks: jest.Mocked<ProjectTaskRepository>;
   let team: jest.Mocked<ProjectTeamMemberRepository>;
   let users: jest.Mocked<UserRepository>;
@@ -66,6 +68,7 @@ describe("ChatController", () => {
           provide: ProposalRepository,
           useValue: { findByEvent: jest.fn(), findById: jest.fn(), create: jest.fn(), updateConceptName: jest.fn(), updateStatus: jest.fn() },
         },
+        { provide: ProposalComponentRepository, useValue: { findByProposal: jest.fn(), upsertMany: jest.fn() } },
         { provide: ProjectTaskRepository, useValue: { findByEvent: jest.fn(), findById: jest.fn(), create: jest.fn(), update: jest.fn(), softDelete: jest.fn() } },
         { provide: ProjectTeamMemberRepository, useValue: { findByEvent: jest.fn(), findOne: jest.fn(), addOrUpdate: jest.fn(), remove: jest.fn() } },
         { provide: UserRepository, useValue: { findByOrganization: jest.fn() } },
@@ -84,6 +87,7 @@ describe("ChatController", () => {
     clients = moduleRef.get(ClientRepository);
     venues = moduleRef.get(VenueRepository);
     proposals = moduleRef.get(ProposalRepository);
+    proposalComponents = moduleRef.get(ProposalComponentRepository);
     tasks = moduleRef.get(ProjectTaskRepository);
     team = moduleRef.get(ProjectTeamMemberRepository);
     users = moduleRef.get(UserRepository);
@@ -171,6 +175,36 @@ describe("ChatController", () => {
       expect(chatCall?.context.tasks).toEqual([{ title: "Confirmar buffet", status: "TODO", dueDate: null }]);
       expect(chatCall?.context.team).toEqual([{ name: "Karen Decoradora", role: "Decoradora" }]);
       expect(chatCall?.context.suppliers).toEqual([{ name: "Flores da Serra", category: "FLORIST", status: "BOOKED" }]);
+    });
+
+    it("includes the latest proposal's generated components in the grounding context", async () => {
+      messages.findByEvent.mockResolvedValue([]);
+      messages.create.mockResolvedValueOnce(fakeUserMessage).mockResolvedValueOnce(fakeAssistantMessage);
+      proposals.findByEvent.mockResolvedValue([{ id: "proposal-1", eventId: "event-1" } as Proposal]);
+      proposalComponents.findByProposal.mockResolvedValue([
+        { type: "PALETTE", order: 6, content: { colors: ["Verde-sálvia", "Champagne"] } },
+      ] as never);
+      eveChat.reply.mockResolvedValue("ok");
+
+      await controller.sendMessage(authUser, "event-1", { content: "O que podemos mudar nesta proposta?" });
+
+      expect(proposalComponents.findByProposal).toHaveBeenCalledWith("proposal-1");
+      const chatCall = eveChat.reply.mock.calls[0]?.[0];
+      expect(chatCall?.context.proposalComponents).toEqual([
+        { type: "PALETTE", order: 6, content: { colors: ["Verde-sálvia", "Champagne"] } },
+      ]);
+    });
+
+    it("never fetches components when there is no proposal yet", async () => {
+      messages.findByEvent.mockResolvedValue([]);
+      messages.create.mockResolvedValueOnce(fakeUserMessage).mockResolvedValueOnce(fakeAssistantMessage);
+      eveChat.reply.mockResolvedValue("ok");
+
+      await controller.sendMessage(authUser, "event-1", { content: "Oi" });
+
+      expect(proposalComponents.findByProposal).not.toHaveBeenCalled();
+      const chatCall = eveChat.reply.mock.calls[0]?.[0];
+      expect(chatCall?.context.proposalComponents).toEqual([]);
     });
 
     it("throws NotFoundException when the event doesn't exist", async () => {

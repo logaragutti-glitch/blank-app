@@ -22,6 +22,10 @@ function buildInput(overrides: Partial<EveChatInput> = {}): EveChatInput {
       budgetAmount: 26770,
       venueName: "Villa Massari",
       latestProposal: { status: "DRAFT", conceptName: "Jardim Romântico", wowScore: 87 },
+      proposalComponents: [
+        { type: "PALETTE", order: 6, content: { colors: ["Verde-sálvia", "Champagne"] } },
+        { type: "ENTRANCE", order: 7, content: { title: "Um Convite ao Acolhimento", description: "Arranjos soltos em cerâmica rústica." } },
+      ],
       tasks: [{ title: "Confirmar buffet", status: "TODO", dueDate: null }],
       team: [{ name: "Bia", role: "Cerimonialista" }],
       suppliers: [{ name: "Flores da Serra", category: "FLORIST", status: "BOOKED" }],
@@ -53,6 +57,31 @@ describe("AnthropicEveChatProvider", () => {
     expect(call.system).toContain("Karen & Daniel");
     expect(call.system).toContain("Confirmar buffet");
     expect(call.messages).toEqual([{ role: "user", content: "Qual o status da proposta?" }]);
+  });
+
+  it("includes the proposal's own generated components in the system prompt", async () => {
+    createMock.mockResolvedValue({
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+    });
+
+    await provider.reply(buildInput());
+
+    const call = createMock.mock.calls[0]?.[0];
+    expect(call.system).toContain("Verde-sálvia, Champagne");
+    expect(call.system).toContain("Um Convite ao Acolhimento");
+  });
+
+  it("tells EVE plainly when the proposal has no generated sections yet", async () => {
+    createMock.mockResolvedValue({
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+    });
+
+    await provider.reply(buildInput({ context: { ...buildInput().context, proposalComponents: [] } }));
+
+    const call = createMock.mock.calls[0]?.[0];
+    expect(call.system).toContain("A proposta ainda não tem seções geradas");
   });
 
   it("includes prior turns in the messages array", async () => {

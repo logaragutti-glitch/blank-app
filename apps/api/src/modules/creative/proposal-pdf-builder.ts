@@ -391,14 +391,33 @@ function renderFullBleedCover(doc: PDFKit.PDFDocument, imageBuffer: Buffer | und
 function renderHeroImage(doc: PDFKit.PDFDocument, imageBuffer: Buffer | undefined, height: number): boolean {
   if (!imageBuffer) return false;
   const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const x = doc.page.margins.left;
+  const y = doc.y;
+  // pdfkit's `cover` only computes the scale needed to fill the box, then
+  // draws the image at that (often larger) size — it does not clip to the
+  // box itself (unlike CSS background-size:cover). For a square AI render
+  // inside this ~504pt-wide, 260pt-tall banner, that means an undraw
+  // ~504x504 image bleeding ~244pt past the banner's bottom edge, over
+  // whatever heading/description gets drawn right after — an explicit clip
+  // region is required to actually confine it to the banner.
+  doc.save();
+  doc.rect(x, y, width, height).clip();
   try {
-    doc.image(imageBuffer, { cover: [width, height], align: "center", valign: "center" });
-    doc.moveDown(0.8);
-    return true;
+    doc.image(imageBuffer, x, y, { cover: [width, height], align: "center", valign: "center" });
   } catch {
     // Intentionally swallowed — see renderFullBleedCover's comment.
+    doc.restore();
     return false;
   }
+  doc.restore();
+  // Explicit x/y so this sets the cursor exactly to `height` below where it
+  // started — without explicit coordinates, pdfkit's cursor auto-advances
+  // by the image's own oversized cover dimensions (~504pt here) instead of
+  // the requested banner height, silently eating the room the heading and
+  // description needed and spilling the description's last line or two
+  // onto an otherwise near-empty next page.
+  doc.y = y + height + 10;
+  return true;
 }
 
 function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponent, accent: Accent): void {

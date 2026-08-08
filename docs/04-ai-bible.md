@@ -242,9 +242,11 @@ agentes especializados nem para agir sobre o sistema.
 > (`ChatMessage`, apenas leitura depois de criado) e responde via
 > `AnthropicEveChatProvider` (`ai/prompts/eve-chat.prompt.ts`,
 > `EVE_CHAT_PROMPT_VERSION`). O contexto passado ao modelo é montado a
-> partir de dados já reais do projeto (cliente, espaço, proposta,
-> tarefas, equipe, fornecedores) — a mesma regra de ouro do resto do
-> sistema se aplica: a EVE nunca inventa dado que não esteja no contexto,
+> partir de dados já reais do projeto (cliente, espaço, proposta —
+> incluindo o conteúdo de cada seção já gerada: moodboard, paleta,
+> ambientes, cronograma, investimento —, tarefas, equipe, fornecedores) —
+> a mesma regra de ouro do resto do sistema se aplica: a EVE nunca
+> inventa dado que não esteja no contexto,
 > e o prompt deixa explícito que ela ainda não pode realizar ações
 > (criar tarefa, mudar status, etc.), só responder. Isso é uma limitação
 > de escopo deliberada, não uma limitação técnica — dar à EVE capacidade

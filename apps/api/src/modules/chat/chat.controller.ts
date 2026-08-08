@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { UserRepository } from "../auth/repositories/user.repository";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
+import { ProposalComponentRepository } from "../creative/repositories/proposal-component.repository";
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
@@ -28,6 +29,7 @@ export class ChatController {
     private readonly clients: ClientRepository,
     private readonly venues: VenueRepository,
     private readonly proposals: ProposalRepository,
+    private readonly proposalComponents: ProposalComponentRepository,
     private readonly tasks: ProjectTaskRepository,
     private readonly team: ProjectTeamMemberRepository,
     private readonly users: UserRepository,
@@ -102,6 +104,7 @@ export class ChatController {
       this.supplierAssignments.findByEvent(eventId),
     ]);
     const latestProposal = eventProposals[0] ?? null;
+    const components = latestProposal ? await this.proposalComponents.findByProposal(latestProposal.id) : [];
     const usersById = new Map(orgUsers.map((u) => [u.id, u]));
 
     const suppliersById = new Map(
@@ -124,6 +127,11 @@ export class ChatController {
       latestProposal: latestProposal
         ? { status: latestProposal.status, conceptName: latestProposal.conceptName, wowScore: latestProposal.wowScore }
         : null,
+      proposalComponents: components.map((component) => ({
+        type: component.type,
+        order: component.order,
+        content: component.content,
+      })),
       tasks: tasks.map((task) => ({ title: task.title, status: task.status, dueDate: task.dueDate })),
       team: teamAssignments.map((assignment) => ({
         name: usersById.get(assignment.userId)?.name ?? "Usuário removido",
