@@ -116,6 +116,14 @@ AWS S3 direto, ou Cloudflare R2 (mais barato, sem custo de egress). Só
 trocar `S3_ENDPOINT`/`S3_ACCESS_KEY`/`S3_SECRET_KEY`/`S3_BUCKET` pelas
 credenciais reais — nenhuma mudança de código necessária.
 
+`S3_PUBLIC_ENDPOINT` é opcional e só importa para MinIO auto-hospedado
+atrás de um nome interno (o caso do `docker-compose.yml`, onde a API fala
+com `http://minio:9000` mas o navegador do usuário nunca conseguiria
+resolver esse host ao abrir um link assinado). Contra AWS S3 ou Cloudflare
+R2 reais, `S3_ENDPOINT` já é o mesmo endereço público que o navegador usa —
+não defina `S3_PUBLIC_ENDPOINT` nesses casos, o fallback cuida disso
+sozinho.
+
 ## E-mail real via Gmail/Google Workspace
 
 `EmailPort` (`apps/api/src/infrastructure/email/`) tem dois providers:

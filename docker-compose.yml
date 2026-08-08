@@ -111,6 +111,13 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-eve}:${RABBITMQ_PASSWORD:-eve}@rabbitmq:5672
       OPENSEARCH_URL: http://opensearch:9200
       S3_ENDPOINT: http://minio:9000
+      # Used only to build the signed download URLs handed to the browser
+      # (conceptual renders, inspiration images, project files) — those
+      # requests come from the user's machine, not from inside this Docker
+      # network, so they need MinIO's host-published port, not the internal
+      # service name above. See S3StorageService's own comment for the
+      # broken-image bug this fixes.
+      S3_PUBLIC_ENDPOINT: http://localhost:${S3_PORT:-9000}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-eve}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-eve12345}
       S3_BUCKET: ${S3_BUCKET:-eve-os-inspiration}

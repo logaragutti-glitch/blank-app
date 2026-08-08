@@ -41,6 +41,36 @@ describe("S3StorageService", () => {
     expect(parsed.searchParams.has("X-Amz-Signature")).toBe(true);
   });
 
+  describe("signed URL host (Docker's internal-vs-public MinIO endpoint)", () => {
+    const originalEndpoint = process.env.S3_ENDPOINT;
+    const originalPublicEndpoint = process.env.S3_PUBLIC_ENDPOINT;
+
+    afterEach(() => {
+      process.env.S3_ENDPOINT = originalEndpoint;
+      process.env.S3_PUBLIC_ENDPOINT = originalPublicEndpoint;
+    });
+
+    it("builds the signed URL against S3_PUBLIC_ENDPOINT, not the internal S3_ENDPOINT — a <img> tag on the user's browser can never resolve a Docker-internal service name like 'minio'", async () => {
+      process.env.S3_ENDPOINT = "http://minio:9000";
+      process.env.S3_PUBLIC_ENDPOINT = "http://localhost:9000";
+      const service = new S3StorageService();
+
+      const url = await service.getSignedDownloadUrl("renders/proposal-1/cover.png");
+
+      expect(new URL(url).host).toBe("localhost:9000");
+    });
+
+    it("falls back to S3_ENDPOINT when S3_PUBLIC_ENDPOINT isn't set (e.g. plain `pnpm dev`, where both already point at localhost)", async () => {
+      process.env.S3_ENDPOINT = "http://localhost:9000";
+      delete process.env.S3_PUBLIC_ENDPOINT;
+      const service = new S3StorageService();
+
+      const url = await service.getSignedDownloadUrl("renders/proposal-1/cover.png");
+
+      expect(new URL(url).host).toBe("localhost:9000");
+    });
+  });
+
   it("downloads the raw bytes for a given key", async () => {
     const fakeBytes = new Uint8Array(Buffer.from("fake-image-bytes"));
     s3Mock.on(GetObjectCommand).resolves({
