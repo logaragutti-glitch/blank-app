@@ -145,17 +145,35 @@ describe("buildProposalPdf", () => {
     expect(containsText(buffer, "Teste com imagem quebrada")).toBe(true);
   });
 
-  it("renders components in order, one per page, regardless of input order", async () => {
+  it("renders components in order regardless of input order", async () => {
     const components: ProposalPdfComponent[] = [
       { type: "INVESTMENT", order: 18, content: { includes: [], amount: null } },
       { type: "COVER", order: 1, content: { conceptName: "Primeiro" } },
     ];
     const buffer = await buildProposalPdf(components);
-    const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
-    expect(pageCount).toBe(2);
-
     const text = extractPdfText(buffer);
     expect(text.indexOf("Primeiro")).toBeLessThan(text.indexOf("INVESTIMENTO"));
+  });
+
+  it("stacks components without a hero image onto a shared page instead of one page each", async () => {
+    // Neither COVER nor INVESTMENT has an imageBuffer here — both are
+    // narrative/data-only, so they should share the one page pdfkit
+    // creates by default instead of each claiming a mostly-empty one.
+    const buffer = await buildProposalPdf([
+      { type: "COVER", order: 1, content: { conceptName: "Primeiro" } },
+      { type: "INVESTMENT", order: 18, content: { includes: [], amount: null } },
+    ]);
+    const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+    expect(pageCount).toBe(1);
+  });
+
+  it("gives a component with a hero image its own page, even next to text-only ones", async () => {
+    const buffer = await buildProposalPdf([
+      { type: "COVER", order: 1, imageBuffer: VALID_PNG, content: { conceptName: "Primeiro" } },
+      { type: "BIA_STORY", order: 2, content: { title: "A Bia", description: "Texto curto." } },
+    ]);
+    const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+    expect(pageCount).toBe(2);
   });
 
   it("derives the document's accent color from a recognizable palette color", async () => {

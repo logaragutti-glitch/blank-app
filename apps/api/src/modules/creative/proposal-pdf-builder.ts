@@ -100,12 +100,26 @@ export interface ProposalPdfComponent {
  * from its own PALETTE component (see deriveAccent) — a different couple's
  * proposal is styled differently, instead of every document sharing one
  * fixed template regardless of the event's own decor.
+ *
+ * Pagination: a component with a conceptual render gets its own full page
+ * (the hero-image treatment earns that much room); components without one
+ * — the narrative-only ones (História da Bia, Conceito...) and the data
+ * ones (Moodboard, Paleta, Cronograma...) — stack onto a shared page
+ * instead of each claiming a mostly-empty one, which is what made the
+ * pre-grouping version feel flat no matter how the chrome was styled.
+ * pdfkit's own bottom-margin overflow check (still in effect, see
+ * drawFooter's comment) is the safety net if a particularly long story
+ * ever doesn't fit on the page it's sharing.
  */
 export async function buildProposalPdf(components: ProposalPdfComponent[]): Promise<Buffer> {
   // Uncompressed content streams: a proposal PDF is mostly text with a
   // handful of images, so the size cost is negligible, and it keeps the
   // file's raw bytes inspectable (see proposal-pdf-builder.spec.ts).
-  const doc = new PDFDocument({ margin: 54, compress: false });
+  // bufferPages: page numbering below only knows the final page count
+  // after everything is laid out (pagination is now content-driven, not
+  // 1-page-per-component), so footers are added in a second pass over the
+  // already-drawn pages rather than while each one is first rendered.
+  const doc = new PDFDocument({ margin: 54, compress: false, bufferPages: true });
   const chunks: Buffer[] = [];
   doc.on("data", (chunk: Buffer) => chunks.push(chunk));
   const done = new Promise<Buffer>((resolve, reject) => {
@@ -117,21 +131,33 @@ export async function buildProposalPdf(components: ProposalPdfComponent[]): Prom
   const palette = sorted.find((component) => component.type === "PALETTE");
   const accent = deriveAccent(palette?.content.colors as string[] | undefined);
 
+  renderTopRule(doc, accent); // the implicit first page — 'pageAdded' below only fires for later ones
+  doc.on("pageAdded", () => renderTopRule(doc, accent));
+
   if (sorted.length === 0) {
-    renderTopRule(doc, accent);
     doc
       .font(SERIF_ITALIC)
       .fontSize(13)
       .fillColor(NEUTRAL.muted)
       .text("Esta proposta ainda não tem componentes gerados.", { align: "center" });
-    drawFooter(doc, 1, 1);
   } else {
+    let previousHadImage = false;
     sorted.forEach((component, index) => {
-      if (index > 0) doc.addPage();
-      renderTopRule(doc, accent);
+      const hasImage = Boolean(component.imageBuffer);
+      // A hero-image page always starts fresh, and so does the first
+      // text-only page right after one (no text crammed under a photo
+      // spread) — but two components without images in a row share a page.
+      if (index > 0 && (hasImage || previousHadImage)) doc.addPage();
+      else if (index > 0) doc.moveDown(1.2);
       renderComponent(doc, component, accent);
-      drawFooter(doc, index + 1, sorted.length);
+      previousHadImage = hasImage;
     });
+  }
+
+  const range = doc.bufferedPageRange();
+  for (let i = range.start; i < range.start + range.count; i++) {
+    doc.switchToPage(i);
+    drawFooter(doc, i - range.start + 1, range.count);
   }
 
   doc.end();
