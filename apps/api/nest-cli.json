@@ -4,6 +4,7 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "incremental": false
+    "incremental": false,
+    "assets": ["modules/creative/fonts/**/*"]
   }
 }

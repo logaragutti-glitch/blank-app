@@ -11,16 +11,133 @@ const VALID_PNG = Buffer.from(
 // `compress: false`), so a real, non-fabricated way to check that specific
 // text actually ended up in the document is to decode it straight out of
 // the raw PDF bytes — no dependency on a PDF-text-extraction library
-// needed. pdfkit draws standard-font text as hex-string tokens (`<...>`)
-// inside Tj/TJ operators — WinAnsi-encoded, one byte per character —
-// sometimes split into several adjacent tokens interleaved with numeric
-// kerning adjustments (e.g. `[<726f7365> 15 <2c2076>...] TJ`). Extracting
-// and concatenating every hex token in file order reconstructs the
-// rendered text faithfully enough to search for a substring.
+// needed. Two different encodings show up, depending on the font:
+//
+// - pdfkit's 14 standard fonts (not used by this builder anymore, kept
+//   here for completeness): hex tokens are WinAnsi, one byte per char.
+// - Embedded fonts (Script/Heading/Body — see registerFonts): each glyph
+//   is shown as a 2-byte CID from that font's own private numbering, with
+//   no relation to the character itself. The only way back to real text is
+//   the font's own embedded /ToUnicode CMap (a `beginbfrange ... [<u0>
+//   <u1>...] endbfrange` block pdfkit writes per embedded font), and which
+//   CMap applies to a given Tj/TJ depends on which font was last selected
+//   via a `/Fn size Tf` operator in that same content stream. Decoding it
+//   properly (rather than assuming one universal byte-per-char scheme)
+//   is what the helpers below do.
+function parsePdfObjects(raw: string): Map<number, string> {
+  const objects = new Map<number, string>();
+  for (const m of raw.matchAll(/(\d+)\s+0\s+obj([\s\S]*?)endobj/g)) {
+    objects.set(Number(m[1]), m[2] ?? "");
+  }
+  return objects;
+}
+
+function extractStreamBody(objectBody: string): string | null {
+  const m = objectBody.match(/stream\r?\n([\s\S]*?)endstream/);
+  return m?.[1] ?? null;
+}
+
+// pdfkit only ever emits the array form of bfrange for its embedded font
+// subsets: `<startCID> <endCID> [<dst0> <dst1> ...]`, one destination per
+// CID in the range (see a real generated CMap if this ever needs
+// re-verifying — that's how this was written).
+function parseBfRangeCMap(cmapStream: string): Map<number, string> {
+  const table = new Map<number, string>();
+  for (const range of cmapStream.matchAll(/<([0-9a-fA-F]+)>\s*<[0-9a-fA-F]+>\s*\[([^\]]+)\]/g)) {
+    const start = parseInt(range[1] ?? "0", 16);
+    const destinations = [...(range[2] ?? "").matchAll(/<([0-9a-fA-F]+)>/g)];
+    destinations.forEach((dst, i) => table.set(start + i, String.fromCharCode(parseInt(dst[1] ?? "0", 16))));
+  }
+  return table;
+}
+
+// Maps each Page object's `/Contents N 0 R` stream to its own `/Fn -> font
+// object number` resource table — content streams from different pages
+// can reuse the same `/F1` name for entirely different fonts. pdfkit
+// writes `/Resources` as its own indirect object (`/Resources 6 0 R`), not
+// inline in the Page dict, so that reference has to be followed first.
+function parseFontResourcesByContentStream(objects: Map<number, string>): Map<number, Map<string, number>> {
+  const byContentStream = new Map<number, Map<string, number>>();
+  for (const body of objects.values()) {
+    if (!/\/Type\s*\/Page\b/.test(body)) continue;
+    const contents = body.match(/\/Contents\s+(\d+)\s+0\s+R/);
+    if (!contents) continue;
+
+    const resourcesRef = body.match(/\/Resources\s+(\d+)\s+0\s+R/);
+    const resourcesBody = resourcesRef ? (objects.get(Number(resourcesRef[1])) ?? body) : body;
+
+    const fonts = new Map<string, number>();
+    const fontDict = resourcesBody.match(/\/Font\s*<<([\s\S]*?)>>/);
+    if (fontDict?.[1]) {
+      for (const f of fontDict[1].matchAll(/\/(F\d+)\s+(\d+)\s+0\s+R/g)) fonts.set(`/${f[1]}`, Number(f[2]));
+    }
+    byContentStream.set(Number(contents[1]), fonts);
+  }
+  return byContentStream;
+}
+
+function decodeHexShow(
+  hex: string,
+  fontObjNum: number | null,
+  objects: Map<number, string>,
+  cmapsByFontObj: Map<number, Map<number, string>>,
+): string {
+  const fontBody = fontObjNum != null ? objects.get(fontObjNum) : undefined;
+  if (fontBody && /\/Subtype\s*\/Type0/.test(fontBody)) {
+    const table = cmapsByFontObj.get(fontObjNum!);
+    let out = "";
+    for (let i = 0; i + 4 <= hex.length; i += 4) out += table?.get(parseInt(hex.slice(i, i + 4), 16)) ?? "";
+    return out;
+  }
+  // A pdfkit standard font (WinAnsi, one byte per character) — not used by
+  // this builder currently, but decoded correctly all the same.
+  return Buffer.from(hex, "hex").toString("latin1");
+}
+
+function decodeContentStream(
+  stream: string,
+  fontResources: Map<string, number>,
+  objects: Map<number, string>,
+  cmapsByFontObj: Map<number, Map<number, string>>,
+): string {
+  let currentFont: number | null = null;
+  let out = "";
+  const tokenPattern = /\/(F\d+)\s+[\d.]+\s+Tf|<([0-9a-fA-F]+)>\s*Tj|\[((?:<[0-9a-fA-F]+>|-?[\d.]+|\s)+)\]\s*TJ/g;
+  for (const m of stream.matchAll(tokenPattern)) {
+    if (m[1]) {
+      currentFont = fontResources.get(`/${m[1]}`) ?? null;
+    } else if (m[2] !== undefined) {
+      out += decodeHexShow(m[2], currentFont, objects, cmapsByFontObj);
+    } else if (m[3] !== undefined) {
+      for (const piece of m[3].matchAll(/<([0-9a-fA-F]+)>/g)) {
+        out += decodeHexShow(piece[1] ?? "", currentFont, objects, cmapsByFontObj);
+      }
+    }
+  }
+  return out;
+}
+
 function extractPdfText(buffer: Buffer): string {
   const raw = buffer.toString("latin1");
-  const hexTokens = raw.match(/<[0-9a-fA-F]+>/g) ?? [];
-  return hexTokens.map((token) => Buffer.from(token.slice(1, -1), "hex").toString("latin1")).join("");
+  const objects = parsePdfObjects(raw);
+
+  const cmapsByFontObj = new Map<number, Map<number, string>>();
+  for (const [fontObjNum, body] of objects) {
+    if (!/\/Subtype\s*\/Type0/.test(body)) continue;
+    const toUnicode = body.match(/\/ToUnicode\s+(\d+)\s+0\s+R/);
+    const cmapBody = toUnicode && objects.get(Number(toUnicode[1]));
+    const cmapStream = cmapBody && extractStreamBody(cmapBody);
+    if (cmapStream) cmapsByFontObj.set(fontObjNum, parseBfRangeCMap(cmapStream));
+  }
+
+  const fontResourcesByContentStream = parseFontResourcesByContentStream(objects);
+
+  let text = "";
+  for (const [contentObjNum, fontResources] of fontResourcesByContentStream) {
+    const stream = extractStreamBody(objects.get(contentObjNum) ?? "");
+    if (stream) text += decodeContentStream(stream, fontResources, objects, cmapsByFontObj);
+  }
+  return text;
 }
 
 function containsText(buffer: Buffer, text: string): boolean {
@@ -145,17 +262,35 @@ describe("buildProposalPdf", () => {
     expect(containsText(buffer, "Teste com imagem quebrada")).toBe(true);
   });
 
-  it("renders components in order, one per page, regardless of input order", async () => {
+  it("renders components in order regardless of input order", async () => {
     const components: ProposalPdfComponent[] = [
       { type: "INVESTMENT", order: 18, content: { includes: [], amount: null } },
       { type: "COVER", order: 1, content: { conceptName: "Primeiro" } },
     ];
     const buffer = await buildProposalPdf(components);
-    const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
-    expect(pageCount).toBe(2);
-
     const text = extractPdfText(buffer);
     expect(text.indexOf("Primeiro")).toBeLessThan(text.indexOf("INVESTIMENTO"));
+  });
+
+  it("stacks components without a hero image onto a shared page instead of one page each", async () => {
+    // Neither COVER nor INVESTMENT has an imageBuffer here — both are
+    // narrative/data-only, so they should share the one page pdfkit
+    // creates by default instead of each claiming a mostly-empty one.
+    const buffer = await buildProposalPdf([
+      { type: "COVER", order: 1, content: { conceptName: "Primeiro" } },
+      { type: "INVESTMENT", order: 18, content: { includes: [], amount: null } },
+    ]);
+    const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+    expect(pageCount).toBe(1);
+  });
+
+  it("gives a component with a hero image its own page, even next to text-only ones", async () => {
+    const buffer = await buildProposalPdf([
+      { type: "COVER", order: 1, imageBuffer: VALID_PNG, content: { conceptName: "Primeiro" } },
+      { type: "BIA_STORY", order: 2, content: { title: "A Bia", description: "Texto curto." } },
+    ]);
+    const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+    expect(pageCount).toBe(2);
   });
 
   it("derives the document's accent color from a recognizable palette color", async () => {
