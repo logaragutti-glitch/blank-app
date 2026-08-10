@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Venue } from "@eve-os/types";
 import { Button, Card, Input, colors, spacing } from "@eve-os/ui";
 import { AdminShell } from "../../../components/AdminShell";
+import { PhotoGallery } from "../../../components/PhotoGallery";
 import { AuthGuard } from "../../../lib/auth-guard";
 import { apiClient, ApiError } from "../../../lib/api-client";
 import { useAuth } from "../../../lib/auth-context";
@@ -116,6 +117,9 @@ function EditVenueContent({ id }: { id: string }) {
           </Button>
         </form>
       </Card>
+      <div style={{ marginTop: spacing.lg }}>
+        <PhotoGallery endpointPrefix="venues" entityId={id} entity={venue} onChange={setVenue} />
+      </div>
     </>
   );
 }

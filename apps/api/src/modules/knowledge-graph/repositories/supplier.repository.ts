@@ -34,4 +34,9 @@ export abstract class SupplierRepository {
   // overwrites prior history, since this is meant to accumulate real
   // feedback over time, one event at a time.
   abstract appendPerformanceNote(supplierId: string, note: string): Promise<void>;
+
+  // See VenueRepository.addPhotoKey/removePhotoKey for why this is a
+  // separate pair of methods rather than folded into update().
+  abstract addPhotoKey(id: string, key: string): Promise<Supplier>;
+  abstract removePhotoKey(id: string, key: string): Promise<Supplier>;
 }

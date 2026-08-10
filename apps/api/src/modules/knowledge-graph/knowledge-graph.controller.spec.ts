@@ -1,6 +1,7 @@
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
+import { StoragePort } from "../../infrastructure/storage/storage.port";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { KnowledgeGraphController } from "./knowledge-graph.controller";
 import { MaterialCategoryDto } from "./dto/material.dto";
@@ -19,12 +20,20 @@ describe("KnowledgeGraphController", () => {
     role: "MEMBER",
     email: "bia@evefestas.com",
   };
+  const photoFile = {
+    buffer: Buffer.from("fake-bytes"),
+    mimetype: "image/jpeg",
+    originalname: "foto.jpg",
+    size: 1024,
+  } as Express.Multer.File;
+
   let controller: KnowledgeGraphController;
   let eventStyles: jest.Mocked<EventStyleRepository>;
   let materials: jest.Mocked<MaterialRepository>;
   let venues: jest.Mocked<VenueRepository>;
   let suppliers: jest.Mocked<SupplierRepository>;
   let embeddings: jest.Mocked<EmbeddingPort>;
+  let storage: jest.Mocked<StoragePort>;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -43,17 +52,39 @@ describe("KnowledgeGraphController", () => {
         },
         {
           provide: MaterialRepository,
-          useValue: { findAll: jest.fn(), findById: jest.fn(), create: jest.fn(), update: jest.fn() },
+          useValue: {
+            findAll: jest.fn(),
+            findById: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+            addPhotoKey: jest.fn(),
+            removePhotoKey: jest.fn(),
+          },
         },
         {
           provide: VenueRepository,
-          useValue: { findAll: jest.fn(), findById: jest.fn(), create: jest.fn(), update: jest.fn() },
+          useValue: {
+            findAll: jest.fn(),
+            findById: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+            addPhotoKey: jest.fn(),
+            removePhotoKey: jest.fn(),
+          },
         },
         {
           provide: SupplierRepository,
-          useValue: { findAll: jest.fn(), findById: jest.fn(), create: jest.fn(), update: jest.fn() },
+          useValue: {
+            findAll: jest.fn(),
+            findById: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+            addPhotoKey: jest.fn(),
+            removePhotoKey: jest.fn(),
+          },
         },
         { provide: EmbeddingPort, useValue: { embed: jest.fn() } },
+        { provide: StoragePort, useValue: { upload: jest.fn(), getSignedDownloadUrl: jest.fn() } },
       ],
     }).compile();
 
@@ -63,6 +94,7 @@ describe("KnowledgeGraphController", () => {
     venues = moduleRef.get(VenueRepository);
     suppliers = moduleRef.get(SupplierRepository);
     embeddings = moduleRef.get(EmbeddingPort);
+    storage = moduleRef.get(StoragePort);
   });
 
   it("lists styles scoped to the given organization", async () => {
@@ -87,17 +119,21 @@ describe("KnowledgeGraphController", () => {
     await expect(controller.getSupplier(user, "missing-id")).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it("returns an existing supplier", async () => {
+  it("returns an existing supplier with its photo URLs attached", async () => {
     const supplier = {
       id: "supplier-1",
       name: "Flores da Serra",
       category: "FLORIST",
       performanceNotes: null,
       preferredVenueIds: ["venue-1"],
+      photoKeys: ["suppliers/supplier-1/a.jpg"],
     } as never;
     suppliers.findById.mockResolvedValue(supplier);
+    storage.getSignedDownloadUrl.mockResolvedValue("https://minio.local/signed-url");
+
     const result = await controller.getSupplier(user, "supplier-1");
-    expect(result).toBe(supplier);
+
+    expect(result).toMatchObject({ id: "supplier-1", photoUrls: ["https://minio.local/signed-url"] });
   });
 
   it("throws NotFoundException when backfilling the embedding of a style that does not exist", async () => {
@@ -177,7 +213,6 @@ describe("KnowledgeGraphController", () => {
     it("updates the style and stamps updatedBy", async () => {
       eventStyles.findById.mockResolvedValue({ id: "style-1" } as never);
       eventStyles.update.mockResolvedValue({ id: "style-1", name: "New name" } as never);
-      embeddings.embed.mockResolvedValue([0.1]);
 
       await controller.updateStyle(user, "style-1", { name: "New name" });
 
@@ -187,7 +222,7 @@ describe("KnowledgeGraphController", () => {
 
   describe("createMaterial", () => {
     it("defaults array/boolean fields and stamps createdBy", async () => {
-      materials.create.mockResolvedValue({ id: "material-1" } as never);
+      materials.create.mockResolvedValue({ id: "material-1", photoKeys: [] } as never);
 
       await controller.createMaterial(user, { name: "Peônia", category: MaterialCategoryDto.FLOWER });
 
@@ -215,8 +250,8 @@ describe("KnowledgeGraphController", () => {
     });
 
     it("updates the material and stamps updatedBy", async () => {
-      materials.findById.mockResolvedValue({ id: "material-1" } as never);
-      materials.update.mockResolvedValue({ id: "material-1" } as never);
+      materials.findById.mockResolvedValue({ id: "material-1", photoKeys: [] } as never);
+      materials.update.mockResolvedValue({ id: "material-1", photoKeys: [] } as never);
 
       await controller.updateMaterial(user, "material-1", { estimatedUnitCost: 45 });
 
@@ -224,9 +259,69 @@ describe("KnowledgeGraphController", () => {
     });
   });
 
+  describe("uploadMaterialPhoto / deleteMaterialPhoto", () => {
+    it("throws BadRequestException when no file is uploaded", async () => {
+      materials.findById.mockResolvedValue({ id: "material-1", photoKeys: [] } as never);
+      await expect(controller.uploadMaterialPhoto(user, "material-1", undefined)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it("throws BadRequestException for an unsupported mime type", async () => {
+      materials.findById.mockResolvedValue({ id: "material-1", photoKeys: [] } as never);
+      await expect(
+        controller.uploadMaterialPhoto(user, "material-1", { ...photoFile, mimetype: "application/pdf" }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("throws NotFoundException when the material does not exist", async () => {
+      materials.findById.mockResolvedValue(null);
+      await expect(controller.uploadMaterialPhoto(user, "missing-id", photoFile)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it("stores the photo and returns the material with the new photo URL attached", async () => {
+      materials.findById.mockResolvedValue({ id: "material-1", photoKeys: [] } as never);
+      materials.addPhotoKey.mockResolvedValue({
+        id: "material-1",
+        photoKeys: ["materials/material-1/foto.jpg"],
+      } as never);
+      storage.getSignedDownloadUrl.mockResolvedValue("https://minio.local/signed-url");
+
+      const result = await controller.uploadMaterialPhoto(user, "material-1", photoFile);
+
+      expect(storage.upload).toHaveBeenCalledWith(
+        expect.objectContaining({ key: expect.stringContaining("materials/material-1/") }),
+      );
+      expect(materials.addPhotoKey).toHaveBeenCalledWith(
+        "material-1",
+        expect.stringContaining("materials/material-1/"),
+      );
+      expect(result.photoUrls).toEqual(["https://minio.local/signed-url"]);
+    });
+
+    it("removes a photo by key", async () => {
+      materials.findById.mockResolvedValue({ id: "material-1", photoKeys: ["materials/material-1/a.jpg"] } as never);
+      materials.removePhotoKey.mockResolvedValue({ id: "material-1", photoKeys: [] } as never);
+
+      const result = await controller.deleteMaterialPhoto(user, "material-1", "materials/material-1/a.jpg");
+
+      expect(materials.removePhotoKey).toHaveBeenCalledWith("material-1", "materials/material-1/a.jpg");
+      expect(result.photoUrls).toEqual([]);
+    });
+
+    it("throws BadRequestException when the key query param is missing", async () => {
+      materials.findById.mockResolvedValue({ id: "material-1", photoKeys: [] } as never);
+      await expect(controller.deleteMaterialPhoto(user, "material-1", "")).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+  });
+
   describe("createVenue", () => {
     it("defaults recommendationNotes and stamps createdBy", async () => {
-      venues.create.mockResolvedValue({ id: "venue-1" } as never);
+      venues.create.mockResolvedValue({ id: "venue-1", photoKeys: [] } as never);
 
       await controller.createVenue(user, { name: "Villa Massari" });
 
@@ -254,8 +349,8 @@ describe("KnowledgeGraphController", () => {
     });
 
     it("updates the venue and stamps updatedBy", async () => {
-      venues.findById.mockResolvedValue({ id: "venue-1" } as never);
-      venues.update.mockResolvedValue({ id: "venue-1" } as never);
+      venues.findById.mockResolvedValue({ id: "venue-1", photoKeys: [] } as never);
+      venues.update.mockResolvedValue({ id: "venue-1", photoKeys: [] } as never);
 
       await controller.updateVenue(user, "venue-1", { guestCapacity: 150 });
 
@@ -263,9 +358,39 @@ describe("KnowledgeGraphController", () => {
     });
   });
 
+  describe("uploadVenuePhoto / deleteVenuePhoto", () => {
+    it("throws NotFoundException when the venue does not exist", async () => {
+      venues.findById.mockResolvedValue(null);
+      await expect(controller.uploadVenuePhoto(user, "missing-id", photoFile)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it("stores the photo and returns the venue with photo URLs attached", async () => {
+      venues.findById.mockResolvedValue({ id: "venue-1", photoKeys: [] } as never);
+      venues.addPhotoKey.mockResolvedValue({ id: "venue-1", photoKeys: ["venues/venue-1/foto.jpg"] } as never);
+      storage.getSignedDownloadUrl.mockResolvedValue("https://minio.local/signed-url");
+
+      const result = await controller.uploadVenuePhoto(user, "venue-1", photoFile);
+
+      expect(venues.addPhotoKey).toHaveBeenCalledWith("venue-1", expect.stringContaining("venues/venue-1/"));
+      expect(result.photoUrls).toEqual(["https://minio.local/signed-url"]);
+    });
+
+    it("removes a photo by key", async () => {
+      venues.findById.mockResolvedValue({ id: "venue-1", photoKeys: ["venues/venue-1/a.jpg"] } as never);
+      venues.removePhotoKey.mockResolvedValue({ id: "venue-1", photoKeys: [] } as never);
+
+      const result = await controller.deleteVenuePhoto(user, "venue-1", "venues/venue-1/a.jpg");
+
+      expect(venues.removePhotoKey).toHaveBeenCalledWith("venue-1", "venues/venue-1/a.jpg");
+      expect(result.photoUrls).toEqual([]);
+    });
+  });
+
   describe("createSupplier", () => {
     it("stamps createdBy", async () => {
-      suppliers.create.mockResolvedValue({ id: "supplier-1" } as never);
+      suppliers.create.mockResolvedValue({ id: "supplier-1", photoKeys: [] } as never);
 
       await controller.createSupplier(user, { name: "Flores da Serra", category: SupplierCategoryDto.FLORIST });
 
@@ -289,12 +414,51 @@ describe("KnowledgeGraphController", () => {
     });
 
     it("updates the supplier and stamps updatedBy", async () => {
-      suppliers.findById.mockResolvedValue({ id: "supplier-1" } as never);
-      suppliers.update.mockResolvedValue({ id: "supplier-1" } as never);
+      suppliers.findById.mockResolvedValue({ id: "supplier-1", photoKeys: [] } as never);
+      suppliers.update.mockResolvedValue({ id: "supplier-1", photoKeys: [] } as never);
 
       await controller.updateSupplier(user, "supplier-1", { estimatedCost: 3800 });
 
       expect(suppliers.update).toHaveBeenCalledWith("supplier-1", { estimatedCost: 3800, updatedBy: "user-1" });
+    });
+  });
+
+  describe("uploadSupplierPhoto / deleteSupplierPhoto", () => {
+    it("throws NotFoundException when the supplier does not exist", async () => {
+      suppliers.findById.mockResolvedValue(null);
+      await expect(controller.uploadSupplierPhoto(user, "missing-id", photoFile)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it("stores the photo and returns the supplier with photo URLs attached", async () => {
+      suppliers.findById.mockResolvedValue({ id: "supplier-1", photoKeys: [] } as never);
+      suppliers.addPhotoKey.mockResolvedValue({
+        id: "supplier-1",
+        photoKeys: ["suppliers/supplier-1/foto.jpg"],
+      } as never);
+      storage.getSignedDownloadUrl.mockResolvedValue("https://minio.local/signed-url");
+
+      const result = await controller.uploadSupplierPhoto(user, "supplier-1", photoFile);
+
+      expect(suppliers.addPhotoKey).toHaveBeenCalledWith(
+        "supplier-1",
+        expect.stringContaining("suppliers/supplier-1/"),
+      );
+      expect(result.photoUrls).toEqual(["https://minio.local/signed-url"]);
+    });
+
+    it("removes a photo by key", async () => {
+      suppliers.findById.mockResolvedValue({
+        id: "supplier-1",
+        photoKeys: ["suppliers/supplier-1/a.jpg"],
+      } as never);
+      suppliers.removePhotoKey.mockResolvedValue({ id: "supplier-1", photoKeys: [] } as never);
+
+      const result = await controller.deleteSupplierPhoto(user, "supplier-1", "suppliers/supplier-1/a.jpg");
+
+      expect(suppliers.removePhotoKey).toHaveBeenCalledWith("supplier-1", "suppliers/supplier-1/a.jpg");
+      expect(result.photoUrls).toEqual([]);
     });
   });
 });

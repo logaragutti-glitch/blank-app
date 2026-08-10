@@ -255,6 +255,10 @@ model Venue {
   // cerimônia externa, aproveitar a arquitetura, iluminação quente,
   // flores em tons suaves" (05-database-bible.md)
   recommendationNotes   String[] @map("recommendation_notes")
+  // Chaves S3 de fotos reais do espaço (fachada, salão, jardim etc.) — só
+  // as chaves são persistidas; a URL assinada é computada em cada leitura
+  // pelo controller, mesmo padrão de InspirationImage.imageUrl.
+  photoKeys             String[] @default([]) @map("photo_keys")
 
   organization Organization             @relation(fields: [organizationId], references: [id])
   suppliers    VenuePreferredSupplier[]
@@ -306,6 +310,9 @@ model Supplier {
   // Producao, 04-ai-bible.md) para orcamento/margem/custo-beneficio.
   // Nunca inventado pela IA — so comparado/somado quando presente.
   estimatedCost    Decimal?         @map("estimated_cost") @db.Decimal(10, 2)
+  // Chaves S3 de fotos reais do fornecedor (peças de mobiliário, buffet
+  // montado, estrutura de luz etc.) — mesmo padrão de Venue.photoKeys.
+  photoKeys        String[]         @default([]) @map("photo_keys")
 
   organization Organization             @relation(fields: [organizationId], references: [id])
   venues       VenuePreferredSupplier[]
@@ -402,6 +409,9 @@ model Material {
   // tecido) — nulo ate ser preenchido; usado pelo Agente 4 para o calculo
   // de custo total de materiais. Nunca inventado pela IA.
   estimatedUnitCost Decimal?         @map("estimated_unit_cost") @db.Decimal(10, 2)
+  // Chaves S3 de fotos reais do material (a flor específica, o tecido, a
+  // peça de mobiliário etc.) — mesmo padrão de Venue.photoKeys.
+  photoKeys         String[]         @default([]) @map("photo_keys")
 
   organization       Organization @relation(fields: [organizationId], references: [id])
   compatibleStyles   EventStyle[] @relation("MaterialCompatibleStyles")

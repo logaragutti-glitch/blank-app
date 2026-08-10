@@ -79,4 +79,23 @@ export class PrismaSupplierRepository implements SupplierRepository {
     });
     return toSupplierDomain(supplier);
   }
+
+  async addPhotoKey(id: string, key: string): Promise<Supplier> {
+    const supplier = await this.prisma.supplier.update({
+      where: { id },
+      data: { photoKeys: { push: key } },
+      include: { venues: VENUE_ID_SELECT },
+    });
+    return toSupplierDomain(supplier);
+  }
+
+  async removePhotoKey(id: string, key: string): Promise<Supplier> {
+    const existing = await this.prisma.supplier.findUniqueOrThrow({ where: { id } });
+    const supplier = await this.prisma.supplier.update({
+      where: { id },
+      data: { photoKeys: existing.photoKeys.filter((existingKey) => existingKey !== key) },
+      include: { venues: VENUE_ID_SELECT },
+    });
+    return toSupplierDomain(supplier);
+  }
 }

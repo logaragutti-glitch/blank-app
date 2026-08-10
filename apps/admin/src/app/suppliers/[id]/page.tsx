@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Supplier, SupplierCategory } from "@eve-os/types";
 import { Button, Card, Input, colors, spacing } from "@eve-os/ui";
 import { AdminShell } from "../../../components/AdminShell";
+import { PhotoGallery } from "../../../components/PhotoGallery";
 import { AuthGuard } from "../../../lib/auth-guard";
 import { apiClient, ApiError } from "../../../lib/api-client";
 import { useAuth } from "../../../lib/auth-context";
@@ -115,6 +116,9 @@ function EditSupplierContent({ id }: { id: string }) {
           </Button>
         </form>
       </Card>
+      <div style={{ marginTop: spacing.lg }}>
+        <PhotoGallery endpointPrefix="suppliers" entityId={id} entity={supplier} onChange={setSupplier} />
+      </div>
     </>
   );
 }

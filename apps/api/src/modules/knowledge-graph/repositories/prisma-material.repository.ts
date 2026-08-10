@@ -74,4 +74,23 @@ export class PrismaMaterialRepository implements MaterialRepository {
     });
     return toMaterialDomain(material);
   }
+
+  async addPhotoKey(id: string, key: string): Promise<Material> {
+    const material = await this.prisma.material.update({
+      where: { id },
+      data: { photoKeys: { push: key } },
+      include: WITH_STYLE_IDS,
+    });
+    return toMaterialDomain(material);
+  }
+
+  async removePhotoKey(id: string, key: string): Promise<Material> {
+    const existing = await this.prisma.material.findUniqueOrThrow({ where: { id } });
+    const material = await this.prisma.material.update({
+      where: { id },
+      data: { photoKeys: existing.photoKeys.filter((existingKey) => existingKey !== key) },
+      include: WITH_STYLE_IDS,
+    });
+    return toMaterialDomain(material);
+  }
 }

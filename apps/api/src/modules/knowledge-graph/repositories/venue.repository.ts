@@ -29,4 +29,12 @@ export abstract class VenueRepository {
   abstract findById(organizationId: string, id: string): Promise<Venue | null>;
   abstract create(tenantId: string, organizationId: string, input: CreateVenueInput): Promise<Venue>;
   abstract update(id: string, input: UpdateVenueInput): Promise<Venue>;
+
+  // Appends/removes one real photo's storage key — a separate pair of
+  // methods rather than folding into update(), same reasoning as
+  // SupplierRepository.appendPerformanceNote: a photo gallery accumulates
+  // one upload/delete at a time, it isn't replaced wholesale like the
+  // other fields on the edit form.
+  abstract addPhotoKey(id: string, key: string): Promise<Venue>;
+  abstract removePhotoKey(id: string, key: string): Promise<Venue>;
 }

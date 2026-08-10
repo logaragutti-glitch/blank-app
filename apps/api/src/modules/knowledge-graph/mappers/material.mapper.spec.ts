@@ -22,6 +22,7 @@ function buildModel(overrides: Partial<MaterialModelInput> = {}): MaterialModelI
     estimatedUnitCost: null,
     compatibleStyles: [{ id: "style-garden" }],
     incompatibleStyles: [{ id: "style-futurista" }, { id: "style-industrial" }],
+    photoKeys: [],
     ...overrides,
   };
 }
@@ -49,5 +50,10 @@ describe("toMaterialDomain", () => {
   it("keeps estimated unit cost null when not set", () => {
     const domain = toMaterialDomain(buildModel());
     expect(domain.estimatedUnitCost).toBeNull();
+  });
+
+  it("passes through the real photo storage keys", () => {
+    const domain = toMaterialDomain(buildModel({ photoKeys: ["materials/material-1/a.jpg"] }));
+    expect(domain.photoKeys).toEqual(["materials/material-1/a.jpg"]);
   });
 });

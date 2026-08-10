@@ -19,6 +19,7 @@ function buildModel(overrides: Partial<SupplierModelInput> = {}): SupplierModelI
     performanceNotes: "Entrega sempre pontual, boa relação de custo-benefício.",
     estimatedCost: null,
     venues: [{ venueId: "venue-villa-massari" }],
+    photoKeys: [],
     ...overrides,
   };
 }
@@ -42,5 +43,10 @@ describe("toSupplierDomain", () => {
   it("keeps estimated cost null when not set", () => {
     const domain = toSupplierDomain(buildModel());
     expect(domain.estimatedCost).toBeNull();
+  });
+
+  it("passes through the real photo storage keys", () => {
+    const domain = toSupplierDomain(buildModel({ photoKeys: ["suppliers/supplier-1/a.jpg"] }));
+    expect(domain.photoKeys).toEqual(["suppliers/supplier-1/a.jpg"]);
   });
 });

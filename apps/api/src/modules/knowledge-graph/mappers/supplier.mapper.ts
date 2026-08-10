@@ -21,5 +21,6 @@ export function toSupplierDomain(model: SupplierWithVenueIds): Supplier {
     performanceNotes: model.performanceNotes,
     preferredVenueIds: model.venues.map((venue) => venue.venueId),
     estimatedCost: model.estimatedCost ? model.estimatedCost.toNumber() : null,
+    photoKeys: model.photoKeys,
   };
 }
