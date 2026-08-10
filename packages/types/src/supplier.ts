@@ -23,4 +23,8 @@ export interface Supplier extends AuditedEntity {
   preferredVenueIds: string[];
   /** Estimated cost (BRL) to engage this supplier for a typical event — null until filled in. */
   estimatedCost: number | null;
+  /** S3 storage keys of real photos of this supplier's work (pieces, setups, buffet...). */
+  photoKeys: string[];
+  /** Signed GET URLs for `photoKeys` — see Venue.photoUrls for the pattern. */
+  photoUrls?: string[];
 }

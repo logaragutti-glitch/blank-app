@@ -63,6 +63,7 @@ const VENUE: Venue = {
   existingFurniture: null,
   typicalClimate: null,
   recommendationNotes: ["cerimônia externa"],
+  photoKeys: [],
 };
 
 const DIAGNOSTICO: DiagnosticoCriativo = {

@@ -294,6 +294,22 @@ prioridade de negócio:
      diferenciação de papel). Telas em `apps/admin`: login (contra uma
      conta já existente, sem auto-registro) + lista/criar/editar para
      cada uma das 4 entidades.
+   - **`apps/admin` — fotos reais no catálogo (concluído):** Venue,
+     Material e Supplier ganharam `photoKeys` (chaves S3, mesmo
+     `StoragePort` do resto do sistema) e `POST`/`DELETE
+     /knowledge-graph/{venues,materials,suppliers}/:id/photos` — até aqui
+     só existiam referências de inspiração (`InspirationImage`, o que o
+     casal manda), não fotos reais do espaço/peça/material que a Bia de
+     fato usa (o problema relatado: os cards de proposta mostravam ícone
+     de imagem quebrada porque nunca existiu foto real nenhuma pra
+     mostrar). Cada leitura (`GET`/criação/edição) computa
+     `photoUrls` (URLs assinadas, nunca persistidas — mesmo padrão de
+     `InspirationImage.imageUrl`) na mesma ordem de `photoKeys`. Tela de
+     edição das 3 entidades ganhou uma galeria reutilizável
+     (`PhotoGallery`, genérica sobre o prefixo de endpoint) com
+     upload/remoção; a lista de cada entidade mostra a primeira foto como
+     miniatura. Só na tela de edição (não na de criação) — precisa do id
+     já existente para ter onde guardar a chave S3.
    - **`apps/mobile` — Modo Produção no dia do evento (concluído):** login
      (sem sessão persistida entre aberturas do app — sem dependência de
      `AsyncStorage`/`SecureStore` nesta primeira versão; a equipe faz login

@@ -20,5 +20,6 @@ export function toVenueDomain(model: VenuePrismaModel): Venue {
     existingFurniture: model.existingFurniture,
     typicalClimate: model.typicalClimate,
     recommendationNotes: model.recommendationNotes,
+    photoKeys: model.photoKeys,
   };
 }

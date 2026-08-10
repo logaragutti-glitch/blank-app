@@ -29,4 +29,9 @@ export abstract class MaterialRepository {
   abstract findById(organizationId: string, id: string): Promise<Material | null>;
   abstract create(tenantId: string, organizationId: string, input: CreateMaterialInput): Promise<Material>;
   abstract update(id: string, input: UpdateMaterialInput): Promise<Material>;
+
+  // See VenueRepository.addPhotoKey/removePhotoKey for why this is a
+  // separate pair of methods rather than folded into update().
+  abstract addPhotoKey(id: string, key: string): Promise<Material>;
+  abstract removePhotoKey(id: string, key: string): Promise<Material>;
 }

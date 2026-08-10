@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Venue } from "@eve-os/types";
-import { Button, Card, colors, spacing } from "@eve-os/ui";
+import { Button, Card, colors, radii, spacing } from "@eve-os/ui";
 import { AdminShell } from "../../components/AdminShell";
 import { AuthGuard } from "../../lib/auth-guard";
 import { apiClient, ApiError } from "../../lib/api-client";
@@ -37,6 +37,7 @@ function VenuesContent() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ textAlign: "left", borderBottom: `1px solid ${colors.border}` }}>
+                <th style={{ padding: spacing.sm }}>Foto</th>
                 <th style={{ padding: spacing.sm }}>Nome</th>
                 <th style={{ padding: spacing.sm }}>Capacidade</th>
                 <th style={{ padding: spacing.sm }}>Clima típico</th>
@@ -46,6 +47,18 @@ function VenuesContent() {
               {venues.map((venue) => (
                 <tr key={venue.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
                   <td style={{ padding: spacing.sm }}>
+                    {venue.photoUrls?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- external, time-limited signed URL
+                      <img
+                        src={venue.photoUrls[0]}
+                        alt=""
+                        style={{ width: 40, height: 40, objectFit: "cover", borderRadius: radii.sm, display: "block" }}
+                      />
+                    ) : (
+                      <div style={{ width: 40, height: 40, borderRadius: radii.sm, backgroundColor: colors.border }} />
+                    )}
+                  </td>
+                  <td style={{ padding: spacing.sm }}>
                     <Link href={`/venues/${venue.id}`}>{venue.name}</Link>
                   </td>
                   <td style={{ padding: spacing.sm }}>{venue.guestCapacity ?? "—"}</td>
@@ -54,7 +67,7 @@ function VenuesContent() {
               ))}
               {venues.length === 0 && (
                 <tr>
-                  <td colSpan={3} style={{ padding: spacing.sm, color: colors.textMuted }}>
+                  <td colSpan={4} style={{ padding: spacing.sm, color: colors.textMuted }}>
                     Nenhum espaço cadastrado ainda.
                   </td>
                 </tr>

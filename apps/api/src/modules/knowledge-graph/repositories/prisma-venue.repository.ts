@@ -60,4 +60,21 @@ export class PrismaVenueRepository implements VenueRepository {
     });
     return toVenueDomain(venue);
   }
+
+  async addPhotoKey(id: string, key: string): Promise<Venue> {
+    const venue = await this.prisma.venue.update({
+      where: { id },
+      data: { photoKeys: { push: key } },
+    });
+    return toVenueDomain(venue);
+  }
+
+  async removePhotoKey(id: string, key: string): Promise<Venue> {
+    const existing = await this.prisma.venue.findUniqueOrThrow({ where: { id } });
+    const venue = await this.prisma.venue.update({
+      where: { id },
+      data: { photoKeys: existing.photoKeys.filter((existingKey) => existingKey !== key) },
+    });
+    return toVenueDomain(venue);
+  }
 }

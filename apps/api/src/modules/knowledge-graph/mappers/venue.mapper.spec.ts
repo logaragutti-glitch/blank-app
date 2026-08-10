@@ -21,6 +21,7 @@ function buildModel(overrides: Partial<VenuePrismaModel> = {}): VenuePrismaModel
     existingFurniture: null,
     typicalClimate: null,
     recommendationNotes: ["cerimônia externa", "iluminação quente"],
+    photoKeys: [],
     ...overrides,
   };
 }
@@ -41,5 +42,10 @@ describe("toVenueDomain", () => {
   it("passes through recommendation notes", () => {
     const domain = toVenueDomain(buildModel());
     expect(domain.recommendationNotes).toEqual(["cerimônia externa", "iluminação quente"]);
+  });
+
+  it("passes through the real photo storage keys", () => {
+    const domain = toVenueDomain(buildModel({ photoKeys: ["venues/venue-1/a.jpg", "venues/venue-1/b.jpg"] }));
+    expect(domain.photoKeys).toEqual(["venues/venue-1/a.jpg", "venues/venue-1/b.jpg"]);
   });
 });

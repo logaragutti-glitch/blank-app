@@ -13,4 +13,8 @@ export interface Material extends AuditedEntity {
   incompatibleStyleIds: string[];
   /** Estimated cost (BRL) per typical unit (e.g. per buquê, per meter of fabric) — null until filled in. */
   estimatedUnitCost: number | null;
+  /** S3 storage keys of real photos of this specific material. */
+  photoKeys: string[];
+  /** Signed GET URLs for `photoKeys` — see Venue.photoUrls for the pattern. */
+  photoUrls?: string[];
 }

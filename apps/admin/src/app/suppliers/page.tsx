@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Supplier } from "@eve-os/types";
-import { Button, Card, colors, spacing } from "@eve-os/ui";
+import { Button, Card, colors, radii, spacing } from "@eve-os/ui";
 import { AdminShell } from "../../components/AdminShell";
 import { AuthGuard } from "../../lib/auth-guard";
 import { apiClient, ApiError } from "../../lib/api-client";
@@ -37,6 +37,7 @@ function SuppliersContent() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ textAlign: "left", borderBottom: `1px solid ${colors.border}` }}>
+                <th style={{ padding: spacing.sm }}>Foto</th>
                 <th style={{ padding: spacing.sm }}>Nome</th>
                 <th style={{ padding: spacing.sm }}>Categoria</th>
                 <th style={{ padding: spacing.sm }}>Custo estimado</th>
@@ -46,6 +47,18 @@ function SuppliersContent() {
             <tbody>
               {suppliers.map((supplier) => (
                 <tr key={supplier.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                  <td style={{ padding: spacing.sm }}>
+                    {supplier.photoUrls?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- external, time-limited signed URL
+                      <img
+                        src={supplier.photoUrls[0]}
+                        alt=""
+                        style={{ width: 40, height: 40, objectFit: "cover", borderRadius: radii.sm, display: "block" }}
+                      />
+                    ) : (
+                      <div style={{ width: 40, height: 40, borderRadius: radii.sm, backgroundColor: colors.border }} />
+                    )}
+                  </td>
                   <td style={{ padding: spacing.sm }}>
                     <Link href={`/suppliers/${supplier.id}`}>{supplier.name}</Link>
                   </td>
@@ -58,7 +71,7 @@ function SuppliersContent() {
               ))}
               {suppliers.length === 0 && (
                 <tr>
-                  <td colSpan={4} style={{ padding: spacing.sm, color: colors.textMuted }}>
+                  <td colSpan={5} style={{ padding: spacing.sm, color: colors.textMuted }}>
                     Nenhum fornecedor cadastrado ainda.
                   </td>
                 </tr>
