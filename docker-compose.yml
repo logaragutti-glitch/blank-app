@@ -123,6 +123,13 @@ services:
       S3_BUCKET: ${S3_BUCKET:-eve-os-inspiration}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      # GOOGLE_AI_IMAGE_MODEL/GOOGLE_AI_IMAGE_SIZE deliberately not passed
+      # through here (unlike the keys above): GeminiConceptualRenderProvider
+      # falls back to a sensible default via `??`, which only triggers on an
+      # actually-unset env var — `${VAR:-}` would instead inject an empty
+      # string when the host doesn't set them, silently breaking that
+      # fallback. Set them in .env only if you want to override the default.
       # Local dev only — auto-seeds the Knowledge Graph sample data on every
       # boot (idempotent). Never set this for a real deployment: see the
       # Dockerfile's CMD for why.

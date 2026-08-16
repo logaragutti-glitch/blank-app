@@ -328,9 +328,13 @@ visual exclusiva da proposta, não apenas referências genéricas.
 > validado contra `RENDERABLE_COMPONENT_TYPES`
 > (`renderable-component-types.ts`), 400 para qualquer outro tipo de
 > componente (Paleta, Cronograma, Investimento etc. não têm uma cena
-> física para renderizar). `OpenAiConceptualRenderProvider` usa o modelo
-> `gpt-image-1` da OpenAI (a Anthropic não tem API de geração de imagens);
-> o prompt é montado a partir do conceito nomeado, da atmosfera desejada,
+> física para renderizar). `GeminiConceptualRenderProvider` chama a API do
+> Google AI Studio (`generativelanguage.googleapis.com`, família "Nano
+> Banana", modelo padrão `gemini-3-pro-image` — nem a Anthropic nem a
+> combinação de custo/qualidade da OpenAI cobriam esse caso tão bem) via
+> `fetch` puro do Node, sem SDK adicional — mesmo formato de chamada usado
+> no próprio quickstart do AI Studio; o prompt é montado a partir do
+> conceito nomeado, da atmosfera desejada,
 > do estilo predominante, da paleta sugerida e do nome do espaço — para um
 > ambiente específico, o prompt também inclui o título/descrição
 > narrativos daquele ambiente (já gerados pelo Agente 3), focando a cena
