@@ -5,7 +5,7 @@ import { AnthropicDiagnosticoCriativoProvider } from "./ai/anthropic-diagnostico
 import { AnthropicProposalComponentsProvider } from "./ai/anthropic-proposal-components.provider";
 import { ConceptualRenderPort } from "./ai/conceptual-render.port";
 import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
-import { OpenAiConceptualRenderProvider } from "./ai/openai-conceptual-render.provider";
+import { GeminiConceptualRenderProvider } from "./ai/gemini-conceptual-render.provider";
 import { ProposalComponentsPort } from "./ai/proposal-components.port";
 import { CreativeController } from "./creative.controller";
 import { PrismaProposalComponentRepository } from "./repositories/prisma-proposal-component.repository";
@@ -21,7 +21,7 @@ import { ProposalRepository } from "./repositories/proposal.repository";
     { provide: ProposalComponentRepository, useClass: PrismaProposalComponentRepository },
     { provide: DiagnosticoCriativoPort, useClass: AnthropicDiagnosticoCriativoProvider },
     { provide: ProposalComponentsPort, useClass: AnthropicProposalComponentsProvider },
-    { provide: ConceptualRenderPort, useClass: OpenAiConceptualRenderProvider },
+    { provide: ConceptualRenderPort, useClass: GeminiConceptualRenderProvider },
   ],
   exports: [ProposalRepository, ProposalComponentRepository],
 })
