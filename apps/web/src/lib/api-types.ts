@@ -29,6 +29,80 @@ export interface AuthResponse {
   user: User;
 }
 
+export type WeddingKnowledgeEvidenceLevel = "OFFICIAL" | "DIRECTORY" | "SOCIAL_LEAD";
+export type WeddingKnowledgeStatus = "VALIDATED" | "REQUIRES_CONFIRMATION";
+
+export interface WeddingFormatResearch {
+  id: string;
+  axis: string;
+  slug: string;
+  name: string;
+  description: string;
+  guestMin: number | null;
+  guestMax: number | null;
+  durationMinDays: number | null;
+  durationMaxDays: number | null;
+  travelRequired: boolean;
+  ceremonyOnly: boolean;
+  planningNotes: string[];
+  sourceUrls: string[];
+}
+
+export interface WeddingTrendResearch {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  description: string;
+  applicationNotes: string[];
+  productionConsiderations: string[];
+  paletteColors: string[];
+  materials: string[];
+  sourceUrls: string[];
+  geography: string | null;
+}
+
+export interface WeddingVenueResearch {
+  id: string;
+  name: string;
+  municipality: string;
+  venueType: string;
+  evidenceLevel: WeddingKnowledgeEvidenceLevel;
+  status: WeddingKnowledgeStatus;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  lodgingCapacity: number | null;
+  priceNote: string | null;
+  services: string[];
+  sourceUrls: string[];
+  contact: string | null;
+  notes: string | null;
+}
+
+export interface WeddingKnowledgeResponse {
+  formats: WeddingFormatResearch[];
+  trends: WeddingTrendResearch[];
+  venues: WeddingVenueResearch[];
+}
+
+export interface SupplierCatalogCategory {
+  id: string;
+  slug: string;
+  name: string;
+  categoryType: "FURNITURE" | "LIGHTING" | "DECOR" | "STRUCTURE" | "TEXTILE" | "ACCESSORY" | "OTHER";
+  listedProductCount: number | null;
+  sourceUrl: string;
+  productNames: string[];
+  extractionStatus: string;
+  notes: string | null;
+  sourceCapturedAt: string;
+}
+
+export interface SupplierCatalogResponse {
+  supplier: Pick<Supplier, "id" | "name" | "category">;
+  categories: SupplierCatalogCategory[];
+}
+
 /** GET /projects — a read model, not a single domain entity (see apps/api/src/modules/projects). */
 export interface ProjectSummary {
   eventId: string;

@@ -20,6 +20,7 @@ import type { EventStyle, Material, Supplier, Venue } from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
+import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { StoragePort } from "../../infrastructure/storage/storage.port";
 import { CreateEventStyleDto, UpdateEventStyleDto } from "./dto/event-style.dto";
 import { CreateMaterialDto, UpdateMaterialDto } from "./dto/material.dto";
@@ -49,7 +50,27 @@ export class KnowledgeGraphController {
     private readonly suppliers: SupplierRepository,
     private readonly embeddings: EmbeddingPort,
     private readonly storage: StoragePort,
+    private readonly prisma: PrismaService,
   ) {}
+
+  @Get("wedding-knowledge")
+  async listWeddingKnowledge(@CurrentUser() user: AuthenticatedUser) {
+    const [formats, trends, venues] = await this.prisma.$transaction([
+      this.prisma.weddingFormat.findMany({
+        where: { organizationId: user.organizationId, isActive: true },
+        orderBy: [{ axis: "asc" }, { name: "asc" }],
+      }),
+      this.prisma.weddingTrend.findMany({
+        where: { organizationId: user.organizationId, isActive: true },
+        orderBy: [{ category: "asc" }, { name: "asc" }],
+      }),
+      this.prisma.weddingVenueResearch.findMany({
+        where: { organizationId: user.organizationId, isActive: true },
+        orderBy: [{ municipality: "asc" }, { name: "asc" }],
+      }),
+    ]);
+    return { formats, trends, venues };
+  }
 
   @Get("styles")
   listStyles(@CurrentUser() user: AuthenticatedUser) {

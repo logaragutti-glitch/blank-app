@@ -5,6 +5,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { MaterialCategory, PrismaClient, SupplierCatalogCategoryType, SupplierCategory } from "@prisma/client";
 import { MINEIRART_REGION_CATALOG, toMineirartCategoryCreateData } from "./mineirart-regiao-dos-lagos";
+import { WEDDING_VENUE_RESEARCH } from "./wedding-venue-research";
 
 try {
   process.loadEnvFile(new URL("../.env", import.meta.url));
@@ -621,6 +622,22 @@ async function seedWeddingKnowledgeCatalog(tenantId: string, organizationId: str
   console.log(`Catálogo de casamentos: ${researchedWeddingFormats.length} formatos, ${researchedWeddingTrends.length} tendências e ${weddingFormatTrendLinks.reduce((total, [, trends]) => total + trends.length, 0)} relações.`);
 }
 
+async function seedWeddingVenueResearch(tenantId: string, organizationId: string) {
+  for (const venue of WEDDING_VENUE_RESEARCH) {
+    const venueData = {
+      ...venue,
+      services: [...venue.services],
+      sourceUrls: [...venue.sourceUrls],
+    };
+    await prisma.weddingVenueResearch.upsert({
+      where: { organizationId_name: { organizationId, name: venue.name } },
+      update: venueData,
+      create: { tenantId, organizationId, ...venueData },
+    });
+  }
+  console.log(`Pesquisa de espaços: ${WEDDING_VENUE_RESEARCH.length} locais catalogados.`);
+}
+
 async function main() {
   const tenant = await prisma.tenant.upsert({
     where: { id: "00000000-0000-0000-0000-000000000001" },
@@ -823,6 +840,7 @@ async function main() {
 
   await seedMineirartSupplierCatalog(tenantId, organizationId);
   await seedWeddingKnowledgeCatalog(tenantId, organizationId);
+  await seedWeddingVenueResearch(tenantId, organizationId);
 
   // --- Venue: Villa Massari --------------------------------------------------
 

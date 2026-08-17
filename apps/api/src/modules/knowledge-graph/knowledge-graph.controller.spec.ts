@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
+import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { StoragePort } from "../../infrastructure/storage/storage.port";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { KnowledgeGraphController } from "./knowledge-graph.controller";
@@ -34,6 +35,12 @@ describe("KnowledgeGraphController", () => {
   let suppliers: jest.Mocked<SupplierRepository>;
   let embeddings: jest.Mocked<EmbeddingPort>;
   let storage: jest.Mocked<StoragePort>;
+  let prisma: {
+    $transaction: jest.Mock;
+    weddingFormat: { findMany: jest.Mock };
+    weddingTrend: { findMany: jest.Mock };
+    weddingVenueResearch: { findMany: jest.Mock };
+  };
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -85,6 +92,15 @@ describe("KnowledgeGraphController", () => {
         },
         { provide: EmbeddingPort, useValue: { embed: jest.fn() } },
         { provide: StoragePort, useValue: { upload: jest.fn(), getSignedDownloadUrl: jest.fn() } },
+        {
+          provide: PrismaService,
+          useValue: {
+            $transaction: jest.fn(),
+            weddingFormat: { findMany: jest.fn() },
+            weddingTrend: { findMany: jest.fn() },
+            weddingVenueResearch: { findMany: jest.fn() },
+          },
+        },
       ],
     }).compile();
 
@@ -95,6 +111,20 @@ describe("KnowledgeGraphController", () => {
     suppliers = moduleRef.get(SupplierRepository);
     embeddings = moduleRef.get(EmbeddingPort);
     storage = moduleRef.get(StoragePort);
+    prisma = moduleRef.get(PrismaService);
+  });
+
+  it("returns researched wedding knowledge scoped to the organization", async () => {
+    const formats = [{ id: "format-1", name: "Micro-wedding" }];
+    const trends = [{ id: "trend-1", name: "Garden party" }];
+    const venues = [{ id: "venue-research-1", name: "CasAmar" }];
+    prisma.weddingFormat.findMany.mockReturnValue({});
+    prisma.weddingTrend.findMany.mockReturnValue({});
+    prisma.weddingVenueResearch.findMany.mockReturnValue({});
+    prisma.$transaction.mockResolvedValue([formats, trends, venues]);
+
+    await expect(controller.listWeddingKnowledge(user)).resolves.toEqual({ formats, trends, venues });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 
   it("lists styles scoped to the given organization", async () => {

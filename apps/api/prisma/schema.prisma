@@ -44,8 +44,10 @@ model Organization {
   suppliers Supplier[]
   styles    EventStyle[]
 
-  materials                 Material[]
-  weddingFormats            WeddingFormat[]
+  materials            Material[]
+  weddingFormats       WeddingFormat[]
+  weddingVenueResearch WeddingVenueResearch[]
+
   weddingTrends             WeddingTrend[]
   supplierCatalogCategories SupplierCatalogCategory[]
   events                    Event[]
@@ -438,6 +440,36 @@ model SupplierCatalogCategory {
 // ---------------------------------------------------------------------------
 // Wedding knowledge catalog — researched formats and current trends
 // ---------------------------------------------------------------------------
+
+model WeddingVenueResearch {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  name            String
+  municipality    String
+  venueType       String   @map("venue_type")
+  evidenceLevel   String   @map("evidence_level")
+  status          String   @default("REQUIRES_CONFIRMATION")
+  capacityMin     Int?     @map("capacity_min")
+  capacityMax     Int?     @map("capacity_max")
+  lodgingCapacity Int?     @map("lodging_capacity")
+  priceNote       String?  @map("price_note")
+  services        String[]
+  sourceUrls      String[] @map("source_urls")
+  contact         String?
+  notes           String?
+  isActive        Boolean  @default(true) @map("is_active")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, name])
+  @@index([tenantId])
+  @@index([organizationId, municipality])
+  @@map("wedding_venue_research")
+}
 
 model WeddingFormat {
   id             String   @id @default(uuid()) @db.Uuid
