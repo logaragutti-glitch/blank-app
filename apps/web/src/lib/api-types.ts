@@ -62,6 +62,23 @@ export interface WeddingTrendResearch {
   geography: string | null;
 }
 
+export interface WeddingVenueImageResearch {
+  id: string;
+  imageUrl: string;
+  sourceUrl: string;
+  sourceType: string;
+  roomType: string;
+  credit: string | null;
+  rightsStatus: string;
+  confidence: string;
+  usageScope: string;
+  approvedForPublication: boolean;
+  isPrimary: boolean;
+  isActive: boolean;
+  sourceCapturedAt: string;
+  notes: string | null;
+}
+
 export interface WeddingVenueResearch {
   id: string;
   name: string;
@@ -77,6 +94,7 @@ export interface WeddingVenueResearch {
   sourceUrls: string[];
   contact: string | null;
   notes: string | null;
+  images: WeddingVenueImageResearch[];
 }
 
 export interface WeddingKnowledgeResponse {

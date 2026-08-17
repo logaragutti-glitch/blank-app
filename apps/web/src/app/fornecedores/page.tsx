@@ -36,6 +36,59 @@ const STATUS_LABEL: Record<WeddingVenueResearch["status"], string> = {
   REQUIRES_CONFIRMATION: "Requer confirmação",
 };
 
+const ROOM_TYPE_LABEL: Record<string, string> = {
+  salão: "Salão",
+  jardim: "Jardim",
+  cerimônia: "Cerimônia",
+  praia: "Praia",
+  piscina: "Piscina",
+  fachada: "Fachada",
+  cobertura: "Cobertura",
+  quarto: "Quarto",
+  detalhe: "Detalhe",
+  desconhecido: "Ambiente não identificado",
+};
+
+function VenueImageGallery({ venue }: { venue: WeddingVenueResearch }) {
+  const images = venue.images ?? [];
+  if (images.length === 0) {
+    return <span style={{ color: colors.textMuted }}>Sem fotos</span>;
+  }
+
+  const primary = images[0];
+  if (!primary) {
+    return <span style={{ color: colors.textMuted }}>Sem fotos</span>;
+  }
+  const thumbnails = images.slice(1, 5);
+  return (
+    <div style={{ minWidth: 180 }}>
+      <div style={{ display: "flex", gap: spacing.xs, alignItems: "flex-start" }}>
+        <a href={primary.sourceUrl} target="_blank" rel="noreferrer" title="Abrir fonte da imagem principal">
+          <img
+            src={primary.imageUrl}
+            alt={`${venue.name} — ${ROOM_TYPE_LABEL[primary.roomType] ?? primary.roomType}`}
+            style={{ width: 96, height: 66, objectFit: "cover", borderRadius: 6, display: "block" }}
+          />
+        </a>
+        <div style={{ display: "flex", gap: 3, flexWrap: "wrap", maxWidth: 76 }}>
+          {thumbnails.map((image) => (
+            <a key={image.id} href={image.sourceUrl} target="_blank" rel="noreferrer" title={`Fonte: ${ROOM_TYPE_LABEL[image.roomType] ?? image.roomType}`}>
+              <img
+                src={image.imageUrl}
+                alt={`${venue.name} — ${ROOM_TYPE_LABEL[image.roomType] ?? image.roomType}`}
+                style={{ width: 35, height: 30, objectFit: "cover", borderRadius: 4, display: "block" }}
+              />
+            </a>
+          ))}
+        </div>
+      </div>
+      <small style={{ color: colors.textMuted, display: "block", marginTop: 4 }}>
+        {images.length} referência{images.length === 1 ? "" : "s"} · {ROOM_TYPE_LABEL[primary.roomType] ?? primary.roomType}
+      </small>
+    </div>
+  );
+}
+
 function FornecedoresContent() {
   const { accessToken } = useAuth();
   const [suppliers, setSuppliers] = useState<Supplier[] | null>(null);
@@ -165,10 +218,14 @@ function FornecedoresContent() {
         <p style={{ color: colors.textMuted, marginTop: 0 }}>
           Locais da Região dos Lagos classificados por município. Preços e disponibilidade devem ser confirmados diretamente.
         </p>
+        <p style={{ color: colors.textMuted, fontSize: "0.82rem", marginTop: 0 }}>
+          As fotos são referências reais associadas a cada espaço. A fonte deve ser consultada antes de qualquer publicação comercial.
+        </p>
         <Card>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ textAlign: "left", borderBottom: `1px solid ${colors.border}` }}>
+                <th style={{ padding: spacing.sm }}>Fotos</th>
                 <th style={{ padding: spacing.sm }}>Espaço</th>
                 <th style={{ padding: spacing.sm }}>Município</th>
                 <th style={{ padding: spacing.sm }}>Tipo</th>
@@ -180,6 +237,9 @@ function FornecedoresContent() {
             <tbody>
               {research.venues.map((venue) => (
                 <tr key={venue.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                  <td style={{ padding: spacing.sm, verticalAlign: "top" }}>
+                    <VenueImageGallery venue={venue} />
+                  </td>
                   <td style={{ padding: spacing.sm }}>
                     <strong>{venue.name}</strong>
                     {venue.priceNote && (
