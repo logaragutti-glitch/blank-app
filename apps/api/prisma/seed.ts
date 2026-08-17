@@ -3,7 +3,8 @@
 // Karen & Daniel / Villa Massari example that originated this project
 // (see docs/03-product-spec.md).
 import { PrismaPg } from "@prisma/adapter-pg";
-import { MaterialCategory, PrismaClient, SupplierCategory } from "@prisma/client";
+import { MaterialCategory, PrismaClient, SupplierCatalogCategoryType, SupplierCategory } from "@prisma/client";
+import { MINEIRART_REGION_CATALOG, toMineirartCategoryCreateData } from "./mineirart-regiao-dos-lagos";
 
 try {
   process.loadEnvFile(new URL("../.env", import.meta.url));
@@ -521,6 +522,52 @@ const weddingFormatTrendLinks = [
   ["casamento-na-praia", ["personalizacao-autoral", "experiencia-do-convidado", "sustentabilidade-pratica", "brilho-etereo", "naturalismo-moderno", "florais-autoriais-instalacoes", "arquitetura-escultorica", "conteudo-social-autentico", "pre-festa-intima"]],
 ] as const;
 
+async function seedMineirartSupplierCatalog(tenantId: string, organizationId: string) {
+  const performanceNotes = [
+    "Fornecedor regional de locação para eventos — unidade Região dos Lagos.",
+    "Fonte do catálogo: https://mineirart.com.br/regiao-dos-lagos/",
+    "Contatos publicados: (21) 2516-3734 | (22) 2648-7045.",
+    "O inventário contém categorias de móveis, iluminação, decoração, estruturas, têxteis e acessórios; nomes sem extração confiável foram mantidos como pendentes.",
+  ].join("\\n");
+
+  const supplier = await prisma.supplier.upsert({
+    where: { organizationId_name: { organizationId, name: "Mineirart — Região dos Lagos" } },
+    update: {
+      category: SupplierCategory.FURNITURE_RENTAL,
+      performanceNotes,
+    },
+    create: {
+      tenantId,
+      organizationId,
+      name: "Mineirart — Região dos Lagos",
+      category: SupplierCategory.FURNITURE_RENTAL,
+      performanceNotes,
+    },
+  });
+
+  for (const category of toMineirartCategoryCreateData(supplier.id, tenantId, organizationId)) {
+    await prisma.supplierCatalogCategory.upsert({
+      where: { supplierId_slug: { supplierId: supplier.id, slug: category.slug } },
+      update: {
+        name: category.name,
+        categoryType: category.categoryType as SupplierCatalogCategoryType,
+        listedProductCount: category.listedProductCount,
+        sourceUrl: category.sourceUrl,
+        productNames: category.productNames,
+        extractionStatus: category.extractionStatus,
+        notes: category.notes,
+        sourceCapturedAt: category.sourceCapturedAt,
+      },
+      create: {
+        ...category,
+        categoryType: category.categoryType as SupplierCatalogCategoryType,
+      },
+    });
+  }
+
+  console.log(`Mineirart Região dos Lagos: fornecedor e ${MINEIRART_REGION_CATALOG.length} categorias catalogados.`);
+}
+
 async function seedWeddingKnowledgeCatalog(tenantId: string, organizationId: string) {
   const formatIds = new Map<string, string>();
   for (const format of researchedWeddingFormats) {
@@ -774,6 +821,7 @@ async function main() {
     },
   });
 
+  await seedMineirartSupplierCatalog(tenantId, organizationId);
   await seedWeddingKnowledgeCatalog(tenantId, organizationId);
 
   // --- Venue: Villa Massari --------------------------------------------------

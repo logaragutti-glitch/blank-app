@@ -16,9 +16,23 @@ export interface UpdateSupplierInput {
   updatedBy: string | null;
 }
 
+export interface SupplierCatalogCategoryRecord {
+  id: string;
+  slug: string;
+  name: string;
+  categoryType: string;
+  listedProductCount: number | null;
+  sourceUrl: string;
+  productNames: string[];
+  extractionStatus: string;
+  notes: string | null;
+  sourceCapturedAt: Date;
+}
+
 export abstract class SupplierRepository {
   abstract findAll(organizationId: string): Promise<Supplier[]>;
   abstract findById(organizationId: string, id: string): Promise<Supplier | null>;
+  abstract findCatalog(organizationId: string, supplierId: string): Promise<SupplierCatalogCategoryRecord[] | null>;
   // preferredVenueIds is deliberately not manageable here — that's driven
   // by real post-event feedback (see setVenuePreference below), not a
   // manual admin field.

@@ -224,6 +224,20 @@ export class KnowledgeGraphController {
     return this.attachPhotoUrls(supplier);
   }
 
+  @Get("suppliers/:id/catalog")
+  async listSupplierCatalog(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    const supplier = await this.requireSupplier(user.organizationId, id);
+    const categories = await this.suppliers.findCatalog(user.organizationId, id);
+    return {
+      supplier: {
+        id: supplier.id,
+        name: supplier.name,
+        category: supplier.category,
+      },
+      categories: categories ?? [],
+    };
+  }
+
   @Post("suppliers")
   async createSupplier(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateSupplierDto) {
     const supplier = await this.suppliers.create(user.tenantId, user.organizationId, {

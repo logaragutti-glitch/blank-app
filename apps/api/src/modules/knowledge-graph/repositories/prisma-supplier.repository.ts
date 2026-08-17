@@ -31,6 +31,18 @@ export class PrismaSupplierRepository implements SupplierRepository {
     return supplier ? toSupplierDomain(supplier) : null;
   }
 
+  async findCatalog(organizationId: string, supplierId: string) {
+    const supplier = await this.prisma.supplier.findFirst({
+      where: { id: supplierId, organizationId, deletedAt: null },
+      select: {
+        catalogCategories: {
+          orderBy: [{ categoryType: "asc" }, { name: "asc" }],
+        },
+      },
+    });
+    return supplier?.catalogCategories ?? null;
+  }
+
   async setVenuePreference(venueId: string, supplierId: string, preferred: boolean): Promise<void> {
     if (preferred) {
       await this.prisma.venuePreferredSupplier.upsert({

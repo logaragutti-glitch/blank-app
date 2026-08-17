@@ -37,16 +37,18 @@ model Organization {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  users          User[]
-  invites        Invite[]
-  clients        Client[]
-  venues         Venue[]
-  suppliers      Supplier[]
-  styles         EventStyle[]
-  materials      Material[]
-  weddingFormats WeddingFormat[]
-  weddingTrends  WeddingTrend[]
-  events         Event[]
+  users     User[]
+  invites   Invite[]
+  clients   Client[]
+  venues    Venue[]
+  suppliers Supplier[]
+  styles    EventStyle[]
+
+  materials                 Material[]
+  weddingFormats            WeddingFormat[]
+  weddingTrends             WeddingTrend[]
+  supplierCatalogCategories SupplierCatalogCategory[]
+  events                    Event[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -316,6 +318,8 @@ model Supplier {
   // montado, estrutura de luz etc.) — mesmo padrão de Venue.photoKeys.
   photoKeys        String[]         @default([]) @map("photo_keys")
 
+  catalogCategories SupplierCatalogCategory[]
+
   organization Organization             @relation(fields: [organizationId], references: [id])
   venues       VenuePreferredSupplier[]
   projects     ProjectSupplier[]
@@ -387,6 +391,48 @@ enum MaterialCategory {
   FURNITURE
   LIGHTING
   OTHER
+}
+
+// ---------------------------------------------------------------------------
+// Supplier catalog — categories and products discovered from vendor sources
+// ---------------------------------------------------------------------------
+
+enum SupplierCatalogCategoryType {
+  FURNITURE
+  LIGHTING
+  DECOR
+  STRUCTURE
+  TEXTILE
+  ACCESSORY
+  OTHER
+}
+
+model SupplierCatalogCategory {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  supplierId     String   @map("supplier_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  slug               String
+  name               String
+  categoryType       SupplierCatalogCategoryType @map("category_type")
+  listedProductCount Int?                        @map("listed_product_count")
+  sourceUrl          String                      @map("source_url")
+  productNames       String[]                    @map("product_names")
+  extractionStatus   String                      @map("extraction_status")
+  notes              String?
+  sourceCapturedAt   DateTime                    @map("source_captured_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  supplier     Supplier     @relation(fields: [supplierId], references: [id])
+
+  @@unique([supplierId, slug])
+  @@index([tenantId])
+  @@index([organizationId, categoryType])
+  @@index([supplierId])
+  @@map("supplier_catalog_categories")
 }
 
 // ---------------------------------------------------------------------------
