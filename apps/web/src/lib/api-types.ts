@@ -1,5 +1,9 @@
 import type {
   BudgetAnalysis,
+  CommercialProposal,
+  CommercialPricingStatus,
+  CommercialProposalSupplierInput,
+  CommercialSupplierCategory,
   ChatMessage,
   Client,
   ClientInteraction,
@@ -219,6 +223,10 @@ export interface FinancialSummary {
 
 export type {
   BudgetAnalysis,
+  CommercialProposal,
+  CommercialPricingStatus,
+  CommercialProposalSupplierInput,
+  CommercialSupplierCategory,
   ChatMessage,
   Client,
   ClientInteraction,

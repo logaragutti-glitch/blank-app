@@ -13,6 +13,7 @@ export * from "./proposal-component";
 export * from "./post-event-feedback";
 export * from "./production-plan";
 export * from "./budget-analysis";
+export * from "./commercial-proposal";
 export * from "./supplier";
 export * from "./project-task";
 export * from "./client-interaction";

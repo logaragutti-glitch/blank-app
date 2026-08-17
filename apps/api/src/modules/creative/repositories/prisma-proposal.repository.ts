@@ -47,6 +47,14 @@ export class PrismaProposalRepository implements ProposalRepository {
     return toProposalDomain(proposal);
   }
 
+  async updateInvestmentAmount(id: string, investmentAmount: number): Promise<Proposal> {
+    const proposal = await this.prisma.proposal.update({
+      where: { id },
+      data: { investmentAmount },
+    });
+    return toProposalDomain(proposal);
+  }
+
   async updateStatus(id: string, status: ProposalStatus): Promise<Proposal> {
     const proposal = await this.prisma.proposal.update({
       where: { id },

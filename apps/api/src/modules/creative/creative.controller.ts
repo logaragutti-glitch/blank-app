@@ -13,7 +13,13 @@ import {
   StreamableFile,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import type { ComponentType, EventStyle, InspirationImage, ProposalComponent } from "@eve-os/types";
+import type {
+  ComponentType,
+  EventStyle,
+  InspirationImage,
+  ProposalComponent,
+  CommercialProposal,
+} from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
@@ -23,6 +29,9 @@ import { EventRepository } from "../briefing/repositories/event.repository";
 import { InspirationImageRepository } from "../briefing/repositories/inspiration-image.repository";
 import { EventStyleRepository } from "../knowledge-graph/repositories/event-style.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
+import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
+import { PrismaService } from "../../infrastructure/prisma/prisma.service";
+import { ProjectSupplierRepository } from "../project-suppliers/repositories/project-supplier.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
 import { ConceptualRenderPort } from "./ai/conceptual-render.port";
 import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
@@ -33,6 +42,9 @@ import {
 } from "./ai/proposal-components.port";
 import { UpdateProposalComponentDto } from "./dto/update-proposal-component.dto";
 import { buildProposalComponents } from "./proposal-component-builder";
+import { buildCommercialProposalRecord } from "./commercial-proposal-builder";
+import { buildCommercialProposalPdf } from "./commercial-proposal-pdf-builder";
+import { UpsertCommercialProposalDto } from "./dto/upsert-commercial-proposal.dto";
 import { buildProposalPdf, type ProposalPdfComponent } from "./proposal-pdf-builder";
 import {
   RENDERABLE_COMPONENT_TYPES,
@@ -40,10 +52,27 @@ import {
   isRenderableComponentType,
 } from "./renderable-component-types";
 import { ProposalComponentRepository } from "./repositories/proposal-component.repository";
+import { CommercialProposalRepository } from "./repositories/commercial-proposal.repository";
 import { ProposalRepository } from "./repositories/proposal.repository";
 import { computeWowScore } from "./wow-score";
 
 const SEMANTIC_SEARCH_STYLE_LIMIT = 5;
+const REGIONAL_SERVICE_AREA_TOKENS = [
+  "regiao dos lagos",
+  "cabo frio",
+  "buzios",
+  "armacao dos buzios",
+  "arraial do cabo",
+  "araruama",
+  "sao pedro da aldeia",
+  "saquarema",
+  "iguaba grande",
+];
+
+function isRegionalServiceArea(area: string): boolean {
+  const normalized = area.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return REGIONAL_SERVICE_AREA_TOKENS.some((token) => normalized.includes(token));
+}
 
 const NARRATIVE_KEY_BY_COMPONENT_TYPE: Partial<Record<ComponentType, ProposalNarrativeKey>> = {
   CONCEPT: "concept",
@@ -73,7 +102,11 @@ export class CreativeController {
     private readonly venues: VenueRepository,
     private readonly eventStyles: EventStyleRepository,
     private readonly materials: MaterialRepository,
+    private readonly suppliers: SupplierRepository,
+    private readonly projectSuppliers: ProjectSupplierRepository,
+    private readonly prisma: PrismaService,
     private readonly proposals: ProposalRepository,
+    private readonly commercialProposals: CommercialProposalRepository,
     private readonly proposalComponents: ProposalComponentRepository,
     private readonly diagnosticoCriativo: DiagnosticoCriativoPort,
     private readonly proposalComponentsAi: ProposalComponentsPort,
@@ -504,6 +537,112 @@ export class CreativeController {
     }
 
     return { proposal, components: await this.attachRenderUrls(components) };
+  }
+
+  @Post("proposals/:proposalId/commercial")
+  async upsertCommercialProposal(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Body() dto: UpsertCommercialProposalDto,
+  ): Promise<CommercialProposal> {
+    const record = await this.composeCommercialProposalRecord(user, proposalId, dto);
+    const saved = await this.commercialProposals.upsert(record);
+    await this.proposals.updateInvestmentAmount(proposalId, saved.totalInvestment);
+    return saved;
+  }
+
+  @Get("proposals/:proposalId/commercial")
+  async getCommercialProposal(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ): Promise<CommercialProposal | null> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    return this.commercialProposals.findByProposal(proposalId);
+  }
+
+  @Get("proposals/:proposalId/commercial/pdf")
+  async getCommercialProposalPdf(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ): Promise<StreamableFile> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) {
+      throw new BadRequestException(
+        "Commercial proposal not found — call POST /creative/proposals/:proposalId/commercial first.",
+      );
+    }
+    const pdfBuffer = await buildCommercialProposalPdf(commercial);
+    return new StreamableFile(pdfBuffer, {
+      type: "application/pdf",
+      disposition: `attachment; filename="proposta-comercial-${proposalId}.pdf"`,
+    });
+  }
+
+  private async composeCommercialProposalRecord(
+    user: AuthenticatedUser,
+    proposalId: string,
+    dto: UpsertCommercialProposalDto,
+  ) {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+
+    const event = await this.events.findById(user.organizationId, proposal.eventId);
+    if (!event) throw new NotFoundException("Event not found for this proposal");
+    const [client, venue, suppliers, assignments] = await Promise.all([
+      this.clients.findById(user.organizationId, event.clientId),
+      this.venues.findById(user.organizationId, event.venueId),
+      this.suppliers.findAll(user.organizationId).then((records) =>
+        records.filter((supplier) => supplier.serviceArea.some(isRegionalServiceArea)),
+      ),
+      this.projectSuppliers.findByEvent(event.id),
+    ]);
+    if (!client) throw new NotFoundException("Client not found for this event");
+    if (!venue) throw new NotFoundException("Venue not found for this event");
+
+    const suppliersById = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
+    const unknownSupplierIds = dto.supplierSelections
+      .map((selection) => selection.supplierId)
+      .filter((supplierId) => !suppliersById.has(supplierId));
+    if (unknownSupplierIds.length > 0) {
+      throw new BadRequestException(`Supplier not found: ${unknownSupplierIds.join(", ")}`);
+    }
+
+    const selectedSupplierIds = new Set(dto.supplierSelections.map((selection) => selection.supplierId));
+    const invalidLineItemSupplierIds = (dto.lineItems ?? [])
+      .map((item) => item.supplierId)
+      .filter((supplierId): supplierId is string => Boolean(supplierId && !selectedSupplierIds.has(supplierId)));
+    if (invalidLineItemSupplierIds.length > 0) {
+      throw new BadRequestException(
+        "Every custom line item supplierId must also be present in supplierSelections.",
+      );
+    }
+
+    const researchedVenue = dto.venueResearchId
+      ? await this.prisma.weddingVenueResearch.findFirst({
+          where: { id: dto.venueResearchId, organizationId: user.organizationId, isActive: true },
+        })
+      : await this.prisma.weddingVenueResearch.findFirst({
+          where: { organizationId: user.organizationId, name: venue.name, isActive: true },
+        });
+    if (dto.venueResearchId && !researchedVenue) {
+      throw new NotFoundException("Researched wedding venue not found");
+    }
+
+    return buildCommercialProposalRecord({
+      tenantId: user.tenantId,
+      organizationId: user.organizationId,
+      proposalId,
+      event,
+      client,
+      venue,
+      researchedVenue,
+      suppliers,
+      assignments,
+      dto,
+    });
   }
 
   // Real PDF artifact (Sprint 5+ item 7). Never receives the Proposal

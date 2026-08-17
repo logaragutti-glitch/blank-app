@@ -95,7 +95,12 @@ function PropostaContent({ eventId }: { eventId: string }) {
           ← Voltar ao projeto
         </Link>
       </p>
-      <h1>Gerar Proposta</h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, flexWrap: "wrap" }}>
+        <h1 style={{ marginBottom: 0 }}>Gerar Proposta</h1>
+        <Link href={`/projects/${eventId}/proposta-comercial`} style={{ color: colors.primary, fontWeight: 600 }}>
+          Montar proposta comercial integrada →
+        </Link>
+      </div>
 
       {error && (
         <p style={{ color: colors.textMuted }}>

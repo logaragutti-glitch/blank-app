@@ -1,0 +1,94 @@
+import type { CommercialProposal } from "@eve-os/types";
+import { buildCommercialProposalPdf } from "./commercial-proposal-pdf-builder";
+
+describe("buildCommercialProposalPdf", () => {
+  it("renders a valid multi-page commercial proposal", async () => {
+    const proposal = {
+      id: "commercial-1",
+      proposalId: "proposal-1",
+      eventId: "event-1",
+      status: "DRAFT",
+      clientNames: "Ana & Bruno",
+      eventType: "WEDDING",
+      eventDate: "2026-11-21T18:00:00.000Z",
+      guestsExpected: 120,
+      venue: {
+        id: "research-venue-1",
+        source: "RESEARCH_CATALOG",
+        name: "Casarão da Casa da Árvore",
+        municipality: "Cabo Frio",
+        venueType: "Casarão e jardim",
+        capacityMin: 50,
+        capacityMax: 400,
+        guestCapacity: 400,
+        lodgingCapacity: null,
+        contact: "(22) 99760-8097",
+        services: ["Cerimônia e recepção"],
+        recommendationNotes: ["Aproveitar o jardim"],
+        status: "VALIDATED",
+        evidenceLevel: "OFFICIAL",
+        sourceUrls: ["https://example.com/venue"],
+      },
+      suppliers: [
+        {
+          supplierId: "supplier-1",
+          name: "Passalini Buffet",
+          category: "CATERING",
+          categoryLabel: "Buffet e gastronomia",
+          phone: "(22) 99874-1384",
+          email: null,
+          website: null,
+          instagramUrl: null,
+          serviceArea: ["Cabo Frio"],
+          validationLevel: "A",
+          contactStatus: "CONFIRMED_OFFICIAL",
+          estimatedCost: 10000,
+          assignmentStatus: null,
+          notes: null,
+          scope: "Buffet completo",
+          pricingStatus: "ESTIMATE",
+        },
+      ],
+      lineItems: [
+        {
+          id: "item-1",
+          category: "CATERING",
+          categoryLabel: "Buffet e gastronomia",
+          description: "Buffet completo",
+          supplierId: "supplier-1",
+          supplierName: "Passalini Buffet",
+          quantity: 1,
+          unit: "serviço",
+          unitPrice: 10000,
+          total: 10000,
+          pricingStatus: "ESTIMATE",
+          included: true,
+          notes: null,
+        },
+      ],
+      subtotal: 10000,
+      contingencyAmount: 500,
+      managementFee: 1000,
+      discount: 0,
+      totalInvestment: 11500,
+      currency: "BRL",
+      validityDays: 10,
+      validUntil: "2026-08-27T00:00:00.000Z",
+      approvalDeadline: null,
+      paymentTerms: [
+        { label: "Reserva", description: "30% na assinatura", amount: 3450, due: "Na assinatura" },
+      ],
+      conditions: ["Valores dependem de disponibilidade e contrato."],
+      nextSteps: ["Confirmar espaço e fornecedores."],
+      commercialNotes: null,
+      hasUnconfirmedData: true,
+      createdAt: "2026-08-17T00:00:00.000Z",
+      updatedAt: "2026-08-17T00:00:00.000Z",
+    } as CommercialProposal;
+
+    const pdf = await buildCommercialProposalPdf(proposal);
+    const raw = pdf.toString("latin1");
+    expect(raw.startsWith("%PDF-")).toBe(true);
+    expect((raw.match(/\/Type \/Page/g) ?? []).length).toBeGreaterThanOrEqual(5);
+  });
+});

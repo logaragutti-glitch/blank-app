@@ -17,6 +17,8 @@ export abstract class ProposalRepository {
   abstract findByEvent(organizationId: string, eventId: string): Promise<Proposal[]>;
   /** Sets the named concept once Agente 3 has generated the CONCEPT component. */
   abstract updateConceptName(id: string, conceptName: string): Promise<Proposal>;
+  /** Keeps Proposal.investmentAmount aligned with the client-facing commercial total. */
+  abstract updateInvestmentAmount(id: string, investmentAmount: number): Promise<Proposal>;
   /** Formal approval/rejection by the client — see POST .../approve and .../reject. */
   abstract updateStatus(id: string, status: ProposalStatus): Promise<Proposal>;
 }
