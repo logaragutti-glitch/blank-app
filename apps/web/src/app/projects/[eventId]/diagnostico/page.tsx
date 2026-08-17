@@ -9,7 +9,38 @@ import { InspirationImageUploader } from "../../../../components/InspirationImag
 import { AuthGuard } from "../../../../lib/auth-guard";
 import { apiClient, ApiError } from "../../../../lib/api-client";
 import { useAuth } from "../../../../lib/auth-context";
-import type { Proposal } from "../../../../lib/api-types";
+import type { EventStyle, Proposal } from "../../../../lib/api-types";
+
+const PALETTE_COLOR_VALUES: Record<string, string> = {
+  "cloud dancer": "#F0EEE9",
+  "verde sálvia": "#A3B18A",
+  "verde oliva": "#708238",
+  "verde musgo": "#66704A",
+  "verde escuro": "#1F4D3A",
+  "verde floresta": "#24533B",
+  "champagne": "#F7E7CE",
+  "dourado suave": "#D4AF70",
+  rosé: "#D8A7A7",
+  "rosa queimado": "#B76E79",
+  terracota: "#C66B4E",
+  areia: "#D8C3A5",
+  marfim: "#FFF8E7",
+  opalina: "#D9D3F0",
+  lilás: "#B9A7D9",
+  malva: "#A77B91",
+  prata: "#C0C0C0",
+  vermelho: "#A83232",
+  "azul intenso": "#174A8B",
+  "azul meia-noite": "#172A46",
+  "midnight teal": "#164E63",
+  ameixa: "#5B2748",
+  chocolate: "#5B3A29",
+  carvão: "#30343B",
+};
+
+function paletteColorValue(name: string) {
+  return PALETTE_COLOR_VALUES[name.trim().toLocaleLowerCase("pt-BR")] ?? colors.primary;
+}
 
 const THOUGHTS = [
   "Estou conectando as inspirações e procurando a essência deste evento...",
@@ -21,6 +52,7 @@ const THOUGHTS = [
 function DiagnosticoContent({ eventId }: { eventId: string }) {
   const { accessToken } = useAuth();
   const [proposal, setProposal] = useState<Proposal | null | undefined>(undefined);
+  const [matchedStyle, setMatchedStyle] = useState<EventStyle | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +65,17 @@ function DiagnosticoContent({ eventId }: { eventId: string }) {
   }
 
   useEffect(loadLatest, [accessToken, eventId]);
+
+  useEffect(() => {
+    if (!accessToken || !proposal?.eventStyleId) {
+      setMatchedStyle(null);
+      return;
+    }
+    apiClient
+      .get<EventStyle>(`/knowledge-graph/styles/${proposal.eventStyleId}`, accessToken)
+      .then(setMatchedStyle)
+      .catch(() => setMatchedStyle(null));
+  }, [accessToken, proposal?.eventStyleId]);
 
   async function handleGenerate() {
     setError(null);
@@ -93,24 +136,50 @@ function DiagnosticoContent({ eventId }: { eventId: string }) {
             <p style={{ color: colors.textMuted }}>{proposal.diagnosticoCriativo.atmosferaDesejada}</p>
 
             <h3>Estilo predominante</h3>
-            <p>{proposal.diagnosticoCriativo.estiloPredominante}</p>
+            <p style={{ marginBottom: spacing.xs }}>{proposal.diagnosticoCriativo.estiloPredominante}</p>
+            {matchedStyle && (
+              <p style={{ color: colors.textMuted, marginTop: 0 }}>
+                {matchedStyle.description ?? "Estilo selecionado a partir do Knowledge Graph."}
+              </p>
+            )}
 
             <h3>Paleta sugerida</h3>
+            <p style={{ color: colors.textMuted, marginTop: 0 }}>
+              Baseada no estilo escolhido, no briefing e nas inspirações do casal.
+            </p>
             <div style={{ display: "flex", gap: spacing.sm, flexWrap: "wrap" }}>
               {proposal.diagnosticoCriativo.paletaSugerida.map((color) => (
                 <span
                   key={color}
                   style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: spacing.xs,
                     padding: `${spacing.xs} ${spacing.md}`,
                     borderRadius: 9999,
                     border: `1px solid ${colors.border}`,
                     color: colors.textPrimary,
                   }}
                 >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      backgroundColor: paletteColorValue(color),
+                      border: `1px solid ${colors.border}`,
+                    }}
+                  />
                   {color}
                 </span>
               ))}
             </div>
+            {matchedStyle && (
+              <p style={{ color: colors.textMuted, fontSize: "0.85rem" }}>
+                Paleta-base pesquisada do estilo: {matchedStyle.paletteColors.join(", ")}.
+              </p>
+            )}
 
             <h3>Mobiliário sugerido</h3>
             <p>{proposal.diagnosticoCriativo.mobiliarioSugerido.join(", ") || "—"}</p>

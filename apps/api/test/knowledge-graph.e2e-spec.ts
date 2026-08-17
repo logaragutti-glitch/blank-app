@@ -43,8 +43,14 @@ describe("Knowledge Graph (e2e)", () => {
 
     const gardenFineArt = response.body.find((style: { name: string }) => style.name === "Garden Fine Art");
     expect(gardenFineArt).toBeDefined();
-    expect(gardenFineArt.dimensionScores).toEqual({ Luxuoso: 8, Natural: 7.8 });
-    expect(gardenFineArt.paletteColors).toEqual(["rosé", "verde sálvia", "champagne"]);
+    expect(gardenFineArt.dimensionScores).toEqual({ Luxuoso: 8, Natural: 8, Romântico: 9, Autoral: 7 });
+    expect(gardenFineArt.paletteColors).toEqual([
+      "Cloud Dancer",
+      "verde sálvia",
+      "champagne",
+      "rosé",
+      "dourado suave",
+    ]);
   });
 
   it("GET /knowledge-graph/materials reflects Peonia's documented compatibility", async () => {

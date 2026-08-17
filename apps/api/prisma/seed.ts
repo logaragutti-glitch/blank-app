@@ -6,6 +6,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { MaterialCategory, PrismaClient, SupplierCatalogCategoryType, SupplierCategory } from "@prisma/client";
 import { MINEIRART_REGION_CATALOG, toMineirartCategoryCreateData } from "./mineirart-regiao-dos-lagos";
 import { WEDDING_VENUE_RESEARCH } from "./wedding-venue-research";
+import { RESEARCHED_EVENT_STYLES } from "./wedding-style-palette-research";
 
 try {
   process.loadEnvFile(new URL("../.env", import.meta.url));
@@ -665,21 +666,47 @@ async function main() {
 
   const gardenFineArt = await prisma.eventStyle.upsert({
     where: { organizationId_name: { organizationId, name: "Garden Fine Art" } },
-    update: {},
+    update: {
+      description: "Evolução do Garden Fine Art com jardim autoral, textura de natureza e detalhes etéreos.",
+      dimensionScores: { Luxuoso: 8.0, Natural: 8.0, Romântico: 9.0, Autoral: 7.0 },
+      paletteColors: ["Cloud Dancer", "verde sálvia", "champagne", "rosé", "dourado suave"],
+      furnitureNotes: ["madeira clara", "ferro branco", "mesas de jardim", "cadeiras claras"],
+      loungeNotes: ["fibra natural", "linho", "rattan claro", "almofadas rosadas"],
+    },
     create: {
       tenantId,
       organizationId,
       name: "Garden Fine Art",
-      // Scores de exemplo documentados em 05-database-bible.md; a sessão
-      // original não vinculou explicitamente os dois valores a um estilo
-      // nomeado — atribuídos aqui ao Garden Fine Art por ser o único
-      // estilo detalhado com ficha completa no material recebido.
-      dimensionScores: { Luxuoso: 8.0, Natural: 7.8 },
-      paletteColors: ["rosé", "verde sálvia", "champagne"],
-      furnitureNotes: ["madeira clara", "ferro branco"],
-      loungeNotes: ["fibra natural", "linho"],
+      description: "Evolução do Garden Fine Art com jardim autoral, textura de natureza e detalhes etéreos.",
+      dimensionScores: { Luxuoso: 8.0, Natural: 8.0, Romântico: 9.0, Autoral: 7.0 },
+      paletteColors: ["Cloud Dancer", "verde sálvia", "champagne", "rosé", "dourado suave"],
+      furnitureNotes: ["madeira clara", "ferro branco", "mesas de jardim", "cadeiras claras"],
+      loungeNotes: ["fibra natural", "linho", "rattan claro", "almofadas rosadas"],
     },
   });
+
+  for (const style of RESEARCHED_EVENT_STYLES) {
+    await prisma.eventStyle.upsert({
+      where: { organizationId_name: { organizationId, name: style.name } },
+      update: {
+        description: style.description,
+        dimensionScores: style.dimensionScores,
+        paletteColors: [...style.paletteColors],
+        furnitureNotes: [...style.furnitureNotes],
+        loungeNotes: [...style.loungeNotes],
+      },
+      create: {
+        tenantId,
+        organizationId,
+        name: style.name,
+        description: style.description,
+        dimensionScores: style.dimensionScores,
+        paletteColors: [...style.paletteColors],
+        furnitureNotes: [...style.furnitureNotes],
+        loungeNotes: [...style.loungeNotes],
+      },
+    });
+  }
 
   // Estilos citados apenas como "incompatível com" na ficha da Peônia,
   // sem ficha própria documentada — criados como placeholders mínimos

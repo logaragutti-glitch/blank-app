@@ -50,7 +50,7 @@ ${
 ${candidateStyles
   .map(
     (style) =>
-      `- id=${style.id} nome="${style.name}" scores=${JSON.stringify(style.dimensionScores)} paleta=${style.paletteColors.join(", ")} mobiliário=${style.furnitureNotes.join(", ")} lounge=${style.loungeNotes.join(", ")}`,
+      `- id=${style.id} nome="${style.name}" descrição="${style.description ?? "n/a"}" scores=${JSON.stringify(style.dimensionScores)} paleta-base=${style.paletteColors.join(", ")} mobiliário=${style.furnitureNotes.join(", ")} lounge=${style.loungeNotes.join(", ")}`,
   )
   .join("\n")}
 

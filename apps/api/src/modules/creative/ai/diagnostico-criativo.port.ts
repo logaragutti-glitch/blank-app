@@ -35,6 +35,7 @@ export interface DiagnosticoCriativoInspirationImage {
 export interface DiagnosticoCriativoCandidateStyle {
   id: string;
   name: string;
+  description?: string | null;
   dimensionScores: Record<string, number>;
   paletteColors: string[];
   furnitureNotes: string[];

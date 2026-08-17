@@ -100,7 +100,7 @@ describe("AnthropicDiagnosticoCriativoProvider", () => {
     expect(result.matchedEventStyleId).toBe("style-garden-fine-art");
     expect(result.diagnosis.estiloPredominante).toBe("Garden Fine Art");
     expect(result.diagnosis.materiaisRecomendados).toEqual(["Peônia"]);
-    expect(result.diagnosis.promptVersion).toBe("v1");
+    expect(result.diagnosis.promptVersion).toBe("v2");
   });
 
   it("returns null matchedEventStyleId when the model picks an id outside the candidates", async () => {
