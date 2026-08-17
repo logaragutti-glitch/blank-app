@@ -22,6 +22,38 @@ export class CreateSupplierDto {
 
   @IsString()
   @IsOptional()
+  phone?: string | null;
+
+  @IsString()
+  @IsOptional()
+  email?: string | null;
+
+  @IsString()
+  @IsOptional()
+  website?: string | null;
+
+  @IsString()
+  @IsOptional()
+  instagramUrl?: string | null;
+
+  @IsString({ each: true })
+  @IsOptional()
+  serviceArea?: string[];
+
+  @IsString()
+  @IsOptional()
+  sourceUrl?: string | null;
+
+  @IsString()
+  @IsOptional()
+  validationLevel?: string | null;
+
+  @IsString()
+  @IsOptional()
+  contactStatus?: string;
+
+  @IsString()
+  @IsOptional()
   performanceNotes?: string | null;
 
   @IsNumber()

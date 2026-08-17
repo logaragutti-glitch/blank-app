@@ -3,6 +3,14 @@ import type { Supplier, SupplierCategory } from "@eve-os/types";
 export interface CreateSupplierInput {
   name: string;
   category: SupplierCategory;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  instagramUrl?: string | null;
+  serviceArea?: string[];
+  sourceUrl?: string | null;
+  validationLevel?: string | null;
+  contactStatus?: string;
   performanceNotes: string | null | undefined;
   estimatedCost: number | null | undefined;
   createdBy: string | null;
@@ -11,6 +19,14 @@ export interface CreateSupplierInput {
 export interface UpdateSupplierInput {
   name?: string;
   category?: SupplierCategory;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  instagramUrl?: string | null;
+  serviceArea?: string[];
+  sourceUrl?: string | null;
+  validationLevel?: string | null;
+  contactStatus?: string;
   performanceNotes?: string | null;
   estimatedCost?: number | null;
   updatedBy: string | null;

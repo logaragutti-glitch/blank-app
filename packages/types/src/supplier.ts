@@ -17,6 +17,14 @@ export type SupplierCategory =
 export interface Supplier extends AuditedEntity {
   name: string;
   category: SupplierCategory;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  instagramUrl: string | null;
+  serviceArea: string[];
+  sourceUrl: string | null;
+  validationLevel: string | null;
+  contactStatus: string;
   /** Free-text notes on past performance (Database Bible Cap. 9 — feeds the incremental learning loop). */
   performanceNotes: string | null;
   /** Venues this supplier is a preferred choice for. */

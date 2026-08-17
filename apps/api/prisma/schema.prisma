@@ -311,6 +311,15 @@ model Supplier {
 
   name             String
   category         SupplierCategory
+  phone            String?
+  email            String?
+  website          String?
+  instagramUrl     String?          @map("instagram_url")
+  serviceArea      String[]         @default([]) @map("service_area")
+  sourceUrl        String?          @map("source_url")
+  validationLevel  String?          @map("validation_level")
+  contactStatus    String           @default("UNCONFIRMED") @map("contact_status")
+  lastValidatedAt  DateTime?        @map("last_validated_at") @db.Timestamptz(6)
   performanceNotes String?          @map("performance_notes")
   // Estimativa de custo para contratar este fornecedor num evento tipico
   // (BRL) — nulo ate ser preenchido; usado pelo Agente 4 (Diretor de

@@ -150,6 +150,9 @@ function FornecedoresContent() {
               <tr style={{ textAlign: "left", borderBottom: `1px solid ${colors.border}` }}>
                 <th style={{ padding: spacing.sm }}>Nome</th>
                 <th style={{ padding: spacing.sm }}>Categoria</th>
+                <th style={{ padding: spacing.sm }}>Contato</th>
+                <th style={{ padding: spacing.sm }}>Área de atendimento</th>
+                <th style={{ padding: spacing.sm }}>Validação</th>
                 <th style={{ padding: spacing.sm }}>Custo estimado</th>
               </tr>
             </thead>
@@ -158,6 +161,22 @@ function FornecedoresContent() {
                 <tr key={supplier.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
                   <td style={{ padding: spacing.sm }}>{supplier.name}</td>
                   <td style={{ padding: spacing.sm }}>{SUPPLIER_CATEGORY_LABEL[supplier.category]}</td>
+                  <td style={{ padding: spacing.sm, fontSize: "0.82rem" }}>
+                    {supplier.phone && <div>{supplier.phone}</div>}
+                    {supplier.email && <div>{supplier.email}</div>}
+                    {supplier.website && (
+                      <a href={supplier.website} target="_blank" rel="noreferrer">
+                        Site
+                      </a>
+                    )}
+                    {!supplier.phone && !supplier.email && !supplier.website && "—"}
+                  </td>
+                  <td style={{ padding: spacing.sm, fontSize: "0.82rem" }}>
+                    {supplier.serviceArea.length > 0 ? supplier.serviceArea.join(", ") : "—"}
+                  </td>
+                  <td style={{ padding: spacing.sm, fontSize: "0.82rem" }}>
+                    {supplier.validationLevel ?? "—"} · {supplier.contactStatus}
+                  </td>
                   <td style={{ padding: spacing.sm }}>
                     {supplier.estimatedCost != null
                       ? `R$ ${supplier.estimatedCost.toLocaleString("pt-BR")}`
