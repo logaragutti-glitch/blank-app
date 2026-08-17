@@ -13,6 +13,7 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
+import { CommercialProposalRepository } from "../creative/repositories/commercial-proposal.repository";
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
@@ -28,6 +29,7 @@ import { ProductionPlanRepository } from "./repositories/production-plan.reposit
 export class ProductionController {
   constructor(
     private readonly proposals: ProposalRepository,
+    private readonly commercialProposals: CommercialProposalRepository,
     private readonly events: EventRepository,
     private readonly clients: ClientRepository,
     private readonly venues: VenueRepository,
@@ -105,7 +107,7 @@ export class ProductionController {
     const { organizationId } = user;
     const proposal = await this.proposals.findById(organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
-    this.assertApproved(proposal.status);
+    await this.assertProductionUnlocked(proposalId, proposal.status);
 
     const event = await this.events.findById(organizationId, proposal.eventId);
     if (!event) throw new NotFoundException("Event not found for this proposal");
@@ -171,7 +173,7 @@ export class ProductionController {
     const { organizationId } = user;
     const proposal = await this.proposals.findById(organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
-    this.assertApproved(proposal.status);
+    await this.assertProductionUnlocked(proposalId, proposal.status);
 
     const event = await this.events.findById(organizationId, proposal.eventId);
     if (!event) throw new NotFoundException("Event not found for this proposal");
@@ -246,10 +248,16 @@ export class ProductionController {
     return analysis;
   }
 
-  private assertApproved(status: string) {
-    if (status !== "APPROVED") {
+  private async assertProductionUnlocked(proposalId: string, proposalStatus: string) {
+    if (proposalStatus !== "APPROVED") {
       throw new BadRequestException(
         "This Proposal must be approved before generating production artifacts — call POST /creative/proposals/:proposalId/approve first.",
+      );
+    }
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial || commercial.status !== "APPROVED") {
+      throw new BadRequestException(
+        "The commercial proposal must be approved before generating production artifacts — approve it in the commercial proposal flow first.",
       );
     }
   }

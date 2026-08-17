@@ -21,5 +21,6 @@ import { ProductionPlanRepository } from "./repositories/production-plan.reposit
     { provide: BudgetAnalysisRepository, useClass: PrismaBudgetAnalysisRepository },
     { provide: BudgetAnalysisPort, useClass: AnthropicBudgetAnalysisProvider },
   ],
+  exports: [ProductionPlanRepository, BudgetAnalysisRepository],
 })
 export class ProductionModule {}

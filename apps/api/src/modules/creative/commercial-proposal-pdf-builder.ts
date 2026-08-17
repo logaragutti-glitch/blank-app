@@ -58,6 +58,18 @@ function statusLabel(value: string): string {
   return labels[value] ?? value;
 }
 
+function commercialStatusLabel(value: string): string {
+  const labels: Record<string, string> = {
+    DRAFT: "Rascunho",
+    READY: "Pronta para envio",
+    SENT: "Enviada",
+    APPROVED: "Aprovada",
+    REJECTED: "Devolvida para revisão",
+    EXPIRED: "Expirada",
+  };
+  return labels[value] ?? value;
+}
+
 function pageRule(doc: PDFKit.PDFDocument): void {
   doc.save().strokeColor(COLORS.border).lineWidth(0.7).moveTo(54, 43).lineTo(541, 43).stroke().restore();
 }
@@ -110,10 +122,10 @@ function renderCover(doc: PDFKit.PDFDocument, proposal: CommercialProposal): voi
     { width: 430 },
   );
   doc.fillColor(COLORS.muted).font(FONT_BODY).fontSize(8).text(
-    `Validade: ${proposal.validityDays} dias${proposal.validUntil ? ` · Até ${dateLabel(proposal.validUntil)}` : ""}`,
+    `Versão ${proposal.version} · ${commercialStatusLabel(proposal.status)} · Validade: ${proposal.validityDays} dias${proposal.validUntil ? ` · Até ${dateLabel(proposal.validUntil)}` : ""}`,
     54,
     690,
-    { width: 430 },
+    { width: 470 },
   );
 }
 

@@ -3,7 +3,16 @@ export type CommercialProposalStatus =
   | "READY"
   | "SENT"
   | "APPROVED"
+  | "REJECTED"
   | "EXPIRED";
+
+export type CommercialProposalVersionAction =
+  | "CREATED"
+  | "UPDATED"
+  | "READY"
+  | "SENT"
+  | "APPROVED"
+  | "REJECTED";
 
 export type CommercialVenueSource = "INTERNAL_VENUE" | "RESEARCH_CATALOG";
 
@@ -84,6 +93,7 @@ export interface CommercialProposal {
   id: string;
   proposalId: string;
   eventId: string;
+  version: number;
   status: CommercialProposalStatus;
   clientNames: string;
   eventType: string;
@@ -106,8 +116,25 @@ export interface CommercialProposal {
   nextSteps: string[];
   commercialNotes: string | null;
   hasUnconfirmedData: boolean;
+  sentAt: string | null;
+  sentBy: string | null;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CommercialProposalVersion {
+  id: string;
+  commercialProposalId: string;
+  version: number;
+  action: CommercialProposalVersionAction;
+  status: CommercialProposalStatus;
+  totalInvestment: number;
+  notes: string | null;
+  createdAt: string;
+  createdBy: string | null;
 }
 
 export interface CommercialProposalSupplierInput {

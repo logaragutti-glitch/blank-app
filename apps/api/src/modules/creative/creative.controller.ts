@@ -19,6 +19,8 @@ import type {
   InspirationImage,
   ProposalComponent,
   CommercialProposal,
+  CommercialProposalStatus,
+  CommercialProposalVersion,
 } from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
@@ -45,6 +47,7 @@ import { buildProposalComponents } from "./proposal-component-builder";
 import { buildCommercialProposalRecord } from "./commercial-proposal-builder";
 import { buildCommercialProposalPdf } from "./commercial-proposal-pdf-builder";
 import { UpsertCommercialProposalDto } from "./dto/upsert-commercial-proposal.dto";
+import { UpdateCommercialStatusDto } from "./dto/update-commercial-status.dto";
 import { buildProposalPdf, type ProposalPdfComponent } from "./proposal-pdf-builder";
 import {
   RENDERABLE_COMPONENT_TYPES,
@@ -561,6 +564,55 @@ export class CreativeController {
     return this.commercialProposals.findByProposal(proposalId);
   }
 
+  @Get("proposals/:proposalId/commercial/versions")
+  async getCommercialProposalVersions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ): Promise<CommercialProposalVersion[]> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    return this.commercialProposals.findVersions(proposalId);
+  }
+
+  @Post("proposals/:proposalId/commercial/status")
+  async updateCommercialStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Body() dto: UpdateCommercialStatusDto,
+  ) {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    this.assertCommercialTransition(commercial, dto.status, dto.acknowledgeUnconfirmedData === true);
+
+    const updatedCommercial = await this.commercialProposals.updateStatus({
+      proposalId,
+      status: dto.status as CommercialProposalStatus,
+      action: dto.status,
+      actorId: user.sub,
+      notes: dto.notes,
+    });
+    const updatedProposal = await this.proposals.updateStatus(
+      proposalId,
+      dto.status === "APPROVED" ? "APPROVED" : dto.status === "REJECTED" ? "REJECTED" : dto.status,
+    );
+    if (dto.status === "APPROVED") {
+      await Promise.all(
+        updatedCommercial.suppliers.map((supplier) =>
+          this.projectSuppliers.addOrUpdate(proposal.eventId, {
+            supplierId: supplier.supplierId,
+            status: "BOOKED",
+            notes: supplier.notes ?? "Fornecedor incluído na proposta comercial aprovada.",
+          }),
+        ),
+      );
+    }
+    return { commercialProposal: updatedCommercial, proposal: updatedProposal };
+  }
+
   @Get("proposals/:proposalId/commercial/pdf")
   async getCommercialProposalPdf(
     @CurrentUser() user: AuthenticatedUser,
@@ -579,6 +631,33 @@ export class CreativeController {
       type: "application/pdf",
       disposition: `attachment; filename="proposta-comercial-${proposalId}.pdf"`,
     });
+  }
+
+  private assertCommercialTransition(
+    commercial: CommercialProposal,
+    nextStatus: UpdateCommercialStatusDto["status"],
+    acknowledgedUnconfirmedData: boolean,
+  ): void {
+    const allowed: Record<UpdateCommercialStatusDto["status"], CommercialProposalStatus[]> = {
+      READY: ["DRAFT", "REJECTED"],
+      SENT: ["READY"],
+      APPROVED: ["SENT"],
+      REJECTED: ["SENT", "READY"],
+    };
+    if (!allowed[nextStatus].includes(commercial.status)) {
+      throw new BadRequestException(
+        `Commercial proposal cannot move from ${commercial.status} to ${nextStatus}.`,
+      );
+    }
+    if (
+      (nextStatus === "SENT" || nextStatus === "APPROVED") &&
+      commercial.hasUnconfirmedData &&
+      !acknowledgedUnconfirmedData
+    ) {
+      throw new BadRequestException(
+        "Acknowledge unconfirmed contacts, prices or venue data before sending or approving this proposal.",
+      );
+    }
   }
 
   private async composeCommercialProposalRecord(
@@ -635,6 +714,7 @@ export class CreativeController {
       tenantId: user.tenantId,
       organizationId: user.organizationId,
       proposalId,
+      createdBy: user.sub,
       event,
       client,
       venue,

@@ -5,7 +5,12 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
+import { CommercialProposalRepository } from "../creative/repositories/commercial-proposal.repository";
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
+import { BudgetAnalysisRepository } from "../production/repositories/budget-analysis.repository";
+import { ProductionPlanRepository } from "../production/repositories/production-plan.repository";
+import { ProjectSupplierRepository } from "../project-suppliers/repositories/project-supplier.repository";
+import { ProjectTaskRepository } from "../tasks/repositories/project-task.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
@@ -35,6 +40,11 @@ export class ProjectsController {
     private readonly clients: ClientRepository,
     private readonly venues: VenueRepository,
     private readonly proposals: ProposalRepository,
+    private readonly commercialProposals: CommercialProposalRepository,
+    private readonly productionPlans: ProductionPlanRepository,
+    private readonly budgetAnalyses: BudgetAnalysisRepository,
+    private readonly projectSuppliers: ProjectSupplierRepository,
+    private readonly projectTasks: ProjectTaskRepository,
     private readonly materials: MaterialRepository,
     private readonly suppliers: SupplierRepository,
   ) {}
@@ -77,6 +87,135 @@ export class ProjectsController {
         };
       }),
     );
+  }
+
+  @Get(":eventId/overview")
+  async getProjectOverview(@CurrentUser() user: AuthenticatedUser, @Param("eventId") eventId: string) {
+    const { organizationId } = user;
+    const event = await this.events.findById(organizationId, eventId);
+    if (!event) throw new NotFoundException("Event not found");
+
+    const [client, venue, eventProposals, tasks, assignments] = await Promise.all([
+      this.clients.findById(organizationId, event.clientId),
+      this.venues.findById(organizationId, event.venueId),
+      this.proposals.findByEvent(organizationId, eventId),
+      this.projectTasks.findByEvent(eventId),
+      this.projectSuppliers.findByEvent(eventId),
+    ]);
+    const latestProposal = eventProposals[0] ?? null;
+    const commercial = latestProposal
+      ? await this.commercialProposals.findByProposal(latestProposal.id)
+      : null;
+    const [productionPlan, budgetAnalysis] = latestProposal
+      ? await Promise.all([
+          this.productionPlans.findByProposal(latestProposal.id),
+          this.budgetAnalyses.findByProposal(latestProposal.id),
+        ])
+      : [null, null];
+
+    const commercialStatus = commercial?.status ?? null;
+    const workflow = [
+      {
+        id: "BRIEFING",
+        label: "Briefing",
+        status: event.status === "DRAFT" ? "CURRENT" : "DONE",
+        href: `/projects/${eventId}`,
+      },
+      {
+        id: "CREATIVE",
+        label: "Diagnóstico e proposta criativa",
+        status: latestProposal ? "DONE" : "CURRENT",
+        href: `/projects/${eventId}/diagnostico`,
+      },
+      {
+        id: "COMMERCIAL",
+        label: "Proposta comercial",
+        status: commercialStatus === "APPROVED" ? "DONE" : latestProposal ? "CURRENT" : "LOCKED",
+        href: `/projects/${eventId}/proposta-comercial`,
+      },
+      {
+        id: "APPROVAL",
+        label: "Revisão e aprovação",
+        status: commercialStatus === "APPROVED" ? "DONE" : commercialStatus === "SENT" ? "CURRENT" : "LOCKED",
+        href: `/projects/${eventId}/proposta-comercial`,
+      },
+      {
+        id: "PRODUCTION",
+        label: "Produção",
+        status: productionPlan ? "DONE" : commercialStatus === "APPROVED" ? "CURRENT" : "LOCKED",
+        href: `/projects/${eventId}/producao`,
+      },
+    ];
+
+    const nextAction = commercialStatus === "APPROVED" && !productionPlan
+      ? { label: "Gerar plano de produção", href: `/projects/${eventId}/producao` }
+      : !latestProposal
+        ? { label: "Gerar diagnóstico criativo", href: `/projects/${eventId}/diagnostico` }
+        : !commercial
+          ? { label: "Montar proposta comercial", href: `/projects/${eventId}/proposta-comercial` }
+          : commercialStatus === "DRAFT" || commercialStatus === "REJECTED"
+            ? { label: "Revisar proposta comercial", href: `/projects/${eventId}/proposta-comercial` }
+            : commercialStatus === "READY"
+              ? { label: "Enviar proposta ao cliente", href: `/projects/${eventId}/proposta-comercial` }
+              : { label: "Aguardar aprovação do cliente", href: `/projects/${eventId}/proposta-comercial` };
+
+    const suppliersByStatus = assignments.reduce<Record<string, number>>((summary, assignment) => {
+      summary[assignment.status] = (summary[assignment.status] ?? 0) + 1;
+      return summary;
+    }, {});
+
+    return {
+      eventId,
+      clientId: event.clientId,
+      clientNames: client
+        ? [client.partnerOneName, client.partnerTwoName].filter(Boolean).join(" & ")
+        : "Cliente não encontrado",
+      venueName: venue?.name ?? null,
+      type: event.type,
+      status: event.status,
+      budgetAmount: event.budgetAmount,
+      guestsExpected: event.guestsExpected,
+      ceremonyDateTime: event.ceremonyDateTime,
+      createdAt: event.createdAt,
+      latestProposal: latestProposal
+        ? {
+            id: latestProposal.id,
+            status: latestProposal.status,
+            conceptName: latestProposal.conceptName,
+            wowScore: latestProposal.wowScore,
+          }
+        : null,
+      workflow,
+      nextAction,
+      commercial: commercial
+        ? {
+            id: commercial.id,
+            version: commercial.version,
+            status: commercial.status,
+            totalInvestment: commercial.totalInvestment,
+            hasUnconfirmedData: commercial.hasUnconfirmedData,
+            suppliersCount: commercial.suppliers.length,
+            lineItemsCount: commercial.lineItems.filter((item) => item.included).length,
+            sentAt: commercial.sentAt,
+            approvedAt: commercial.approvedAt,
+            rejectionReason: commercial.rejectionReason,
+          }
+        : null,
+      production: {
+        hasPlan: Boolean(productionPlan),
+        hasBudgetAnalysis: Boolean(budgetAnalysis),
+        fitsBudget: budgetAnalysis?.fitsBudget ?? null,
+      },
+      tasks: {
+        total: tasks.length,
+        open: tasks.filter((task) => task.status !== "DONE").length,
+        done: tasks.filter((task) => task.status === "DONE").length,
+      },
+      suppliers: {
+        total: assignments.length,
+        byStatus: suppliersByStatus,
+      },
+    };
   }
 
   // Canvas do Evento (Sprint 5+ item 8, 03-product-spec.md/06-ui-bible.md):

@@ -1,8 +1,13 @@
-import type { CommercialProposal as CommercialProposalPrismaModel } from "@prisma/client";
+import type {
+  CommercialProposal as CommercialProposalPrismaModel,
+  CommercialProposalVersion as CommercialProposalVersionPrismaModel,
+} from "@prisma/client";
 import type { CommercialEventSnapshot } from "../repositories/commercial-proposal.repository";
 import type {
   CommercialProposal,
   CommercialProposalStatus,
+  CommercialProposalVersion,
+  CommercialProposalVersionAction,
   CommercialPaymentTerm,
   CommercialLineItem,
   CommercialSupplierSelection,
@@ -22,6 +27,7 @@ export function toCommercialProposalDomain(model: CommercialProposalPrismaModel)
     id: model.id,
     proposalId: model.proposalId,
     eventId: model.eventId,
+    version: model.version,
     status: model.status as CommercialProposalStatus,
     clientNames: event.clientNames,
     eventType: event.eventType,
@@ -44,7 +50,28 @@ export function toCommercialProposalDomain(model: CommercialProposalPrismaModel)
     nextSteps: model.nextSteps,
     commercialNotes: model.commercialNotes,
     hasUnconfirmedData: model.hasUnconfirmedData,
+    sentAt: model.sentAt?.toISOString() ?? null,
+    sentBy: model.sentBy,
+    approvedAt: model.approvedAt?.toISOString() ?? null,
+    approvedBy: model.approvedBy,
+    rejectionReason: model.rejectionReason,
     createdAt: model.createdAt.toISOString(),
     updatedAt: model.updatedAt.toISOString(),
+  };
+}
+
+export function toCommercialProposalVersionDomain(
+  model: CommercialProposalVersionPrismaModel,
+): CommercialProposalVersion {
+  return {
+    id: model.id,
+    commercialProposalId: model.commercialProposalId,
+    version: model.version,
+    action: model.action as CommercialProposalVersionAction,
+    status: model.status as CommercialProposalStatus,
+    totalInvestment: decimalToNumber(model.totalInvestment),
+    notes: model.notes,
+    createdAt: model.createdAt.toISOString(),
+    createdBy: model.createdBy,
   };
 }

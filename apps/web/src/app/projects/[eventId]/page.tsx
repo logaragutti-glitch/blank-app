@@ -15,13 +15,76 @@ const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "short",
 });
 
+const moneyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+type ProjectOverview = NonNullable<ReturnType<typeof useProject>["project"]>;
+
+function WorkflowRail({ project }: { project: ProjectOverview }) {
+  return (
+    <Card style={{ marginTop: spacing.lg }}>
+      <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        Fluxo do projeto
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: spacing.xs, marginTop: spacing.sm }}>
+        {project.workflow.map((step, index) => {
+          const content = (
+            <div style={{ minHeight: 72, padding: spacing.sm, borderRadius: 10, background: step.status === "CURRENT" ? colors.background : step.status === "DONE" ? "#F2F7F2" : "#F7F5F2", border: `1px solid ${step.status === "CURRENT" ? colors.primary : colors.border}`, opacity: step.status === "LOCKED" ? 0.58 : 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ display: "inline-flex", width: 22, height: 22, borderRadius: "50%", alignItems: "center", justifyContent: "center", background: step.status === "DONE" ? "#54745A" : step.status === "CURRENT" ? colors.primary : colors.border, color: "#FFFFFF", fontSize: 12, fontWeight: 700 }}>
+                  {step.status === "DONE" ? "✓" : index + 1}
+                </span>
+                <strong style={{ fontSize: "0.78rem" }}>{step.label}</strong>
+              </div>
+              <p style={{ margin: "8px 0 0", color: colors.textMuted, fontSize: "0.72rem" }}>
+                {step.status === "DONE" ? "Concluído" : step.status === "CURRENT" ? "Próxima etapa" : "Bloqueado"}
+              </p>
+            </div>
+          );
+          return step.status === "LOCKED" ? <div key={step.id}>{content}</div> : <Link key={step.id} href={step.href} style={{ textDecoration: "none", color: "inherit" }}>{content}</Link>;
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function ProjectMetrics({ eventId, project }: { eventId: string; project: ProjectOverview }) {
+  const commercialLabel = project.commercial ? `Versão ${project.commercial.version} · ${project.commercial.status}` : "Ainda não criada";
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: spacing.sm, marginTop: spacing.md }}>
+      <Card>
+        <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.75rem", textTransform: "uppercase" }}>Próxima ação</p>
+        <strong style={{ display: "block", marginTop: 8 }}>{project.nextAction.label}</strong>
+        <Link href={project.nextAction.href} style={{ color: colors.primary, fontSize: "0.8rem" }}>Abrir etapa →</Link>
+      </Card>
+      <Card>
+        <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.75rem", textTransform: "uppercase" }}>Proposta comercial</p>
+        <strong style={{ display: "block", marginTop: 8 }}>{project.commercial ? moneyFormatter.format(project.commercial.totalInvestment) : "A definir"}</strong>
+        <span style={{ color: project.commercial?.hasUnconfirmedData ? colors.danger : colors.textMuted, fontSize: "0.8rem" }}>{commercialLabel}{project.commercial?.hasUnconfirmedData ? " · pendências" : ""}</span>
+      </Card>
+      <Card>
+        <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.75rem", textTransform: "uppercase" }}>Tarefas</p>
+        <strong style={{ display: "block", marginTop: 8 }}>{project.tasks.open} abertas</strong>
+        <span style={{ color: colors.textMuted, fontSize: "0.8rem" }}>{project.tasks.done} concluídas de {project.tasks.total}</span>
+      </Card>
+      <Card>
+        <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.75rem", textTransform: "uppercase" }}>Fornecedores</p>
+        <strong style={{ display: "block", marginTop: 8 }}>{project.suppliers.total} vinculados</strong>
+        <Link href={`/projects/${eventId}/fornecedores`} style={{ color: colors.primary, fontSize: "0.8rem" }}>Gerenciar equipe →</Link>
+      </Card>
+    </div>
+  );
+}
+
 /**
  * Modo Produção (06-ui-bible.md): once the client approves the proposal,
  * the project hub — the same data, not a new screen from scratch —
  * changes shape to foreground checklist, fornecedores, horários and
  * montagem instead of the creative workflow steps.
  */
-function ModoProducao({ eventId, project }: { eventId: string; project: NonNullable<ReturnType<typeof useProject>["project"]> }) {
+function ModoProducao({ eventId, project }: { eventId: string; project: ProjectOverview }) {
   const { accessToken } = useAuth();
   const [plan, setPlan] = useState<ProductionPlan | null | undefined>(undefined);
   const [budgetAnalysis, setBudgetAnalysis] = useState<BudgetAnalysis | null | undefined>(undefined);
@@ -183,7 +246,7 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
 
   const hasProposal = Boolean(project.latestProposal);
 
-  if (project.latestProposal?.status === "APPROVED") {
+  if (project.commercial?.status === "APPROVED") {
     return (
       <>
         <p style={{ color: colors.textMuted, marginBottom: spacing.xs }}>
@@ -205,6 +268,8 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
       </p>
       <h1 style={{ marginBottom: spacing.xs }}>{project.clientNames}</h1>
       <p style={{ color: colors.textMuted, marginTop: 0 }}>{project.venueName ?? "Espaço não definido"}</p>
+      <WorkflowRail project={project} />
+      <ProjectMetrics eventId={eventId} project={project} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: spacing.md, marginTop: spacing.lg }}>
         <Card>
@@ -243,16 +308,10 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
           )}
         </Card>
 
-        <Card style={{ opacity: hasProposal ? 1 : 0.6 }}>
+        <Card style={{ opacity: 0.6 }}>
           <h3 style={{ marginTop: 0 }}>4. Produção</h3>
           <p style={{ color: colors.textMuted }}>Lista de materiais, cronograma de montagem e checklist.</p>
-          {hasProposal ? (
-            <Link href={`/projects/${eventId}/producao`}>
-              <Button>Ver produção</Button>
-            </Link>
-          ) : (
-            <Button disabled>Gere o diagnóstico primeiro</Button>
-          )}
+          <Button disabled>Aprove a proposta comercial primeiro</Button>
         </Card>
 
         <Card>

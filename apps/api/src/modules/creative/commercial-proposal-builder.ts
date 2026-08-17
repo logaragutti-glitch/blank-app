@@ -255,6 +255,7 @@ export function buildCommercialProposalRecord(input: {
   tenantId: string;
   organizationId: string;
   proposalId: string;
+  createdBy: string | null;
   event: Event;
   client: Client;
   venue: Venue;
@@ -305,6 +306,7 @@ export function buildCommercialProposalRecord(input: {
     organizationId: input.organizationId,
     proposalId: input.proposalId,
     eventId: input.event.id,
+    createdBy: input.createdBy,
     eventSnapshot: eventSnapshot(input.client, input.event),
     venueSnapshot: venueSnapshot(input.venue, input.researchedVenue),
     supplierSelections: selections,

@@ -928,7 +928,17 @@ enum CommercialProposalStatus {
   READY
   SENT
   APPROVED
+  REJECTED
   EXPIRED
+}
+
+enum CommercialProposalVersionAction {
+  CREATED
+  UPDATED
+  READY
+  SENT
+  APPROVED
+  REJECTED
 }
 
 model Proposal {
@@ -1011,6 +1021,7 @@ model CommercialProposal {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  version            Int                      @default(1)
   status             CommercialProposalStatus @default(DRAFT)
   eventSnapshot      Json                     @map("event_snapshot")
   venueSnapshot      Json                     @map("venue_snapshot")
@@ -1029,14 +1040,40 @@ model CommercialProposal {
   nextSteps          String[]                 @map("next_steps")
   commercialNotes    String?                  @map("commercial_notes")
   hasUnconfirmedData Boolean                  @default(true) @map("has_unconfirmed_data")
+  sentAt             DateTime?                @map("sent_at") @db.Timestamptz(6)
+  sentBy             String?                  @map("sent_by") @db.Uuid
+  approvedAt         DateTime?                @map("approved_at") @db.Timestamptz(6)
+  approvedBy         String?                  @map("approved_by") @db.Uuid
+  rejectionReason    String?                  @map("rejection_reason")
 
-  proposal Proposal @relation(fields: [proposalId], references: [id])
-  event    Event    @relation(fields: [eventId], references: [id])
+  proposal Proposal                    @relation(fields: [proposalId], references: [id])
+  versions CommercialProposalVersion[]
+
+  event Event @relation(fields: [eventId], references: [id])
 
   @@index([tenantId])
   @@index([organizationId])
   @@index([eventId])
   @@map("commercial_proposals")
+}
+
+model CommercialProposalVersion {
+  id                   String                          @id @default(uuid()) @db.Uuid
+  commercialProposalId String                          @map("commercial_proposal_id") @db.Uuid
+  version              Int
+  action               CommercialProposalVersionAction
+  status               CommercialProposalStatus
+  totalInvestment      Decimal                         @map("total_investment") @db.Decimal(12, 2)
+  snapshot             Json
+  notes                String?
+  createdAt            DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?                         @map("created_by") @db.Uuid
+
+  commercialProposal CommercialProposal @relation(fields: [commercialProposalId], references: [id], onDelete: Cascade)
+
+  @@unique([commercialProposalId, version])
+  @@index([commercialProposalId])
+  @@map("commercial_proposal_versions")
 }
 
 // ---------------------------------------------------------------------------

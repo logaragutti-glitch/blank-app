@@ -27,6 +27,6 @@ import { ProposalRepository } from "./repositories/proposal.repository";
     { provide: ProposalComponentsPort, useClass: AnthropicProposalComponentsProvider },
     { provide: ConceptualRenderPort, useClass: GeminiConceptualRenderProvider },
   ],
-  exports: [ProposalRepository, ProposalComponentRepository],
+  exports: [ProposalRepository, ProposalComponentRepository, CommercialProposalRepository],
 })
 export class CreativeModule {}

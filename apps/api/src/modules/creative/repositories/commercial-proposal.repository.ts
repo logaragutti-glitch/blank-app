@@ -1,6 +1,8 @@
 import type {
   CommercialProposal,
   CommercialProposalStatus,
+  CommercialProposalVersion,
+  CommercialProposalVersionAction,
   CommercialPaymentTerm,
   CommercialLineItem,
   CommercialSupplierSelection,
@@ -37,9 +39,18 @@ export interface UpsertCommercialProposalRecordInput {
   nextSteps: string[];
   commercialNotes: string | null;
   hasUnconfirmedData: boolean;
+  createdBy: string | null;
 }
 
 export abstract class CommercialProposalRepository {
   abstract findByProposal(proposalId: string): Promise<CommercialProposal | null>;
+  abstract findVersions(proposalId: string): Promise<CommercialProposalVersion[]>;
   abstract upsert(input: UpsertCommercialProposalRecordInput): Promise<CommercialProposal>;
+  abstract updateStatus(input: {
+    proposalId: string;
+    status: CommercialProposalStatus;
+    action: CommercialProposalVersionAction;
+    actorId: string;
+    notes?: string | null;
+  }): Promise<CommercialProposal>;
 }

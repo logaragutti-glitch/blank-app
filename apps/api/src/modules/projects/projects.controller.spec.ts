@@ -4,7 +4,12 @@ import type { DiagnosticoCriativo, Event, Venue, Client, Material, Proposal, Sup
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
+import { CommercialProposalRepository } from "../creative/repositories/commercial-proposal.repository";
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
+import { BudgetAnalysisRepository } from "../production/repositories/budget-analysis.repository";
+import { ProductionPlanRepository } from "../production/repositories/production-plan.repository";
+import { ProjectSupplierRepository } from "../project-suppliers/repositories/project-supplier.repository";
+import { ProjectTaskRepository } from "../tasks/repositories/project-task.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
@@ -40,6 +45,11 @@ describe("ProjectsController", () => {
   let clients: jest.Mocked<ClientRepository>;
   let venues: jest.Mocked<VenueRepository>;
   let proposals: jest.Mocked<ProposalRepository>;
+  let commercialProposals: jest.Mocked<CommercialProposalRepository>;
+  let productionPlans: jest.Mocked<ProductionPlanRepository>;
+  let budgetAnalyses: jest.Mocked<BudgetAnalysisRepository>;
+  let projectSuppliers: jest.Mocked<ProjectSupplierRepository>;
+  let projectTasks: jest.Mocked<ProjectTaskRepository>;
   let materials: jest.Mocked<MaterialRepository>;
   let suppliers: jest.Mocked<SupplierRepository>;
 
@@ -59,6 +69,11 @@ describe("ProjectsController", () => {
             updateConceptName: jest.fn(),
           },
         },
+        { provide: CommercialProposalRepository, useValue: { findByProposal: jest.fn() } },
+        { provide: ProductionPlanRepository, useValue: { findByProposal: jest.fn() } },
+        { provide: BudgetAnalysisRepository, useValue: { findByProposal: jest.fn() } },
+        { provide: ProjectSupplierRepository, useValue: { findByEvent: jest.fn() } },
+        { provide: ProjectTaskRepository, useValue: { findByEvent: jest.fn() } },
         { provide: MaterialRepository, useValue: { findAll: jest.fn(), findById: jest.fn() } },
         {
           provide: SupplierRepository,
@@ -77,8 +92,18 @@ describe("ProjectsController", () => {
     clients = moduleRef.get(ClientRepository);
     venues = moduleRef.get(VenueRepository);
     proposals = moduleRef.get(ProposalRepository);
+    commercialProposals = moduleRef.get(CommercialProposalRepository);
+    productionPlans = moduleRef.get(ProductionPlanRepository);
+    budgetAnalyses = moduleRef.get(BudgetAnalysisRepository);
+    projectSuppliers = moduleRef.get(ProjectSupplierRepository);
+    projectTasks = moduleRef.get(ProjectTaskRepository);
     materials = moduleRef.get(MaterialRepository);
     suppliers = moduleRef.get(SupplierRepository);
+    commercialProposals.findByProposal.mockResolvedValue(null);
+    productionPlans.findByProposal.mockResolvedValue(null);
+    budgetAnalyses.findByProposal.mockResolvedValue(null);
+    projectSuppliers.findByEvent.mockResolvedValue([]);
+    projectTasks.findByEvent.mockResolvedValue([]);
   });
 
   it("assembles a project summary per event, with the latest proposal when one exists", async () => {
@@ -115,6 +140,43 @@ describe("ProjectsController", () => {
       clientNames: "Iris",
       latestProposal: null,
     });
+  });
+
+  it("builds an approval-aware overview with the commercial next action", async () => {
+    events.findById.mockResolvedValue({
+      id: "event-1",
+      clientId: "client-1",
+      venueId: "venue-1",
+      status: "DRAFT",
+      budgetAmount: 25000,
+      guestsExpected: 120,
+      ceremonyDateTime: null,
+      createdAt: "2026-08-17T00:00:00.000Z",
+    } as unknown as Event);
+    clients.findById.mockResolvedValue({ partnerOneName: "Karen", partnerTwoName: "Daniel" } as Client);
+    venues.findById.mockResolvedValue({ name: "Villa Massari" } as Venue);
+    proposals.findByEvent.mockResolvedValue([
+      { id: "proposal-1", status: "SENT", conceptName: "Jardim Atemporal", wowScore: 82 } as Proposal,
+    ]);
+    commercialProposals.findByProposal.mockResolvedValue({
+      id: "commercial-1",
+      version: 2,
+      status: "SENT",
+      totalInvestment: 48000,
+      hasUnconfirmedData: true,
+      suppliers: [{}],
+      lineItems: [{ included: true }],
+      sentAt: "2026-08-17T10:00:00.000Z",
+      approvedAt: null,
+      rejectionReason: null,
+    } as never);
+
+    const result = await controller.getProjectOverview(user, "event-1");
+
+    expect(result.nextAction).toMatchObject({ label: "Aguardar aprovação do cliente" });
+    expect(result.commercial).toMatchObject({ version: 2, status: "SENT", hasUnconfirmedData: true });
+    expect(result.workflow.find((step) => step.id === "APPROVAL")).toMatchObject({ status: "CURRENT" });
+    expect(result.workflow.find((step) => step.id === "PRODUCTION")).toMatchObject({ status: "LOCKED" });
   });
 
   describe("getEventCanvas", () => {

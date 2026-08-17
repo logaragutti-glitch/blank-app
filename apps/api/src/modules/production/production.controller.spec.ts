@@ -4,6 +4,7 @@ import type { BudgetAnalysis, Client, Event, Material, ProductionPlan, Proposal,
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { ClientRepository } from "../briefing/repositories/client.repository";
 import { EventRepository } from "../briefing/repositories/event.repository";
+import { CommercialProposalRepository } from "../creative/repositories/commercial-proposal.repository";
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
@@ -121,6 +122,7 @@ describe("ProductionController", () => {
 
   let controller: ProductionController;
   let proposals: jest.Mocked<ProposalRepository>;
+  let commercialProposals: jest.Mocked<CommercialProposalRepository>;
   let events: jest.Mocked<EventRepository>;
   let clients: jest.Mocked<ClientRepository>;
   let venues: jest.Mocked<VenueRepository>;
@@ -136,6 +138,7 @@ describe("ProductionController", () => {
       controllers: [ProductionController],
       providers: [
         { provide: ProposalRepository, useValue: { findById: jest.fn(), findByEvent: jest.fn() } },
+        { provide: CommercialProposalRepository, useValue: { findByProposal: jest.fn() } },
         { provide: EventRepository, useValue: { findById: jest.fn(), findAll: jest.fn() } },
         { provide: ClientRepository, useValue: { findById: jest.fn() } },
         { provide: VenueRepository, useValue: { findById: jest.fn() } },
@@ -150,6 +153,7 @@ describe("ProductionController", () => {
 
     controller = moduleRef.get(ProductionController);
     proposals = moduleRef.get(ProposalRepository);
+    commercialProposals = moduleRef.get(CommercialProposalRepository);
     events = moduleRef.get(EventRepository);
     clients = moduleRef.get(ClientRepository);
     venues = moduleRef.get(VenueRepository);
@@ -161,6 +165,7 @@ describe("ProductionController", () => {
     budgetAnalyses = moduleRef.get(BudgetAnalysisRepository);
 
     proposals.findById.mockResolvedValue(fakeProposal);
+    commercialProposals.findByProposal.mockResolvedValue({ status: "APPROVED" } as never);
     events.findById.mockResolvedValue(fakeEvent);
     venues.findById.mockResolvedValue(fakeVenue);
   });
@@ -176,6 +181,12 @@ describe("ProductionController", () => {
       await expect(controller.generateProductionPlan(user, proposalId)).rejects.toBeInstanceOf(
         BadRequestException,
       );
+      expect(materials.findAll).not.toHaveBeenCalled();
+    });
+
+    it("blocks production when the commercial proposal is not approved", async () => {
+      commercialProposals.findByProposal.mockResolvedValue({ status: "SENT" } as never);
+      await expect(controller.generateProductionPlan(user, proposalId)).rejects.toBeInstanceOf(BadRequestException);
       expect(materials.findAll).not.toHaveBeenCalled();
     });
 

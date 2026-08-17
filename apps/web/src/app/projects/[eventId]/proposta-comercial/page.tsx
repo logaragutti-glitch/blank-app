@@ -10,6 +10,7 @@ import { useLatestProposalId } from "../../../../lib/use-latest-proposal-id";
 import { Button, colors, spacing } from "@eve-os/ui";
 import type {
   CommercialProposal,
+  CommercialProposalVersion,
   CommercialPricingStatus,
   Supplier,
   WeddingKnowledgeResponse,
@@ -53,6 +54,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
   const [knowledge, setKnowledge] = useState<WeddingKnowledgeResponse | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [commercialProposal, setCommercialProposal] = useState<CommercialProposal | null>(null);
+  const [versions, setVersions] = useState<CommercialProposalVersion[]>([]);
   const [venueResearchId, setVenueResearchId] = useState("");
   const [supplierDrafts, setSupplierDrafts] = useState<Record<string, SupplierDraft>>({});
   const [contingencyPercent, setContingencyPercent] = useState("0");
@@ -63,6 +65,9 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [statusPending, setStatusPending] = useState(false);
+  const [acknowledgeUnconfirmedData, setAcknowledgeUnconfirmedData] = useState(false);
+  const [statusNotes, setStatusNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -75,11 +80,15 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       apiClient
         .get<CommercialProposal>(`/creative/proposals/${proposalId}/commercial`, accessToken)
         .catch(() => null),
+      apiClient
+        .get<CommercialProposalVersion[]>(`/creative/proposals/${proposalId}/commercial/versions`, accessToken)
+        .catch(() => []),
     ])
-      .then(([knowledgeResponse, supplierResponse, commercialResponse]) => {
+      .then(([knowledgeResponse, supplierResponse, commercialResponse, versionResponse]) => {
         setKnowledge(knowledgeResponse);
         setSuppliers(supplierResponse);
         setCommercialProposal(commercialResponse);
+        setVersions(versionResponse);
         if (commercialResponse) {
           setVenueResearchId(
             commercialResponse.venue.source === "RESEARCH_CATALOG" ? commercialResponse.venue.id ?? "" : "",
@@ -146,6 +155,19 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
     }));
   }
 
+  async function refreshVersions() {
+    if (!proposalId) return;
+    try {
+      const response = await apiClient.get<CommercialProposalVersion[]>(
+        `/creative/proposals/${proposalId}/commercial/versions`,
+        accessToken,
+      );
+      setVersions(response);
+    } catch {
+      // The saved proposal remains usable even if the timeline refresh is temporarily unavailable.
+    }
+  }
+
   async function handleSave() {
     if (!proposalId) return;
     setSaving(true);
@@ -178,11 +200,54 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
         accessToken,
       );
       setCommercialProposal(saved);
-      setSuccess("Modelo comercial salvo. Você já pode revisar os valores ou baixar o PDF.");
+      await refreshVersions();
+      setSuccess("Modelo comercial salvo. Você já pode revisar os valores ou avançar na aprovação.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Não conseguimos salvar a proposta comercial.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleStatus(status: "READY" | "SENT" | "APPROVED" | "REJECTED") {
+    if (!proposalId || !commercialProposal) return;
+    if (
+      (status === "SENT" || status === "APPROVED") &&
+      commercialProposal.hasUnconfirmedData &&
+      !acknowledgeUnconfirmedData
+    ) {
+      setError("Marque a confirmação das pendências antes de enviar ou aprovar.");
+      return;
+    }
+    setStatusPending(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await apiClient.post<{ commercialProposal: CommercialProposal }>(
+        `/creative/proposals/${proposalId}/commercial/status`,
+        {
+          status,
+          acknowledgeUnconfirmedData,
+          notes: statusNotes || null,
+        },
+        accessToken,
+      );
+      setCommercialProposal(response.commercialProposal);
+      await refreshVersions();
+      setSuccess(
+        status === "READY"
+          ? "Proposta marcada como pronta para envio."
+          : status === "SENT"
+            ? "Proposta marcada como enviada."
+            : status === "APPROVED"
+              ? "Proposta comercial aprovada. A produção foi liberada."
+              : "Proposta comercial rejeitada e devolvida para revisão.",
+      );
+      setStatusNotes("");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não conseguimos atualizar o status comercial.");
+    } finally {
+      setStatusPending(false);
     }
   }
 
@@ -313,8 +378,33 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       </div>
 
       {commercialProposal && (
+        <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
+          <h2>4. Revisão e aprovação</h2>
+          <p style={{ color: colors.textMuted, fontSize: 13, marginTop: 0 }}>
+            A proposta passa por revisão interna antes de ser enviada. A produção só é liberada depois do status <strong>APROVADA</strong>.
+          </p>
+          {commercialProposal.hasUnconfirmedData && commercialProposal.status !== "APPROVED" && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, color: colors.textMuted, fontSize: 13, marginBottom: spacing.sm }}>
+              <input type="checkbox" checked={acknowledgeUnconfirmedData} onChange={(event) => setAcknowledgeUnconfirmedData(event.target.checked)} />
+              Reconheço que existem contatos, preços, disponibilidade ou dados do espaço ainda pendentes de confirmação.
+            </label>
+          )}
+          {commercialProposal.status !== "APPROVED" && (
+            <textarea value={statusNotes} onChange={(event) => setStatusNotes(event.target.value)} rows={2} placeholder="Observação da revisão ou motivo da rejeição" style={{ display: "block", width: "100%", marginBottom: spacing.sm, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: spacing.sm }}>
+            {(commercialProposal.status === "DRAFT" || commercialProposal.status === "REJECTED") && <Button onClick={() => handleStatus("READY")} disabled={statusPending}>Marcar como pronta</Button>}
+            {commercialProposal.status === "READY" && <Button onClick={() => handleStatus("SENT")} disabled={statusPending}>Registrar envio ao cliente</Button>}
+            {commercialProposal.status === "SENT" && <Button onClick={() => handleStatus("APPROVED")} disabled={statusPending}>Registrar aprovação</Button>}
+            {(commercialProposal.status === "SENT" || commercialProposal.status === "READY") && <Button variant="ghost" onClick={() => handleStatus("REJECTED")} disabled={statusPending}>Devolver para revisão</Button>}
+            {commercialProposal.status === "APPROVED" && <span style={{ color: "#54745A", fontWeight: 600 }}>Aprovada · produção liberada</span>}
+          </div>
+        </section>
+      )}
+
+      {commercialProposal && (
         <section style={{ background: "#F8F3EC", borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-          <h2>Resumo salvo</h2>
+          <h2>Resumo salvo · versão {commercialProposal.version}</h2>
           <p style={{ color: colors.textMuted }}>Status: <strong>{commercialProposal.status}</strong>{commercialProposal.hasUnconfirmedData ? " · contém dados a confirmar" : " · dados confirmados"}</p>
           <p style={{ fontSize: 24, fontWeight: 700 }}>{formatMoney(commercialProposal.totalInvestment)}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -324,6 +414,19 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
               </div>
             ))}
           </div>
+          {versions.length > 0 && (
+            <div style={{ marginTop: spacing.md, paddingTop: spacing.sm, borderTop: `1px solid ${colors.border}` }}>
+              <p style={{ color: colors.textMuted, margin: 0, fontSize: 12, textTransform: "uppercase" }}>Histórico da proposta</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 6 }}>
+                {versions.slice().reverse().map((version) => (
+                  <div key={version.id} style={{ display: "flex", justifyContent: "space-between", gap: spacing.sm, fontSize: 12 }}>
+                    <span>v{version.version} · {version.action} · {version.status}</span>
+                    <strong>{formatMoney(version.totalInvestment)}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
     </>

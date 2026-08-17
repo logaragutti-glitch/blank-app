@@ -135,7 +135,7 @@ function PropostaContent({ eventId }: { eventId: string }) {
                 {downloadingPdf ? "Gerando PDF..." : "Baixar PDF"}
               </Button>
               <Button disabled={decisionPending} onClick={() => handleDecision("approve")}>
-                Aprovar proposta
+                Aprovar proposta criativa
               </Button>
               <Button variant="ghost" disabled={decisionPending} onClick={() => handleDecision("reject")}>
                 Rejeitar
@@ -146,8 +146,8 @@ function PropostaContent({ eventId }: { eventId: string }) {
           {pdfError && <p style={{ color: colors.danger }}>{pdfError}</p>}
           {proposalDocument.proposal.status === "APPROVED" && (
             <p style={{ color: colors.textMuted }}>
-              Aprovada! Agora dá para{" "}
-              <Link href={`/projects/${eventId}/producao`}>gerar o plano de produção</Link>.
+              Proposta criativa aprovada. Agora revise e envie a{" "}
+              <Link href={`/projects/${eventId}/proposta-comercial`}>proposta comercial integrada</Link> para liberar a produção.
             </p>
           )}
 

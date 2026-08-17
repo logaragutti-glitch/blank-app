@@ -1,6 +1,7 @@
 import type {
   BudgetAnalysis,
   CommercialProposal,
+  CommercialProposalVersion,
   CommercialPricingStatus,
   CommercialProposalSupplierInput,
   CommercialSupplierCategory,
@@ -125,6 +126,40 @@ export interface SupplierCatalogResponse {
   categories: SupplierCatalogCategory[];
 }
 
+export type ProjectWorkflowStepStatus = "LOCKED" | "CURRENT" | "DONE";
+
+export interface ProjectWorkflowStep {
+  id: "BRIEFING" | "CREATIVE" | "COMMERCIAL" | "APPROVAL" | "PRODUCTION";
+  label: string;
+  status: ProjectWorkflowStepStatus;
+  href: string;
+}
+
+/** GET /projects/:eventId/overview — read model for the project control panel. */
+export interface ProjectOverview extends ProjectSummary {
+  workflow: ProjectWorkflowStep[];
+  nextAction: { label: string; href: string };
+  commercial: {
+    id: string;
+    version: number;
+    status: "DRAFT" | "READY" | "SENT" | "APPROVED" | "REJECTED" | "EXPIRED";
+    totalInvestment: number;
+    hasUnconfirmedData: boolean;
+    suppliersCount: number;
+    lineItemsCount: number;
+    sentAt: string | null;
+    approvedAt: string | null;
+    rejectionReason: string | null;
+  } | null;
+  production: {
+    hasPlan: boolean;
+    hasBudgetAnalysis: boolean;
+    fitsBudget: boolean | null;
+  };
+  tasks: { total: number; open: number; done: number };
+  suppliers: { total: number; byStatus: Record<string, number> };
+}
+
 /** GET /projects — a read model, not a single domain entity (see apps/api/src/modules/projects). */
 export interface ProjectSummary {
   eventId: string;
@@ -224,6 +259,7 @@ export interface FinancialSummary {
 export type {
   BudgetAnalysis,
   CommercialProposal,
+  CommercialProposalVersion,
   CommercialPricingStatus,
   CommercialProposalSupplierInput,
   CommercialSupplierCategory,
