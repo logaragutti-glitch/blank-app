@@ -13,7 +13,7 @@ import {
   StreamableFile,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import type { EventStyle, InspirationImage, ProposalComponent } from "@eve-os/types";
+import type { ComponentType, EventStyle, InspirationImage, ProposalComponent } from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EmbeddingPort } from "../../infrastructure/ai/embedding.port";
@@ -26,7 +26,11 @@ import { MaterialRepository } from "../knowledge-graph/repositories/material.rep
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
 import { ConceptualRenderPort } from "./ai/conceptual-render.port";
 import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
-import { ProposalComponentsPort } from "./ai/proposal-components.port";
+import {
+  ProposalComponentsPort,
+  type NarrativeBlock,
+  type ProposalNarrativeKey,
+} from "./ai/proposal-components.port";
 import { UpdateProposalComponentDto } from "./dto/update-proposal-component.dto";
 import { buildProposalComponents } from "./proposal-component-builder";
 import { buildProposalPdf, type ProposalPdfComponent } from "./proposal-pdf-builder";
@@ -40,6 +44,21 @@ import { ProposalRepository } from "./repositories/proposal.repository";
 import { computeWowScore } from "./wow-score";
 
 const SEMANTIC_SEARCH_STYLE_LIMIT = 5;
+
+const NARRATIVE_KEY_BY_COMPONENT_TYPE: Partial<Record<ComponentType, ProposalNarrativeKey>> = {
+  CONCEPT: "concept",
+  COUPLE_STORY: "coupleStory",
+  ENTRANCE: "entrance",
+  CEREMONY: "ceremony",
+  CAKE_TABLE: "cakeTable",
+  LOUNGE: "lounge",
+  GUEST_TABLES: "guestTables",
+  BAR: "bar",
+  BUFFET: "buffet",
+  DANCE_FLOOR: "danceFloor",
+  LIGHTING: "lighting",
+  FLORALS: "florals",
+};
 
 @ApiTags("creative")
 @ApiBearerAuth()
@@ -118,7 +137,10 @@ export class CreativeController {
       },
       inspirationImages: allImages
         .filter((image) => image.status === "ANALYZED")
-        .map((image) => ({ visionTags: image.visionTags, visionDescription: image.visionDescription })),
+        .map((image) => ({
+          visionTags: image.visionTags,
+          visionDescription: image.visionDescription,
+        })),
       candidateStyles: candidateStyles.map((style) => ({
         id: style.id,
         name: style.name,
@@ -154,7 +176,8 @@ export class CreativeController {
     }
 
     const matchedStyleDimensionScores =
-      candidateStyles.find((style) => style.id === result.matchedEventStyleId)?.dimensionScores ?? null;
+      candidateStyles.find((style) => style.id === result.matchedEventStyleId)?.dimensionScores ??
+      null;
 
     return this.proposals.create({
       tenantId: user.tenantId,
@@ -175,14 +198,20 @@ export class CreativeController {
   // are meant to be generated only once the client has actually said yes to
   // this proposal, not merely because a diagnosis/components exist.
   @Post("proposals/:proposalId/approve")
-  async approveProposal(@CurrentUser() user: AuthenticatedUser, @Param("proposalId") proposalId: string) {
+  async approveProposal(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ) {
     const proposal = await this.proposals.findById(user.organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
     return this.proposals.updateStatus(proposalId, "APPROVED");
   }
 
   @Post("proposals/:proposalId/reject")
-  async rejectProposal(@CurrentUser() user: AuthenticatedUser, @Param("proposalId") proposalId: string) {
+  async rejectProposal(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ) {
     const proposal = await this.proposals.findById(user.organizationId, proposalId);
     if (!proposal) throw new NotFoundException("Proposal not found");
     return this.proposals.updateStatus(proposalId, "REJECTED");
@@ -250,6 +279,87 @@ export class CreativeController {
       this.proposals.updateConceptName(proposalId, narrative.concept.title),
     ]);
     return saved;
+  }
+
+  @Post("proposals/:proposalId/components/:componentType/regenerate")
+  async regenerateProposalComponent(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Param("componentType") componentTypeParam: string,
+  ) {
+    const componentType = componentTypeParam as ComponentType;
+    const narrativeKey = NARRATIVE_KEY_BY_COMPONENT_TYPE[componentType];
+    if (!narrativeKey) {
+      throw new BadRequestException(
+        "componentType must be one of: CONCEPT, COUPLE_STORY, ENTRANCE, CEREMONY, CAKE_TABLE, LOUNGE, GUEST_TABLES, BAR, BUFFET, DANCE_FLOOR, LIGHTING, FLORALS",
+      );
+    }
+
+    const { organizationId } = user;
+    const proposal = await this.proposals.findById(organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const event = await this.events.findById(organizationId, proposal.eventId);
+    if (!event) throw new NotFoundException("Event not found for this proposal");
+
+    const [client, venue] = await Promise.all([
+      this.clients.findById(organizationId, event.clientId),
+      this.venues.findById(organizationId, event.venueId),
+    ]);
+    if (!client) throw new NotFoundException("Client not found for this event");
+    if (!venue) throw new NotFoundException("Venue not found for this event");
+
+    const components = await this.proposalComponents.findByProposal(proposalId);
+    const target = components.find((component) => component.type === componentType);
+    if (!target)
+      throw new NotFoundException("Generate the proposal components before regenerating one.");
+
+    const current: NarrativeBlock = {
+      title: String(target.content.title ?? target.content.name ?? ""),
+      description: String(target.content.description ?? target.content.text ?? ""),
+    };
+
+    let regenerated: NarrativeBlock;
+    try {
+      regenerated = await this.proposalComponentsAi.regenerate(
+        {
+          client: {
+            partnerOneName: client.partnerOneName,
+            partnerTwoName: client.partnerTwoName,
+            howTheyMet: client.howTheyMet,
+            proposalStory: client.proposalStory,
+          },
+          event: { type: event.type, guestsExpected: event.guestsExpected },
+          venue: {
+            name: venue.name,
+            recommendationNotes: venue.recommendationNotes,
+            structuralConstraints: venue.structuralConstraints,
+          },
+          diagnostico: proposal.diagnosticoCriativo,
+        },
+        narrativeKey,
+        current,
+      );
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `Não foi possível regenerar este componente: ${error instanceof Error ? error.message : "erro desconhecido"}`,
+      );
+    }
+
+    const contentPatch =
+      componentType === "CONCEPT"
+        ? { name: regenerated.title, description: regenerated.description }
+        : componentType === "COUPLE_STORY"
+          ? { title: regenerated.title, text: regenerated.description }
+          : { title: regenerated.title, description: regenerated.description };
+    const [updated] = await this.proposalComponents.upsertMany(proposalId, [
+      { type: target.type, order: target.order, content: { ...target.content, ...contentPatch } },
+    ]);
+    if (!updated) throw new Error("Failed to persist the regenerated component.");
+
+    if (componentType === "CONCEPT")
+      await this.proposals.updateConceptName(proposalId, regenerated.title);
+    const [withRenderUrl] = await this.attachRenderUrls([updated]);
+    return withRenderUrl;
   }
 
   @Get("proposals/:proposalId/components")
@@ -337,13 +447,16 @@ export class CreativeController {
     let render;
     try {
       render = await this.conceptualRender.generate({
-        conceptName: (target.content.conceptName as string | undefined) ?? proposal.conceptName ?? "",
+        conceptName:
+          (target.content.conceptName as string | undefined) ?? proposal.conceptName ?? "",
         atmosferaDesejada: proposal.diagnosticoCriativo.atmosferaDesejada,
         estiloPredominante: proposal.diagnosticoCriativo.estiloPredominante,
         paletaSugerida: proposal.diagnosticoCriativo.paletaSugerida,
         venueName: venue.name,
         environmentTitle: isCover ? undefined : (target.content.title as string | undefined),
-        environmentDescription: isCover ? undefined : (target.content.description as string | undefined),
+        environmentDescription: isCover
+          ? undefined
+          : (target.content.description as string | undefined),
       });
     } catch (error) {
       throw new ServiceUnavailableException(
@@ -359,7 +472,11 @@ export class CreativeController {
     });
 
     const [updatedComponent] = await this.proposalComponents.upsertMany(proposalId, [
-      { type: componentType, order: target.order, content: { ...target.content, renderStorageKey: storageKey } },
+      {
+        type: componentType,
+        order: target.order,
+        content: { ...target.content, renderStorageKey: storageKey },
+      },
     ]);
     if (!updatedComponent) throw new Error("Failed to persist the conceptual render.");
 

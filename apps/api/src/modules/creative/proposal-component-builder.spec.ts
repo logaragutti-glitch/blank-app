@@ -164,6 +164,24 @@ describe("buildProposalComponents", () => {
     expect(palette?.content).toEqual({ colors: DIAGNOSTICO.paletaSugerida });
   });
 
+  it("fills missing Moodboard fields with actionable validation prompts instead of empty lists", () => {
+    const components = buildProposalComponents({
+      client: CLIENT,
+      event: EVENT,
+      venue: { ...VENUE, structuralConstraints: null },
+      diagnostico: { ...DIAGNOSTICO, iluminacaoSugerida: "" },
+      narrative: NARRATIVE,
+    });
+    const moodboard = components.find((component) => component.type === "MOODBOARD");
+
+    expect(moodboard?.content.lighting).toEqual([
+      "Validar temperatura de cor, pontos focais e infraestrutura na visita técnica.",
+    ]);
+    expect(moodboard?.content.architecture).toEqual([
+      "Validar circulação, acessibilidade e pontos de montagem na visita técnica.",
+    ]);
+  });
+
   it("builds the INVESTMENT content with the golden-rule includes list before any amount", () => {
     const components = buildProposalComponents({
       client: CLIENT,

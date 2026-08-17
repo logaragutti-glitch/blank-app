@@ -57,7 +57,12 @@ function NarrativeContent({ content }: { content: Record<string, unknown> }) {
         <img
           src={content.renderImageUrl}
           alt={`Render conceitual: ${String(content.title ?? "")}`}
-          style={{ width: "100%", borderRadius: radii.md, marginBottom: spacing.md, display: "block" }}
+          style={{
+            width: "100%",
+            borderRadius: radii.md,
+            marginBottom: spacing.md,
+            display: "block",
+          }}
         />
       )}
       <h4 style={{ margin: 0 }}>{String(content.title ?? content.name ?? "")}</h4>
@@ -71,9 +76,48 @@ function NarrativeContent({ content }: { content: Record<string, unknown> }) {
 // how Agente 3/the builder produced them (see ComponentBody's own fallback
 // reads) — editing writes back whichever pair is already present, defaulting
 // to title/description for a component that somehow has neither yet.
-function narrativeKeys(content: Record<string, unknown>): { titleKey: "title" | "name"; descriptionKey: "description" | "text" } {
+function narrativeKeys(content: Record<string, unknown>): {
+  titleKey: "title" | "name";
+  descriptionKey: "description" | "text";
+} {
   if ("name" in content || "text" in content) return { titleKey: "name", descriptionKey: "text" };
   return { titleKey: "title", descriptionKey: "description" };
+}
+
+function missingFields(component: ProposalComponent): string[] {
+  const { content, type } = component;
+  if (type === "MOODBOARD") {
+    return [
+      ["Iluminação", content.lighting],
+      ["Arquitetura", content.architecture],
+    ]
+      .filter(([, value]) => !Array.isArray(value) || value.length === 0)
+      .map(([label]) => label as string);
+  }
+  if (type === "TIMELINE")
+    return Array.isArray(content.steps) && content.steps.length > 0 ? [] : ["Cronograma"];
+  if (type === "INVESTMENT") {
+    return Array.isArray(content.includes) && content.includes.length > 0
+      ? []
+      : ["Itens incluídos"];
+  }
+  if (type === "COVER") {
+    return [
+      ["Nome do conceito", content.conceptName],
+      ["Nomes do casal", content.coupleNames],
+      ["Espaço", content.venueName],
+    ]
+      .filter(([, value]) => typeof value !== "string" || !value.trim())
+      .map(([label]) => label as string);
+  }
+  const title = content.title ?? content.name;
+  const description = content.description ?? content.text;
+  return [
+    ["Título", title],
+    ["Descrição", description],
+  ]
+    .filter(([, value]) => typeof value !== "string" || !value.trim())
+    .map(([label]) => label as string);
 }
 
 function ComponentBody({ component }: { component: ProposalComponent }) {
@@ -88,7 +132,12 @@ function ComponentBody({ component }: { component: ProposalComponent }) {
             <img
               src={content.renderImageUrl}
               alt={`Render conceitual: ${String(content.conceptName ?? "")}`}
-              style={{ width: "100%", borderRadius: radii.md, marginBottom: spacing.md, display: "block" }}
+              style={{
+                width: "100%",
+                borderRadius: radii.md,
+                marginBottom: spacing.md,
+                display: "block",
+              }}
             />
           )}
           <h4 style={{ margin: 0 }}>{String(content.conceptName ?? "")}</h4>
@@ -178,14 +227,30 @@ function ComponentEditForm({
   const [conceptName, setConceptName] = useState(String(content.conceptName ?? ""));
   const [coupleNames, setCoupleNames] = useState(String(content.coupleNames ?? ""));
   const [venueName, setVenueName] = useState(String(content.venueName ?? ""));
-  const [colors_, setColors] = useState(((content.colors as string[] | undefined) ?? []).join(", "));
-  const [fabrics, setFabrics] = useState(((content.fabrics as string[] | undefined) ?? []).join(", "));
-  const [flowers, setFlowers] = useState(((content.flowers as string[] | undefined) ?? []).join(", "));
-  const [furniture, setFurniture] = useState(((content.furniture as string[] | undefined) ?? []).join(", "));
-  const [lighting, setLighting] = useState(((content.lighting as string[] | undefined) ?? []).join(", "));
-  const [architecture, setArchitecture] = useState(((content.architecture as string[] | undefined) ?? []).join(", "));
-  const [steps, setSteps] = useState((content.steps as { label: string; description: string }[] | undefined) ?? []);
-  const [includes, setIncludes] = useState(((content.includes as string[] | undefined) ?? []).join(", "));
+  const [colors_, setColors] = useState(
+    ((content.colors as string[] | undefined) ?? []).join(", "),
+  );
+  const [fabrics, setFabrics] = useState(
+    ((content.fabrics as string[] | undefined) ?? []).join(", "),
+  );
+  const [flowers, setFlowers] = useState(
+    ((content.flowers as string[] | undefined) ?? []).join(", "),
+  );
+  const [furniture, setFurniture] = useState(
+    ((content.furniture as string[] | undefined) ?? []).join(", "),
+  );
+  const [lighting, setLighting] = useState(
+    ((content.lighting as string[] | undefined) ?? []).join(", "),
+  );
+  const [architecture, setArchitecture] = useState(
+    ((content.architecture as string[] | undefined) ?? []).join(", "),
+  );
+  const [steps, setSteps] = useState(
+    (content.steps as { label: string; description: string }[] | undefined) ?? [],
+  );
+  const [includes, setIncludes] = useState(
+    ((content.includes as string[] | undefined) ?? []).join(", "),
+  );
   const [amount, setAmount] = useState(content.amount != null ? String(content.amount) : "");
   const [currency, setCurrency] = useState(String(content.currency ?? ""));
   const { titleKey, descriptionKey } = narrativeKeys(content);
@@ -217,7 +282,11 @@ function ComponentEditForm({
           patch = { steps };
           break;
         case "INVESTMENT":
-          patch = { includes: splitList(includes), amount: amount === "" ? null : Number(amount), currency };
+          patch = {
+            includes: splitList(includes),
+            amount: amount === "" ? null : Number(amount),
+            currency,
+          };
           break;
         default:
           patch = { [titleKey]: title, [descriptionKey]: description };
@@ -231,7 +300,9 @@ function ComponentEditForm({
   }
 
   function updateStep(index: number, field: "label" | "description", value: string) {
-    setSteps((previous) => previous.map((step, i) => (i === index ? { ...step, [field]: value } : step)));
+    setSteps((previous) =>
+      previous.map((step, i) => (i === index ? { ...step, [field]: value } : step)),
+    );
   }
 
   return (
@@ -277,7 +348,10 @@ function ComponentEditForm({
         steps.map((step, index) => (
           <div key={index} style={{ display: "flex", flexDirection: "column", gap: spacing.xs }}>
             <Field label={`Etapa ${index + 1} — título`}>
-              <Input value={step.label} onChange={(e) => updateStep(index, "label", e.target.value)} />
+              <Input
+                value={step.label}
+                onChange={(e) => updateStep(index, "label", e.target.value)}
+              />
             </Field>
             <Field label={`Etapa ${index + 1} — descrição`}>
               <textarea
@@ -308,7 +382,12 @@ function ComponentEditForm({
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
           <Field label="Descrição">
-            <textarea rows={4} style={textareaStyle} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <textarea
+              rows={4}
+              style={textareaStyle}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </Field>
         </>
       )}
@@ -338,11 +417,19 @@ export function ProposalComponentCard({
   onEdit?: (patch: Record<string, unknown>) => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const incompleteFields = missingFields(component);
 
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.8rem", textTransform: "uppercase" }}>
+        <p
+          style={{
+            color: colors.textMuted,
+            margin: 0,
+            fontSize: "0.8rem",
+            textTransform: "uppercase",
+          }}
+        >
           {component.order}. {COMPONENT_LABELS[component.type]}
         </p>
         {onEdit && !isEditing && (
@@ -351,6 +438,11 @@ export function ProposalComponentCard({
           </Button>
         )}
       </div>
+      {incompleteFields.length > 0 && !isEditing && (
+        <p style={{ color: colors.primary, margin: `${spacing.sm} 0 0`, fontSize: "0.85rem" }}>
+          Ponto para revisar: {incompleteFields.join(", ")}.
+        </p>
+      )}
       {isEditing && onEdit ? (
         <ComponentEditForm
           component={component}

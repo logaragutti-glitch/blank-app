@@ -52,7 +52,14 @@ export interface ProposalComponentsResult {
   florals: NarrativeBlock;
 }
 
+export type ProposalNarrativeKey = keyof ProposalComponentsResult;
+
 /** Port for Agente 3 / Creative Engine (Capitulo 7 narrative components). */
 export abstract class ProposalComponentsPort {
   abstract generate(input: ProposalComponentsInput): Promise<ProposalComponentsResult>;
+  abstract regenerate(
+    input: ProposalComponentsInput,
+    component: ProposalNarrativeKey,
+    current: NarrativeBlock,
+  ): Promise<NarrativeBlock>;
 }

@@ -160,6 +160,9 @@ export async function buildProposalPdf(components: ProposalPdfComponent[]): Prom
       .fillColor(NEUTRAL.muted)
       .text("Esta proposta ainda não tem componentes gerados.", { align: "center" });
   } else {
+    renderExecutiveSummary(doc, sorted, accent);
+    doc.addPage();
+
     let previousHadImage = false;
     sorted.forEach((component, index) => {
       const hasImage = Boolean(component.imageBuffer);
@@ -178,6 +181,9 @@ export async function buildProposalPdf(components: ProposalPdfComponent[]): Prom
       renderComponent(doc, component, accent);
       previousHadImage = hasImage;
     });
+
+    doc.addPage();
+    renderClosingPage(doc, sorted, accent);
   }
 
   const range = doc.bufferedPageRange();
@@ -235,15 +241,13 @@ const ACCENT_HINTS: [pattern: RegExp, hex: string][] = [
 ];
 
 function normalizeColorName(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 function darken(hex: string, factor: number): string {
   const n = hex.replace("#", "");
-  const channel = (offset: number) => Math.max(0, Math.min(255, Math.round(parseInt(n.slice(offset, offset + 2), 16) * factor)));
+  const channel = (offset: number) =>
+    Math.max(0, Math.min(255, Math.round(parseInt(n.slice(offset, offset + 2), 16) * factor)));
   const toHex = (value: number) => value.toString(16).padStart(2, "0");
   return `#${toHex(channel(0))}${toHex(channel(2))}${toHex(channel(4))}`;
 }
@@ -297,7 +301,12 @@ function drawFooter(doc: PDFKit.PDFDocument, pageNumber: number, pageCount: numb
 function accentRule(doc: PDFKit.PDFDocument, width: number, accent: Accent): void {
   const y = doc.y;
   const left = doc.page.margins.left;
-  doc.moveTo(left, y).lineTo(left + width, y).lineWidth(1.2).strokeColor(accent.main).stroke();
+  doc
+    .moveTo(left, y)
+    .lineTo(left + width, y)
+    .lineWidth(1.2)
+    .strokeColor(accent.main)
+    .stroke();
   doc.moveDown(0.5);
 }
 
@@ -342,15 +351,28 @@ function renderKicker(doc: PDFKit.PDFDocument, order: number, accent: Accent): v
   doc.moveDown(0.4);
 }
 
-function renderHeading(doc: PDFKit.PDFDocument, text: string, accent: Accent, ruleWidth = 46): void {
+function renderHeading(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  accent: Accent,
+  ruleWidth = 46,
+): void {
   if (!text) return;
-  doc.font(FONT_HEADING_SEMIBOLD).fontSize(25).fillColor(accent.dark).text(text, { characterSpacing: 1.1 });
+  doc
+    .font(FONT_HEADING_SEMIBOLD)
+    .fontSize(25)
+    .fillColor(accent.dark)
+    .text(text, { characterSpacing: 1.1 });
   accentRule(doc, ruleWidth, accent);
 }
 
 function renderCategoryLabel(doc: PDFKit.PDFDocument, componentType: ComponentType): void {
   const label = COMPONENT_LABELS[componentType].toUpperCase();
-  doc.font(FONT_BODY_MEDIUM).fontSize(8).fillColor(NEUTRAL.muted).text(label, { characterSpacing: 1.8 });
+  doc
+    .font(FONT_BODY_MEDIUM)
+    .fontSize(8)
+    .fillColor(NEUTRAL.muted)
+    .text(label, { characterSpacing: 1.8 });
   doc.moveDown(0.6);
 }
 
@@ -361,7 +383,10 @@ function renderCategoryLabel(doc: PDFKit.PDFDocument, componentType: ComponentTy
 function renderBottomBand(doc: PDFKit.PDFDocument, accent: Accent): void {
   const height = 42;
   doc.opacity(0.16);
-  doc.rect(0, doc.page.height - height, doc.page.width, height).fillColor(accent.main).fill();
+  doc
+    .rect(0, doc.page.height - height, doc.page.width, height)
+    .fillColor(accent.main)
+    .fill();
   doc.opacity(1);
 }
 
@@ -373,7 +398,11 @@ function renderBottomBand(doc: PDFKit.PDFDocument, accent: Accent): void {
 function renderFullBleedCover(doc: PDFKit.PDFDocument, imageBuffer: Buffer | undefined): boolean {
   if (!imageBuffer) return false;
   try {
-    doc.image(imageBuffer, 0, 0, { cover: [doc.page.width, doc.page.height], align: "center", valign: "center" });
+    doc.image(imageBuffer, 0, 0, {
+      cover: [doc.page.width, doc.page.height],
+      align: "center",
+      valign: "center",
+    });
   } catch {
     // Intentionally swallowed — an undecodable/corrupt/expired image must
     // never fail the whole PDF: the title text is still real and worth
@@ -388,7 +417,11 @@ function renderFullBleedCover(doc: PDFKit.PDFDocument, imageBuffer: Buffer | und
 // Fills the hero banner edge to edge (pdfkit's `cover`, like CSS
 // background-size:cover) instead of `fit`, which shrinks a mostly-square
 // AI render to whichever dimension is smaller and leaves the rest blank.
-function renderHeroImage(doc: PDFKit.PDFDocument, imageBuffer: Buffer | undefined, height: number): boolean {
+function renderHeroImage(
+  doc: PDFKit.PDFDocument,
+  imageBuffer: Buffer | undefined,
+  height: number,
+): boolean {
   if (!imageBuffer) return false;
   const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   const x = doc.page.margins.left;
@@ -420,7 +453,174 @@ function renderHeroImage(doc: PDFKit.PDFDocument, imageBuffer: Buffer | undefine
   return true;
 }
 
-function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponent, accent: Accent): void {
+function textValue(
+  content: Record<string, unknown> | undefined,
+  keys: string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = content?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function listValue(content: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = content?.[key];
+  if (!Array.isArray(value)) return undefined;
+  const items = value.filter(
+    (item): item is string => typeof item === "string" && Boolean(item.trim()),
+  );
+  return items.length > 0 ? items.join(", ") : undefined;
+}
+
+function renderSummaryRow(
+  doc: PDFKit.PDFDocument,
+  label: string,
+  value: string | undefined,
+  accent: Accent,
+): void {
+  doc
+    .font(FONT_BODY_MEDIUM)
+    .fontSize(9)
+    .fillColor(accent.dark)
+    .text(label.toUpperCase(), { characterSpacing: 1 });
+  doc
+    .font(FONT_BODY)
+    .fontSize(11)
+    .fillColor(value ? NEUTRAL.ink : NEUTRAL.muted)
+    .text(value ?? "A definir na próxima validação", { width: BODY_WIDTH });
+  doc.moveDown(0.55);
+}
+
+function renderExecutiveSummary(
+  doc: PDFKit.PDFDocument,
+  components: ProposalPdfComponent[],
+  accent: Accent,
+): void {
+  const cover = components.find((component) => component.type === "COVER");
+  const concept = components.find((component) => component.type === "CONCEPT");
+  const palette = components.find((component) => component.type === "PALETTE");
+  const moodboard = components.find((component) => component.type === "MOODBOARD");
+
+  renderCornerFlourish(doc, accent);
+  doc
+    .font(FONT_BODY_MEDIUM)
+    .fontSize(8)
+    .fillColor(NEUTRAL.muted)
+    .text("VISÃO GERAL", { characterSpacing: 1.8 });
+  doc.moveDown(0.8);
+  renderHeading(doc, "Resumo executivo", accent, 72);
+  doc
+    .font(FONT_BODY)
+    .fontSize(12)
+    .fillColor(NEUTRAL.ink)
+    .text("Uma leitura rápida das decisões criativas que orientam esta proposta.", {
+      width: BODY_WIDTH,
+      lineGap: 3,
+    });
+  doc.moveDown(1.1);
+
+  renderSummaryRow(doc, "Casal", textValue(cover?.content, ["coupleNames"]), accent);
+  renderSummaryRow(doc, "Espaço", textValue(cover?.content, ["venueName"]), accent);
+  renderSummaryRow(doc, "Conceito", textValue(concept?.content, ["name", "title"]), accent);
+  renderSummaryRow(doc, "Paleta", listValue(palette?.content, "colors"), accent);
+  renderSummaryRow(
+    doc,
+    "Direção de ambiente",
+    [
+      listValue(moodboard?.content, "fabrics"),
+      listValue(moodboard?.content, "flowers"),
+      listValue(moodboard?.content, "furniture"),
+    ]
+      .filter(Boolean)
+      .join(" · ") || undefined,
+    accent,
+  );
+
+  doc.moveDown(0.8);
+  renderHeading(doc, "Como a experiência se sustenta", accent, 96);
+  const conceptDescription = textValue(concept?.content, ["description", "text"]);
+  doc
+    .font(FONT_BODY)
+    .fontSize(12)
+    .fillColor(NEUTRAL.ink)
+    .text(
+      conceptDescription ??
+        "Cada ambiente foi pensado para transformar a história do casal em uma experiência acolhedora, coerente e executável.",
+      { width: BODY_WIDTH, lineGap: 3 },
+    );
+}
+
+function renderClosingPage(
+  doc: PDFKit.PDFDocument,
+  components: ProposalPdfComponent[],
+  accent: Accent,
+): void {
+  const timeline = components.find((component) => component.type === "TIMELINE");
+  const investment = components.find((component) => component.type === "INVESTMENT");
+
+  renderCornerFlourish(doc, accent);
+  doc
+    .font(FONT_BODY_MEDIUM)
+    .fontSize(8)
+    .fillColor(NEUTRAL.muted)
+    .text("PRÓXIMOS PASSOS", { characterSpacing: 1.8 });
+  doc.moveDown(0.8);
+  renderHeading(doc, "Da inspiração à realização", accent, 86);
+  doc
+    .font(FONT_BODY)
+    .fontSize(12)
+    .fillColor(NEUTRAL.ink)
+    .text(
+      "A proposta está pronta para ser revisada, ajustada e transformada em um plano de execução.",
+      {
+        width: BODY_WIDTH,
+        lineGap: 3,
+      },
+    );
+  doc.moveDown(1);
+
+  renderHeading(doc, "Caminho de aprovação", accent, 92);
+  const steps =
+    (timeline?.content.steps as { label: string; description: string }[] | undefined) ?? [];
+  for (const [index, step] of steps.entries()) {
+    doc
+      .font(FONT_BODY_MEDIUM)
+      .fontSize(11)
+      .fillColor(accent.dark)
+      .text(`${index + 1}. ${step.label}`);
+    doc
+      .font(FONT_BODY)
+      .fontSize(10.5)
+      .fillColor(NEUTRAL.ink)
+      .text(step.description, { width: BODY_WIDTH });
+    doc.moveDown(0.45);
+  }
+
+  const includes = (investment?.content.includes as string[] | undefined) ?? [];
+  if (includes.length > 0) {
+    doc.moveDown(0.45);
+    renderHeading(doc, "O que está contemplado", accent, 92);
+    doc.font(FONT_BODY).fontSize(10.5).fillColor(NEUTRAL.ink);
+    for (const item of includes) {
+      doc.text(`• ${item}`, { width: BODY_WIDTH });
+      doc.moveDown(0.12);
+    }
+  }
+
+  doc.moveDown(0.85);
+  doc
+    .font(FONT_HEADING_SEMIBOLD)
+    .fontSize(18)
+    .fillColor(accent.dark)
+    .text("Vamos criar este momento juntos.", { width: BODY_WIDTH });
+}
+
+function renderComponent(
+  doc: PDFKit.PDFDocument,
+  component: ProposalPdfComponent,
+  accent: Accent,
+): void {
   if (component.type !== "COVER") {
     renderCornerFlourish(doc, accent);
     renderCategoryLabel(doc, component.type);
@@ -463,7 +663,10 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
         .font(FONT_BODY)
         .fontSize(13)
         .fillColor(NEUTRAL.ink)
-        .text(colors.length > 0 ? colors.join(", ") : "—", { characterSpacing: 0.2, width: BODY_WIDTH });
+        .text(colors.length > 0 ? colors.join(", ") : "—", {
+          characterSpacing: 0.2,
+          width: BODY_WIDTH,
+        });
       break;
     }
     case "MOODBOARD":
@@ -488,10 +691,19 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
     case "TIMELINE": {
       renderKicker(doc, component.order, accent);
       renderHeading(doc, COMPONENT_LABELS.TIMELINE, accent);
-      const steps = (component.content.steps as { label: string; description: string }[] | undefined) ?? [];
+      const steps =
+        (component.content.steps as { label: string; description: string }[] | undefined) ?? [];
       steps.forEach((step, index) => {
-        doc.font(FONT_BODY_MEDIUM).fontSize(12).fillColor(accent.dark).text(`${index + 1}. ${step.label}`);
-        doc.font(FONT_BODY).fontSize(11).fillColor(NEUTRAL.ink).text(step.description, { width: BODY_WIDTH });
+        doc
+          .font(FONT_BODY_MEDIUM)
+          .fontSize(12)
+          .fillColor(accent.dark)
+          .text(`${index + 1}. ${step.label}`);
+        doc
+          .font(FONT_BODY)
+          .fontSize(11)
+          .fillColor(NEUTRAL.ink)
+          .text(step.description, { width: BODY_WIDTH });
         doc.moveDown(0.4);
         const y = doc.y;
         const left = doc.page.margins.left;
@@ -539,7 +751,11 @@ function renderComponent(doc: PDFKit.PDFDocument, component: ProposalPdfComponen
       const description = String(component.content.description ?? component.content.text ?? "");
       renderHeading(doc, title, accent, 40);
       if (description) {
-        doc.font(FONT_BODY).fontSize(12).fillColor(NEUTRAL.ink).text(description, { width: BODY_WIDTH, lineGap: 3 });
+        doc
+          .font(FONT_BODY)
+          .fontSize(12)
+          .fillColor(NEUTRAL.ink)
+          .text(description, { width: BODY_WIDTH, lineGap: 3 });
       }
       if (hasPhoto) renderBottomBand(doc, accent);
     }

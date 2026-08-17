@@ -85,6 +85,46 @@ describe("AnthropicProposalComponentsProvider", () => {
     expect(result).toEqual(toolResult);
   });
 
+  it("retries once when the first structured response is incomplete", async () => {
+    const incomplete: Partial<ProposalComponentsResult> = buildToolResult();
+    delete incomplete.lighting;
+    createMock
+      .mockResolvedValueOnce({
+        content: [{ type: "tool_use", name: "record_proposal_components", input: incomplete }],
+      })
+      .mockResolvedValueOnce({
+        content: [
+          { type: "tool_use", name: "record_proposal_components", input: buildToolResult() },
+        ],
+      });
+
+    const provider = new AnthropicProposalComponentsProvider();
+    const result = await provider.generate(buildInput());
+
+    expect(result).toEqual(buildToolResult());
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(createMock.mock.calls[1]?.[0]?.messages?.[0]?.content).toContain("tentativa de reparo");
+  });
+
+  it("regenerates only the requested narrative component", async () => {
+    const updated = buildNarrativeBlock("Iluminação nova");
+    createMock.mockResolvedValue({
+      content: [{ type: "tool_use", name: "record_proposal_component", input: updated }],
+    });
+
+    const provider = new AnthropicProposalComponentsProvider();
+    const result = await provider.regenerate(
+      buildInput(),
+      "lighting",
+      buildNarrativeBlock("Iluminação antiga"),
+    );
+
+    expect(result).toEqual(updated);
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(createMock.mock.calls[0]?.[0]?.tools?.[0]?.name).toBe("record_proposal_component");
+    expect(createMock.mock.calls[0]?.[0]?.messages?.[0]?.content).toContain("Iluminação");
+  });
+
   it("throws when the model does not return a tool_use block", async () => {
     createMock.mockResolvedValue({ content: [{ type: "text", text: "desculpe" }] });
     const provider = new AnthropicProposalComponentsProvider();

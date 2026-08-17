@@ -46,7 +46,9 @@ function parseBfRangeCMap(cmapStream: string): Map<number, string> {
   for (const range of cmapStream.matchAll(/<([0-9a-fA-F]+)>\s*<[0-9a-fA-F]+>\s*\[([^\]]+)\]/g)) {
     const start = parseInt(range[1] ?? "0", 16);
     const destinations = [...(range[2] ?? "").matchAll(/<([0-9a-fA-F]+)>/g)];
-    destinations.forEach((dst, i) => table.set(start + i, String.fromCharCode(parseInt(dst[1] ?? "0", 16))));
+    destinations.forEach((dst, i) =>
+      table.set(start + i, String.fromCharCode(parseInt(dst[1] ?? "0", 16))),
+    );
   }
   return table;
 }
@@ -56,7 +58,9 @@ function parseBfRangeCMap(cmapStream: string): Map<number, string> {
 // can reuse the same `/F1` name for entirely different fonts. pdfkit
 // writes `/Resources` as its own indirect object (`/Resources 6 0 R`), not
 // inline in the Page dict, so that reference has to be followed first.
-function parseFontResourcesByContentStream(objects: Map<number, string>): Map<number, Map<string, number>> {
+function parseFontResourcesByContentStream(
+  objects: Map<number, string>,
+): Map<number, Map<string, number>> {
   const byContentStream = new Map<number, Map<string, number>>();
   for (const body of objects.values()) {
     if (!/\/Type\s*\/Page\b/.test(body)) continue;
@@ -69,7 +73,8 @@ function parseFontResourcesByContentStream(objects: Map<number, string>): Map<nu
     const fonts = new Map<string, number>();
     const fontDict = resourcesBody.match(/\/Font\s*<<([\s\S]*?)>>/);
     if (fontDict?.[1]) {
-      for (const f of fontDict[1].matchAll(/\/(F\d+)\s+(\d+)\s+0\s+R/g)) fonts.set(`/${f[1]}`, Number(f[2]));
+      for (const f of fontDict[1].matchAll(/\/(F\d+)\s+(\d+)\s+0\s+R/g))
+        fonts.set(`/${f[1]}`, Number(f[2]));
     }
     byContentStream.set(Number(contents[1]), fonts);
   }
@@ -86,7 +91,8 @@ function decodeHexShow(
   if (fontBody && /\/Subtype\s*\/Type0/.test(fontBody)) {
     const table = cmapsByFontObj.get(fontObjNum!);
     let out = "";
-    for (let i = 0; i + 4 <= hex.length; i += 4) out += table?.get(parseInt(hex.slice(i, i + 4), 16)) ?? "";
+    for (let i = 0; i + 4 <= hex.length; i += 4)
+      out += table?.get(parseInt(hex.slice(i, i + 4), 16)) ?? "";
     return out;
   }
   // A pdfkit standard font (WinAnsi, one byte per character) — not used by
@@ -102,7 +108,8 @@ function decodeContentStream(
 ): string {
   let currentFont: number | null = null;
   let out = "";
-  const tokenPattern = /\/(F\d+)\s+[\d.]+\s+Tf|<([0-9a-fA-F]+)>\s*Tj|\[((?:<[0-9a-fA-F]+>|-?[\d.]+|\s)+)\]\s*TJ/g;
+  const tokenPattern =
+    /\/(F\d+)\s+[\d.]+\s+Tf|<([0-9a-fA-F]+)>\s*Tj|\[((?:<[0-9a-fA-F]+>|-?[\d.]+|\s)+)\]\s*TJ/g;
   for (const m of stream.matchAll(tokenPattern)) {
     if (m[1]) {
       currentFont = fontResources.get(`/${m[1]}`) ?? null;
@@ -158,14 +165,55 @@ function usesFillColor(buffer: Buffer, hex: string): boolean {
 describe("buildProposalPdf", () => {
   it("produces a real PDF file", async () => {
     const buffer = await buildProposalPdf([
-      { type: "CONCEPT", order: 1, content: { name: "Entre Montanhas e Flores", text: "Um conceito único." } },
+      {
+        type: "CONCEPT",
+        order: 1,
+        content: { name: "Entre Montanhas e Flores", text: "Um conceito único." },
+      },
     ]);
     expect(buffer.subarray(0, 4).toString("ascii")).toBe("%PDF");
   });
 
+  it("adds an executive summary and a commercial closing page", async () => {
+    const buffer = await buildProposalPdf([
+      {
+        type: "COVER",
+        order: 1,
+        content: {
+          conceptName: "Jardim Atemporal",
+          coupleNames: "Karen & Daniel",
+          venueName: "Villa Massari",
+        },
+      },
+      {
+        type: "CONCEPT",
+        order: 4,
+        content: { name: "Jardim Atemporal", description: "Uma celebração leve e acolhedora." },
+      },
+      {
+        type: "TIMELINE",
+        order: 17,
+        content: { steps: [{ label: "Reunião criativa", description: "Alinhamento do projeto." }] },
+      },
+      {
+        type: "INVESTMENT",
+        order: 18,
+        content: { includes: ["Direção artística"], amount: 30000, currency: "BRL" },
+      },
+    ]);
+
+    expect(containsText(buffer, "Resumo executivo")).toBe(true);
+    expect(containsText(buffer, "PRÓXIMOS PASSOS")).toBe(true);
+    expect(containsText(buffer, "Vamos criar este momento juntos.")).toBe(true);
+  });
+
   it("renders a narrative component's title/description text", async () => {
     const buffer = await buildProposalPdf([
-      { type: "ENTRANCE", order: 7, content: { title: "Um Portal Floral", description: "Arcos de flores brancas." } },
+      {
+        type: "ENTRANCE",
+        order: 7,
+        content: { title: "Um Portal Floral", description: "Arcos de flores brancas." },
+      },
     ]);
     expect(containsText(buffer, "Um Portal Floral")).toBe(true);
     expect(containsText(buffer, "Arcos de flores brancas.")).toBe(true);
@@ -174,7 +222,11 @@ describe("buildProposalPdf", () => {
 
   it("falls back to the name/text key pair when title/description aren't present", async () => {
     const buffer = await buildProposalPdf([
-      { type: "CONCEPT", order: 4, content: { name: "Jardim Atemporal", text: "A narrativa do conceito." } },
+      {
+        type: "CONCEPT",
+        order: 4,
+        content: { name: "Jardim Atemporal", text: "A narrativa do conceito." },
+      },
     ]);
     expect(containsText(buffer, "Jardim Atemporal")).toBe(true);
     expect(containsText(buffer, "A narrativa do conceito.")).toBe(true);
@@ -185,7 +237,11 @@ describe("buildProposalPdf", () => {
       {
         type: "COVER",
         order: 1,
-        content: { conceptName: "Entre Montanhas e Flores", coupleNames: "Elis & Fabio", venueName: "Villa Massari" },
+        content: {
+          conceptName: "Entre Montanhas e Flores",
+          coupleNames: "Elis & Fabio",
+          venueName: "Villa Massari",
+        },
       },
     ]);
     expect(containsText(buffer, "Entre Montanhas e Flores")).toBe(true);
@@ -205,7 +261,13 @@ describe("buildProposalPdf", () => {
       {
         type: "MOODBOARD",
         order: 5,
-        content: { fabrics: ["Linho"], flowers: ["Peonia"], furniture: [], lighting: [], architecture: [] },
+        content: {
+          fabrics: ["Linho"],
+          flowers: ["Peonia"],
+          furniture: [],
+          lighting: [],
+          architecture: [],
+        },
       },
     ]);
     expect(containsText(buffer, "Tecidos")).toBe(true);
@@ -281,7 +343,7 @@ describe("buildProposalPdf", () => {
       { type: "INVESTMENT", order: 18, content: { includes: [], amount: null } },
     ]);
     const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
-    expect(pageCount).toBe(1);
+    expect(pageCount).toBe(3);
   });
 
   it("gives a component with a hero image its own page, even next to text-only ones", async () => {
@@ -290,7 +352,7 @@ describe("buildProposalPdf", () => {
       { type: "BIA_STORY", order: 2, content: { title: "A Bia", description: "Texto curto." } },
     ]);
     const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
-    expect(pageCount).toBe(2);
+    expect(pageCount).toBe(4);
   });
 
   it("derives the document's accent color from a recognizable palette color", async () => {
@@ -305,7 +367,9 @@ describe("buildProposalPdf", () => {
   });
 
   it("falls back to the default brand accent when there is no usable palette color", async () => {
-    const withoutPalette = await buildProposalPdf([{ type: "COVER", order: 1, content: { conceptName: "Teste" } }]);
+    const withoutPalette = await buildProposalPdf([
+      { type: "COVER", order: 1, content: { conceptName: "Teste" } },
+    ]);
     expect(usesFillColor(withoutPalette, "#B8935E")).toBe(true);
 
     // "Branco" and "Creme" are real palette entries, just too pale to

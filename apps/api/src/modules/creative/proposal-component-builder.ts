@@ -44,11 +44,30 @@ const INVESTMENT_INCLUDES = [
   "Coordenação no dia do evento",
 ];
 
+// These are process-oriented fallbacks, not invented facts about the venue.
+// They keep the Moodboard useful when the diagnosis or venue record has not
+// supplied a specific recommendation yet, while making the missing input
+// visible for the next technical validation.
+const MOODBOARD_FALLBACKS = {
+  lighting: "Validar temperatura de cor, pontos focais e infraestrutura na visita técnica.",
+  architecture: "Validar circulação, acessibilidade e pontos de montagem na visita técnica.",
+} as const;
+
+function nonEmptyList(value: string | null | undefined, fallback: string): string[] {
+  return value?.trim() ? [value.trim()] : [fallback];
+}
+
 // 02-brand-bible.md, regra de ouro 6 — toda proposta termina com uma chamada
 // à ação, nunca apenas agradecimento e telefone.
 const TIMELINE_STEPS = [
-  { label: "Reunião criativa", description: "Alinhamento do conceito e dos detalhes do projeto com a Bia." },
-  { label: "Aprovação da proposta", description: "Validação do conceito, ambientes e investimento apresentados." },
+  {
+    label: "Reunião criativa",
+    description: "Alinhamento do conceito e dos detalhes do projeto com a Bia.",
+  },
+  {
+    label: "Aprovação da proposta",
+    description: "Validação do conceito, ambientes e investimento apresentados.",
+  },
   { label: "Entrada (sinal)", description: "Confirmação do projeto com o pagamento da entrada." },
   { label: "Assinatura do contrato", description: "Formalização do compromisso entre as partes." },
 ];
@@ -82,8 +101,8 @@ export function buildProposalComponents(input: {
       fabrics: diagnostico.mobiliarioSugerido,
       flowers: diagnostico.materiaisRecomendados,
       furniture: diagnostico.mobiliarioSugerido,
-      lighting: diagnostico.iluminacaoSugerida ? [diagnostico.iluminacaoSugerida] : [],
-      architecture: venue.structuralConstraints ? [venue.structuralConstraints] : [],
+      lighting: nonEmptyList(diagnostico.iluminacaoSugerida, MOODBOARD_FALLBACKS.lighting),
+      architecture: nonEmptyList(venue.structuralConstraints, MOODBOARD_FALLBACKS.architecture),
       objects: [],
     },
     PALETTE: { colors: diagnostico.paletaSugerida },
@@ -91,10 +110,16 @@ export function buildProposalComponents(input: {
     CEREMONY: { title: narrative.ceremony.title, description: narrative.ceremony.description },
     CAKE_TABLE: { title: narrative.cakeTable.title, description: narrative.cakeTable.description },
     LOUNGE: { title: narrative.lounge.title, description: narrative.lounge.description },
-    GUEST_TABLES: { title: narrative.guestTables.title, description: narrative.guestTables.description },
+    GUEST_TABLES: {
+      title: narrative.guestTables.title,
+      description: narrative.guestTables.description,
+    },
     BAR: { title: narrative.bar.title, description: narrative.bar.description },
     BUFFET: { title: narrative.buffet.title, description: narrative.buffet.description },
-    DANCE_FLOOR: { title: narrative.danceFloor.title, description: narrative.danceFloor.description },
+    DANCE_FLOOR: {
+      title: narrative.danceFloor.title,
+      description: narrative.danceFloor.description,
+    },
     LIGHTING: { title: narrative.lighting.title, description: narrative.lighting.description },
     FLORALS: { title: narrative.florals.title, description: narrative.florals.description },
     TIMELINE: { steps: TIMELINE_STEPS },
