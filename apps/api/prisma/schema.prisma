@@ -37,14 +37,16 @@ model Organization {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  users     User[]
-  invites   Invite[]
-  clients   Client[]
-  venues    Venue[]
-  suppliers Supplier[]
-  styles    EventStyle[]
-  materials Material[]
-  events    Event[]
+  users          User[]
+  invites        Invite[]
+  clients        Client[]
+  venues         Venue[]
+  suppliers      Supplier[]
+  styles         EventStyle[]
+  materials      Material[]
+  weddingFormats WeddingFormat[]
+  weddingTrends  WeddingTrend[]
+  events         Event[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -385,6 +387,89 @@ enum MaterialCategory {
   FURNITURE
   LIGHTING
   OTHER
+}
+
+// ---------------------------------------------------------------------------
+// Wedding knowledge catalog — researched formats and current trends
+// ---------------------------------------------------------------------------
+
+model WeddingFormat {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Axis keeps event format separate from aesthetic style: SCALE, TRAVEL,
+  // SETTING, CEREMONY or DURATION.
+  axis            String
+  slug            String
+  name            String
+  description     String
+  guestMin        Int?     @map("guest_min")
+  guestMax        Int?     @map("guest_max")
+  durationMinDays Int?     @map("duration_min_days")
+  durationMaxDays Int?     @map("duration_max_days")
+  travelRequired  Boolean  @default(false) @map("travel_required")
+  ceremonyOnly    Boolean  @default(false) @map("ceremony_only")
+  planningNotes   String[] @map("planning_notes")
+  sourceUrls      String[] @map("source_urls")
+  sourceNotes     String[] @map("source_notes")
+  evidence        Json?
+  isActive        Boolean  @default(true) @map("is_active")
+
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  trends       WeddingFormatTrend[]
+
+  @@unique([organizationId, slug])
+  @@index([tenantId])
+  @@index([organizationId, axis])
+  @@map("wedding_formats")
+}
+
+model WeddingTrend {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  slug                     String
+  name                     String
+  category                 String
+  description              String
+  applicationNotes         String[]  @map("application_notes")
+  productionConsiderations String[]  @map("production_considerations")
+  paletteColors            String[]  @map("palette_colors")
+  materials                String[]
+  sourceUrls               String[]  @map("source_urls")
+  sourceNotes              String[]  @map("source_notes")
+  evidence                 Json?
+  sourceDate               DateTime? @map("source_date") @db.Date
+  geography                String?
+  isActive                 Boolean   @default(true) @map("is_active")
+
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  formats      WeddingFormatTrend[] @relation("WeddingFormatTrendTrend")
+
+  @@unique([organizationId, slug])
+  @@index([tenantId])
+  @@index([organizationId, category])
+  @@map("wedding_trends")
+}
+
+model WeddingFormatTrend {
+  formatId  String @map("format_id") @db.Uuid
+  trendId   String @map("trend_id") @db.Uuid
+  fitScore  Int    @map("fit_score")
+  rationale String
+
+  format WeddingFormat @relation(fields: [formatId], references: [id])
+  trend  WeddingTrend  @relation("WeddingFormatTrendTrend", fields: [trendId], references: [id])
+
+  @@id([formatId, trendId])
+  @@index([trendId])
+  @@map("wedding_format_trends")
 }
 
 model Material {
