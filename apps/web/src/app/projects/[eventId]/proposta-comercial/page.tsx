@@ -44,6 +44,25 @@ const CATEGORY_ORDER = [
   "ASSEMBLY_CREW",
 ];
 
+const REGIONAL_SERVICE_AREA_TOKENS = [
+  "regiao dos lagos",
+  "cabo frio",
+  "buzios",
+  "armacao dos buzios",
+  "arraial do cabo",
+  "araruama",
+  "sao pedro da aldeia",
+  "saquarema",
+  "iguaba grande",
+];
+
+function isRegionalSupplier(supplier: Supplier): boolean {
+  return supplier.serviceArea.some((area) => {
+    const normalized = area.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    return REGIONAL_SERVICE_AREA_TOKENS.some((token) => normalized.includes(token));
+  });
+}
+
 function formatMoney(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -86,7 +105,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
     ])
       .then(([knowledgeResponse, supplierResponse, commercialResponse, versionResponse]) => {
         setKnowledge(knowledgeResponse);
-        setSuppliers(supplierResponse);
+        setSuppliers(supplierResponse.filter(isRegionalSupplier));
         setCommercialProposal(commercialResponse);
         setVersions(versionResponse);
         if (commercialResponse) {

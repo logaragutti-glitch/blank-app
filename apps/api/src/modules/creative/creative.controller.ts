@@ -686,7 +686,9 @@ export class CreativeController {
       .map((selection) => selection.supplierId)
       .filter((supplierId) => !suppliersById.has(supplierId));
     if (unknownSupplierIds.length > 0) {
-      throw new BadRequestException(`Supplier not found: ${unknownSupplierIds.join(", ")}`);
+      throw new BadRequestException(
+        `Fornecedor não disponível no catálogo regional ou removido: ${unknownSupplierIds.join(", ")}. Selecione novamente um fornecedor listado na tela.`,
+      );
     }
 
     const selectedSupplierIds = new Set(dto.supplierSelections.map((selection) => selection.supplierId));
