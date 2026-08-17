@@ -47,6 +47,7 @@ model Organization {
   materials            Material[]
   weddingFormats       WeddingFormat[]
   weddingVenueResearch WeddingVenueResearch[]
+  weddingVenueImages   WeddingVenueImageResearch[]
 
   weddingTrends             WeddingTrend[]
   supplierCatalogCategories SupplierCatalogCategory[]
@@ -463,12 +464,45 @@ model WeddingVenueResearch {
   notes           String?
   isActive        Boolean  @default(true) @map("is_active")
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization                @relation(fields: [organizationId], references: [id])
+  images       WeddingVenueImageResearch[]
 
   @@unique([organizationId, name])
   @@index([tenantId])
   @@index([organizationId, municipality])
   @@map("wedding_venue_research")
+}
+
+model WeddingVenueImageResearch {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  venueResearchId String   @map("venue_research_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  imageUrl               String   @map("image_url")
+  sourceUrl              String   @map("source_url")
+  sourceType             String   @map("source_type")
+  roomType               String   @map("room_type")
+  credit                 String?
+  rightsStatus           String   @map("rights_status")
+  confidence             String
+  usageScope             String   @default("REFERENCE_ONLY") @map("usage_scope")
+  approvedForPublication Boolean  @default(false) @map("approved_for_publication")
+  isPrimary              Boolean  @default(false) @map("is_primary")
+  isActive               Boolean  @default(true) @map("is_active")
+  sourceCapturedAt       DateTime @map("source_captured_at") @db.Timestamptz(6)
+  notes                  String?
+
+  organization  Organization         @relation(fields: [organizationId], references: [id])
+  venueResearch WeddingVenueResearch @relation(fields: [venueResearchId], references: [id], onDelete: Cascade)
+
+  @@unique([venueResearchId, imageUrl])
+  @@index([tenantId])
+  @@index([organizationId, roomType])
+  @@index([venueResearchId])
+  @@map("wedding_venue_image_research")
 }
 
 model WeddingFormat {

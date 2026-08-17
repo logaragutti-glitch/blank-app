@@ -6,6 +6,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { MaterialCategory, PrismaClient, SupplierCatalogCategoryType, SupplierCategory } from "@prisma/client";
 import { MINEIRART_REGION_CATALOG, toMineirartCategoryCreateData } from "./mineirart-regiao-dos-lagos";
 import { WEDDING_VENUE_RESEARCH } from "./wedding-venue-research";
+import { WEDDING_VENUE_IMAGE_RESEARCH } from "./wedding-venue-image-research";
 import { RESEARCHED_EVENT_STYLES } from "./wedding-style-palette-research";
 
 try {
@@ -639,6 +640,43 @@ async function seedWeddingVenueResearch(tenantId: string, organizationId: string
   console.log(`Pesquisa de espaços: ${WEDDING_VENUE_RESEARCH.length} locais catalogados.`);
 }
 
+async function seedWeddingVenueImages(tenantId: string, organizationId: string) {
+  let persisted = 0;
+  for (const image of WEDDING_VENUE_IMAGE_RESEARCH) {
+    const venue = await prisma.weddingVenueResearch.findUnique({
+      where: { organizationId_name: { organizationId, name: image.venueName } },
+      select: { id: true, municipality: true },
+    });
+    if (!venue) {
+      console.warn(`Imagem ignorada: venue não encontrado para ${image.venueName}`);
+      continue;
+    }
+    if (venue.municipality !== image.municipality) {
+      console.warn(`Imagem com município divergente: ${image.venueName} (${image.municipality} != ${venue.municipality})`);
+    }
+    const { venueName: _venueName, municipality: _municipality, sourceCapturedAt, ...imageData } = image;
+    await prisma.weddingVenueImageResearch.upsert({
+      where: { venueResearchId_imageUrl: { venueResearchId: venue.id, imageUrl: image.imageUrl } },
+      update: {
+        ...imageData,
+        tenantId,
+        organizationId,
+        venueResearchId: venue.id,
+        sourceCapturedAt: new Date(sourceCapturedAt),
+      },
+      create: {
+        ...imageData,
+        tenantId,
+        organizationId,
+        venueResearchId: venue.id,
+        sourceCapturedAt: new Date(sourceCapturedAt),
+      },
+    });
+    persisted += 1;
+  }
+  console.log(`Imagens de espaços: ${persisted} referências visuais catalogadas.`);
+}
+
 async function main() {
   const tenant = await prisma.tenant.upsert({
     where: { id: "00000000-0000-0000-0000-000000000001" },
@@ -868,6 +906,7 @@ async function main() {
   await seedMineirartSupplierCatalog(tenantId, organizationId);
   await seedWeddingKnowledgeCatalog(tenantId, organizationId);
   await seedWeddingVenueResearch(tenantId, organizationId);
+  await seedWeddingVenueImages(tenantId, organizationId);
 
   // --- Venue: Villa Massari --------------------------------------------------
 

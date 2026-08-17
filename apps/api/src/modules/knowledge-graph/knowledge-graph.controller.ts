@@ -66,6 +66,12 @@ export class KnowledgeGraphController {
       }),
       this.prisma.weddingVenueResearch.findMany({
         where: { organizationId: user.organizationId, isActive: true },
+        include: {
+          images: {
+            where: { organizationId: user.organizationId, isActive: true },
+            orderBy: [{ isPrimary: "desc" }, { roomType: "asc" }],
+          },
+        },
         orderBy: [{ municipality: "asc" }, { name: "asc" }],
       }),
     ]);
