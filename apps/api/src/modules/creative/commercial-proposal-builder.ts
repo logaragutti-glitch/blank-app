@@ -3,6 +3,7 @@ import type {
   CommercialLineItem,
   CommercialLogisticsItem,
   CommercialLogisticsTreatment,
+  CommercialPackage,
   CommercialProposalScope,
   CommercialPaymentTerm,
   CommercialProposalSupplierInput,
@@ -279,6 +280,18 @@ function buildLineItems(
   return [...baseItems, ...additions];
 }
 
+function buildPackages(input: UpsertCommercialProposalDto["packages"]): CommercialPackage[] {
+  return (input ?? []).map((item, index) => ({
+    id: item.id ?? `package-${item.tier.toLowerCase()}-${index + 1}`,
+    tier: item.tier,
+    name: item.name.trim(),
+    description: item.description.trim(),
+    totalInvestment: roundMoney(item.totalInvestment),
+    pricingStatus: item.pricingStatus ?? "ESTIMATE",
+    selected: item.selected ?? item.tier === "RECOMMENDED",
+  }));
+}
+
 function buildLogisticsItems(
   inputs: UpsertCommercialProposalDto["logisticsItems"],
   suppliers: CommercialSupplierSelection[],
@@ -341,9 +354,10 @@ export function buildCommercialProposalRecord(input: {
     input.dto.lineItems,
     input.event.guestsExpected,
   );
-  const logisticsItems = buildLogisticsItems(input.dto.logisticsItems, selections);
-
+    const logisticsItems = buildLogisticsItems(input.dto.logisticsItems, selections);
+  const packages = buildPackages(input.dto.packages);
   const subtotal = roundMoney(
+
     lineItems.filter((item) => item.included).reduce((sum, item) => sum + item.total, 0) +
       logisticsItems.reduce((sum, item) => sum + item.total, 0),
   );
@@ -351,6 +365,9 @@ export function buildCommercialProposalRecord(input: {
   const managementFee = roundMoney(input.dto.managementFee ?? 0);
   const discount = roundMoney(input.dto.discount ?? 0);
   const totalInvestment = roundMoney(Math.max(0, subtotal + contingencyAmount + managementFee - discount));
+  const internalCost = input.dto.internalCost == null ? null : roundMoney(input.dto.internalCost);
+  const marginAmount = internalCost == null ? null : roundMoney(totalInvestment - internalCost);
+  const marginPercent = internalCost == null || marginAmount == null || totalInvestment === 0 ? null : roundMoney((marginAmount / totalInvestment) * 100);
   const validityDays = input.dto.validityDays ?? 10;
   const validUntil = new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000);
   const paymentTerms = input.dto.paymentTerms?.map((term) => ({
@@ -378,10 +395,14 @@ export function buildCommercialProposalRecord(input: {
     supplierSelections: selections,
     lineItems,
     logisticsItems,
+    packages,
     subtotal,
     contingencyAmount,
     managementFee,
     discount,
+    internalCost,
+    marginAmount,
+    marginPercent,
     totalInvestment,
     validityDays,
     validUntil,

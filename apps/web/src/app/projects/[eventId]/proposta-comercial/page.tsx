@@ -16,6 +16,8 @@ import type {
   CommercialPricingStatus,
   CommercialQuote,
   CommercialQuoteStatus,
+  CommercialPayment,
+  CommercialPaymentStatus,
   CommercialSupplierCategory,
   Supplier,
   WeddingKnowledgeResponse,
@@ -51,6 +53,22 @@ type LogisticsDraft = {
   pricingStatus: CommercialPricingStatus;
   notes: string;
 };
+
+type PackageDraft = {
+  id?: string;
+  tier: "ESSENTIAL" | "RECOMMENDED" | "COMPLETE";
+  name: string;
+  description: string;
+  totalInvestment: string;
+  pricingStatus: CommercialPricingStatus;
+  selected: boolean;
+};
+
+const DEFAULT_PACKAGES: PackageDraft[] = [
+  { tier: "ESSENTIAL", name: "Essencial", description: "Composição essencial para o escopo escolhido.", totalInvestment: "", pricingStatus: "QUOTE_PENDING", selected: false },
+  { tier: "RECOMMENDED", name: "Recomendado", description: "Composição equilibrada para o conceito e o espaço.", totalInvestment: "", pricingStatus: "ESTIMATE", selected: true },
+  { tier: "COMPLETE", name: "Completo", description: "Experiência ampliada com itens e serviços opcionais.", totalInvestment: "", pricingStatus: "QUOTE_PENDING", selected: false },
+];
 
 const CATEGORY_LABELS: Record<string, string> = {
   CATERING: "Buffet e gastronomia",
@@ -123,6 +141,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
   const [supplierDrafts, setSupplierDrafts] = useState<Record<string, SupplierDraft>>({});
   const [customItems, setCustomItems] = useState<CustomItemDraft[]>([]);
   const [logisticsDrafts, setLogisticsDrafts] = useState<LogisticsDraft[]>([]);
+  const [packages, setPackages] = useState<PackageDraft[]>(DEFAULT_PACKAGES);
   const [quotes, setQuotes] = useState<CommercialQuote[]>([]);
   const [quoteTitle, setQuoteTitle] = useState("");
   const [quoteCategory, setQuoteCategory] = useState<CommercialSupplierCategory>("DECOR");
@@ -130,9 +149,14 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
   const [quoteAmount, setQuoteAmount] = useState("");
   const [quoteSource, setQuoteSource] = useState("");
   const [quoteStatus, setQuoteStatus] = useState<CommercialQuoteStatus>("RECEIVED");
+  const [paymentLabel, setPaymentLabel] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDueDate, setPaymentDueDate] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<CommercialPaymentStatus>("PENDING");
   const [contingencyPercent, setContingencyPercent] = useState("0");
   const [managementFee, setManagementFee] = useState("0");
   const [discount, setDiscount] = useState("0");
+  const [internalCost, setInternalCost] = useState("");
   const [validityDays, setValidityDays] = useState("10");
   const [commercialNotes, setCommercialNotes] = useState("");
   const [loading, setLoading] = useState(true);
@@ -168,6 +192,15 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
         setVersions(versionResponse);
         setQuotes(quoteResponse);
         if (commercialResponse) {
+          setPackages(commercialResponse.packages.map((item) => ({
+            id: item.id,
+            tier: item.tier,
+            name: item.name,
+            description: item.description,
+            totalInvestment: String(item.totalInvestment),
+            pricingStatus: item.pricingStatus,
+            selected: item.selected,
+          })));
           setVenueResearchId(
             commercialResponse.venue.source === "RESEARCH_CATALOG" ? commercialResponse.venue.id ?? "" : "",
           );
@@ -178,6 +211,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
           );
           setManagementFee(String(commercialResponse.managementFee));
           setDiscount(String(commercialResponse.discount));
+          setInternalCost(commercialResponse.internalCost == null ? "" : String(commercialResponse.internalCost));
           setValidityDays(String(commercialResponse.validityDays));
           setCommercialNotes(commercialResponse.commercialNotes ?? "");
           const existingDrafts: Record<string, SupplierDraft> = {};
@@ -369,6 +403,47 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
     }
   }
 
+  async function handleAddPayment() {
+    if (!proposalId || !paymentLabel.trim() || paymentAmount === "" || !paymentDueDate) {
+      setError("Informe descrição, valor e vencimento da parcela antes de salvar.");
+      return;
+    }
+    try {
+      const payment = await apiClient.post<CommercialPayment>(
+        `/creative/proposals/${proposalId}/commercial/payments`,
+        {
+          label: paymentLabel.trim(),
+          amount: Number(paymentAmount),
+          dueDate: new Date(`${paymentDueDate}T12:00:00`).toISOString(),
+          status: paymentStatus,
+        },
+        accessToken,
+      );
+      setCommercialProposal((current) => current ? { ...current, payments: [...current.payments, payment].sort((a, b) => a.dueDate.localeCompare(b.dueDate)) } : current);
+      setPaymentLabel("");
+      setPaymentAmount("");
+      setPaymentDueDate("");
+      setSuccess("Parcela registrada na agenda financeira.");
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não conseguimos registrar a parcela.");
+    }
+  }
+
+  async function handlePaymentStatus(payment: CommercialPayment, status: CommercialPaymentStatus) {
+    if (!proposalId) return;
+    try {
+      const updated = await apiClient.patch<CommercialPayment>(
+        `/creative/proposals/${proposalId}/commercial/payments/${payment.id}`,
+        { status },
+        accessToken,
+      );
+      setCommercialProposal((current) => current ? { ...current, payments: current.payments.map((item) => item.id === updated.id ? updated : item) } : current);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não conseguimos atualizar a parcela.");
+    }
+  }
+
   async function refreshVersions() {
     if (!proposalId) return;
     try {
@@ -439,6 +514,16 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
           contingencyPercent: Number(contingencyPercent || 0),
           managementFee: Number(managementFee || 0),
           discount: Number(discount || 0),
+          internalCost: internalCost === "" ? null : Number(internalCost),
+          packages: packages.filter((item) => item.name.trim()).map((item) => ({
+            id: item.id,
+            tier: item.tier,
+            name: item.name.trim(),
+            description: item.description.trim(),
+            totalInvestment: Number(item.totalInvestment || 0),
+            pricingStatus: item.pricingStatus,
+            selected: item.selected,
+          })),
           validityDays: Number(validityDays || 10),
           commercialNotes: commercialNotes || null,
         },
@@ -759,13 +844,38 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
 
       <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
         <h2>7. Ajustes comerciais</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: spacing.sm }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: spacing.sm }}>
           <label style={{ color: colors.textMuted, fontSize: 13 }}>Contingência (%)<input value={contingencyPercent} onChange={(event) => setContingencyPercent(event.target.value)} inputMode="decimal" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
           <label style={{ color: colors.textMuted, fontSize: 13 }}>Taxa de gestão<input value={managementFee} onChange={(event) => setManagementFee(event.target.value)} inputMode="decimal" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
           <label style={{ color: colors.textMuted, fontSize: 13 }}>Desconto<input value={discount} onChange={(event) => setDiscount(event.target.value)} inputMode="decimal" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
+          <label style={{ color: colors.textMuted, fontSize: 13 }}>Custo interno<input value={internalCost} onChange={(event) => setInternalCost(event.target.value)} placeholder="Opcional" inputMode="decimal" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
           <label style={{ color: colors.textMuted, fontSize: 13 }}>Validade (dias)<input value={validityDays} onChange={(event) => setValidityDays(event.target.value)} inputMode="numeric" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
         </div>
         <label style={{ display: "block", color: colors.textMuted, fontSize: 13, marginTop: spacing.sm }}>Observações comerciais<textarea value={commercialNotes} onChange={(event) => setCommercialNotes(event.target.value)} rows={3} style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
+      </section>
+
+      <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
+        <h2>8. Pacotes comerciais</h2>
+        <p style={{ color: colors.textMuted, fontSize: 13 }}>
+          Apresente alternativas ao casal sem apagar a composição principal. Informe apenas valores realmente cotados ou marque a opção como estimativa ou cotação pendente.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: spacing.sm }}>
+          {packages.map((pkg, index) => (
+            <div key={pkg.tier} style={{ border: `1px solid ${pkg.selected ? colors.primary : colors.border}`, borderRadius: 10, padding: spacing.sm, background: pkg.selected ? "#FFF9F0" : "#FFFFFF" }}>
+              <label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 13, color: colors.textMuted }}>
+                <input type="checkbox" checked={pkg.selected} onChange={(event) => setPackages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, selected: event.target.checked } : item))} /> Pacote recomendado
+              </label>
+              <input value={pkg.name} onChange={(event) => setPackages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} style={{ width: "100%", marginTop: 7, padding: 8, borderRadius: 6, border: `1px solid ${colors.border}`, fontWeight: 600 }} />
+              <textarea value={pkg.description} onChange={(event) => setPackages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item))} rows={3} style={{ width: "100%", marginTop: 7, padding: 8, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+              <input value={pkg.totalInvestment} onChange={(event) => setPackages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, totalInvestment: event.target.value } : item))} placeholder="Valor do pacote" inputMode="decimal" style={{ width: "100%", marginTop: 7, padding: 8, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+              <select value={pkg.pricingStatus} onChange={(event) => setPackages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, pricingStatus: event.target.value as CommercialPricingStatus } : item))} style={{ width: "100%", marginTop: 7, padding: 8, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                <option value="ESTIMATE">Estimativa</option>
+                <option value="QUOTE_PENDING">Cotação pendente</option>
+                <option value="CONFIRMED">Confirmado</option>
+              </select>
+            </div>
+          ))}
+        </div>
       </section>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md }}>
@@ -775,7 +885,47 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
 
       {commercialProposal && (
         <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-          <h2>8. Revisão e aprovação</h2>
+          <h2>9. Agenda financeira</h2>
+          <p style={{ color: colors.textMuted, fontSize: 13 }}>
+            Registre parcelas previstas e marque os recebimentos. Esta agenda não substitui contrato ou conciliação bancária, mas preserva a situação comercial da proposta.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 150px 170px 160px auto", gap: 8 }}>
+            <input value={paymentLabel} onChange={(event) => setPaymentLabel(event.target.value)} placeholder="Sinal, parcela de produção..." style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+            <input value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} placeholder="Valor" inputMode="decimal" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+            <input type="date" value={paymentDueDate} onChange={(event) => setPaymentDueDate(event.target.value)} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+            <select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value as CommercialPaymentStatus)} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+              <option value="PENDING">Pendente</option>
+              <option value="SCHEDULED">Agendado</option>
+              <option value="PAID">Pago</option>
+              <option value="OVERDUE">Vencido</option>
+              <option value="CANCELLED">Cancelado</option>
+            </select>
+            <Button variant="ghost" onClick={handleAddPayment}>Adicionar parcela</Button>
+          </div>
+          {commercialProposal.payments.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: spacing.sm }}>
+              {commercialProposal.payments.map((payment) => (
+                <div key={payment.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 130px 130px 160px", gap: 8, alignItems: "center", borderTop: `1px solid ${colors.border}`, paddingTop: 8 }}>
+                  <span><strong>{payment.label}</strong><br /><small style={{ color: colors.textMuted }}>{new Date(payment.dueDate).toLocaleDateString("pt-BR")}</small></span>
+                  <strong>{formatMoney(payment.amount)}</strong>
+                  <span style={{ color: colors.textMuted, fontSize: 12 }}>{payment.status}</span>
+                  <select value={payment.status} onChange={(event) => handlePaymentStatus(payment, event.target.value as CommercialPaymentStatus)} style={{ padding: 7, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                    <option value="PENDING">Pendente</option>
+                    <option value="SCHEDULED">Agendado</option>
+                    <option value="PAID">Pago</option>
+                    <option value="OVERDUE">Vencido</option>
+                    <option value="CANCELLED">Cancelado</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {commercialProposal && (
+        <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
+          <h2>10. Revisão e aprovação</h2>
           <p style={{ color: colors.textMuted, fontSize: 13, marginTop: 0 }}>
             A proposta passa por revisão interna antes de ser enviada. A produção só é liberada depois do status <strong>APROVADA</strong>.
           </p>
@@ -803,6 +953,11 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
           <h2>Resumo salvo · {SCOPE_LABELS[commercialProposal.scope]} · versão {commercialProposal.version}</h2>
           <p style={{ color: colors.textMuted }}>Status: <strong>{commercialProposal.status}</strong>{commercialProposal.hasUnconfirmedData ? " · contém dados a confirmar" : " · dados confirmados"}</p>
           <p style={{ fontSize: 24, fontWeight: 700 }}>{formatMoney(commercialProposal.totalInvestment)}</p>
+          {commercialProposal.internalCost != null && (
+            <p style={{ color: colors.textMuted, fontSize: 13 }}>
+              Custo interno: <strong>{formatMoney(commercialProposal.internalCost)}</strong> · Margem: <strong>{formatMoney(commercialProposal.marginAmount ?? 0)}{commercialProposal.marginPercent != null ? ` (${commercialProposal.marginPercent.toFixed(2)}%)` : ""}</strong>
+            </p>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {commercialProposal.lineItems.map((item) => (
               <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: spacing.sm, fontSize: 13 }}>

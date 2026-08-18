@@ -21,6 +21,8 @@ export type CommercialVenueSource = "INTERNAL_VENUE" | "RESEARCH_CATALOG";
 export type CommercialPricingStatus = "ESTIMATE" | "QUOTE_PENDING" | "CONFIRMED";
 export type CommercialLogisticsTreatment = "INCLUDED" | "ADDITIONAL" | "NOT_APPLICABLE";
 export type CommercialQuoteStatus = "DRAFT" | "RECEIVED" | "SELECTED" | "REJECTED" | "EXPIRED";
+export type CommercialPaymentStatus = "PENDING" | "SCHEDULED" | "PAID" | "OVERDUE" | "CANCELLED";
+export type CommercialPackageTier = "ESSENTIAL" | "RECOMMENDED" | "COMPLETE";
 
 export type CommercialSupplierCategory =
   | "VENUE"
@@ -87,6 +89,27 @@ export interface CommercialLineItem {
   notes: string | null;
 }
 
+export interface CommercialPackage {
+  id: string;
+  tier: CommercialPackageTier;
+  name: string;
+  description: string;
+  totalInvestment: number;
+  pricingStatus: CommercialPricingStatus;
+  selected: boolean;
+}
+
+export interface CommercialPayment {
+  id: string;
+  label: string;
+  amount: number;
+  dueDate: string;
+  paidAt: string | null;
+  status: CommercialPaymentStatus;
+  method: string | null;
+  notes: string | null;
+}
+
 export interface CommercialQuote {
   id: string;
   supplierId: string | null;
@@ -142,7 +165,12 @@ export interface CommercialProposal {
   contingencyAmount: number;
   managementFee: number;
   discount: number;
+  internalCost: number | null;
+  marginAmount: number | null;
+  marginPercent: number | null;
   totalInvestment: number;
+  payments: CommercialPayment[];
+  packages: CommercialPackage[];
   currency: "BRL";
   validityDays: number;
   validUntil: string | null;
@@ -214,6 +242,16 @@ export interface UpsertCommercialProposalInput {
   contingencyPercent?: number;
   managementFee?: number;
   discount?: number;
+  internalCost?: number | null;
+  packages?: Array<{
+    id?: string;
+    tier: CommercialPackageTier;
+    name: string;
+    description: string;
+    totalInvestment: number;
+    pricingStatus?: CommercialPricingStatus;
+    selected?: boolean;
+  }>;
   validityDays?: number;
   approvalDeadline?: string | null;
   paymentTerms?: CommercialPaymentTerm[];

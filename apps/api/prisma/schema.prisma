@@ -697,6 +697,7 @@ model Event {
   suppliers           ProjectSupplier[]
   chatMessages        ChatMessage[]
   commercialQuotes    CommercialQuote[]
+  commercialPayments  CommercialPayment[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -1036,10 +1037,14 @@ model CommercialProposal {
   supplierSelections Json                     @map("supplier_selections")
   lineItems          Json                     @map("line_items")
   logisticsItems     Json                     @default("[]") @map("logistics_items")
+  packages           Json                     @default("[]")
   subtotal           Decimal                  @db.Decimal(12, 2)
   contingencyAmount  Decimal                  @default(0) @map("contingency_amount") @db.Decimal(12, 2)
   managementFee      Decimal                  @default(0) @map("management_fee") @db.Decimal(12, 2)
   discount           Decimal                  @default(0) @db.Decimal(12, 2)
+  internalCost       Decimal?                 @map("internal_cost") @db.Decimal(12, 2)
+  marginAmount       Decimal?                 @map("margin_amount") @db.Decimal(12, 2)
+  marginPercent      Decimal?                 @map("margin_percent") @db.Decimal(7, 2)
   totalInvestment    Decimal                  @map("total_investment") @db.Decimal(12, 2)
   validityDays       Int                      @default(10) @map("validity_days")
   validUntil         DateTime?                @map("valid_until") @db.Timestamptz(6)
@@ -1058,6 +1063,7 @@ model CommercialProposal {
   proposal Proposal                    @relation(fields: [proposalId], references: [id])
   versions CommercialProposalVersion[]
   quotes   CommercialQuote[]
+  payments CommercialPayment[]
 
   event Event @relation(fields: [eventId], references: [id])
 
@@ -1105,6 +1111,43 @@ model CommercialQuote {
   @@index([commercialProposalId])
   @@index([supplierId])
   @@map("commercial_quotes")
+}
+
+enum CommercialPaymentStatus {
+  PENDING
+  SCHEDULED
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model CommercialPayment {
+  id                   String   @id @default(uuid()) @db.Uuid
+  tenantId             String   @map("tenant_id") @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  eventId              String   @map("event_id") @db.Uuid
+  commercialProposalId String   @map("commercial_proposal_id") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy            String?  @map("created_by") @db.Uuid
+
+  label   String
+  amount  Decimal                 @db.Decimal(12, 2)
+  dueDate DateTime                @map("due_date") @db.Timestamptz(6)
+  paidAt  DateTime?               @map("paid_at") @db.Timestamptz(6)
+  status  CommercialPaymentStatus @default(PENDING)
+  method  String?
+  notes   String?
+
+  event              Event              @relation(fields: [eventId], references: [id])
+  commercialProposal CommercialProposal @relation(fields: [commercialProposalId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([eventId])
+  @@index([commercialProposalId])
+  @@index([status])
+  @@map("commercial_payments")
 }
 
 model CommercialProposalVersion {

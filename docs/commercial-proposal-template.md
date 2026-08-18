@@ -131,3 +131,56 @@ Depois, adicione itens personalizados quando necessário, registre os custos de 
 O modelo não inventa contato, disponibilidade ou preço de fornecedor. Os dados regionais que não têm telefone ou e-mail confirmados continuam exibindo “Contato a confirmar”. O snapshot também preserva o que foi apresentado no momento da proposta, de modo que uma alteração futura no cadastro do fornecedor não reescreva silenciosamente um documento já enviado.
 
 O modelo não reserva automaticamente espaço ou fornecedor, não substitui contrato e não altera a `main`. A implementação operacional atual está isolada na branch `feat/eve-commercial-operations-v1` e deve ser revisada em Preview antes de qualquer promoção.
+
+## Pacotes comerciais
+
+A assessora pode cadastrar até três alternativas: `ESSENTIAL`, `RECOMMENDED` e `COMPLETE`. O EVE OS preserva nome, descrição, investimento, status de preço e indicação de pacote recomendado. Os valores devem ser informados pela assessora a partir de composição ou cotação real; o sistema não aplica descontos fictícios nem cria diferenças automáticas entre os pacotes.
+
+O pacote marcado como recomendado aparece destacado no editor e no PDF. Um pacote com valor ainda não confirmado permanece identificado como `Estimativa` ou `Cotação pendente`.
+
+## Custo interno e margem
+
+O campo de custo interno é opcional e deve ser preenchido somente com custo real ou estimado conhecido pela assessora. Quando informado, o sistema calcula:
+
+```text
+margem = investimento total − custo interno
+margem percentual = margem ÷ investimento total × 100
+```
+
+Se o custo interno não for informado, a margem permanece vazia. Isso evita que o EVE OS apresente uma margem inventada.
+
+## Agenda financeira
+
+A agenda financeira registra parcelas comerciais sem substituir contrato, cobrança ou conciliação bancária. Cada parcela possui descrição, valor, vencimento, status, forma de pagamento e data de recebimento.
+
+| Status | Uso |
+|---|---|
+| `PENDING` | Parcela prevista, ainda sem agendamento final |
+| `SCHEDULED` | Parcela com vencimento organizado |
+| `PAID` | Recebimento registrado |
+| `OVERDUE` | Vencimento ultrapassado sem registro de recebimento |
+| `CANCELLED` | Parcela cancelada ou substituída |
+
+As parcelas aprovadas podem aparecer na agenda do PDF comercial. O cadastro de pagamento não confirma automaticamente uma transação bancária; ele registra a informação operacional fornecida pela assessora.
+
+## Endpoints adicionais
+
+| Método | Endpoint | Finalidade |
+|---|---|---|
+| `GET` | `/creative/proposals/:proposalId/commercial/payments` | Lista parcelas da proposta |
+| `POST` | `/creative/proposals/:proposalId/commercial/payments` | Cria uma parcela |
+| `PATCH` | `/creative/proposals/:proposalId/commercial/payments/:paymentId` | Atualiza status ou recebimento |
+
+Os endpoints de pagamentos, cotações e propostas exigem autenticação e validam a organização do usuário antes de acessar os dados.
+
+## Nota de release
+
+A primeira release operacional foi registrada na branch `feat/eve-commercial-operations-v1`. As migrations devem ser aplicadas na API com `npx prisma migrate deploy` antes de testar os novos campos em outro ambiente.
+
+O lint do frontend ainda apresenta dois avisos preexistentes sobre uso de `<img>` em `apps/web/src/app/fornecedores/page.tsx`; typecheck, builds, Prisma e testes permanecem aprovados.
+
+## Proteções comerciais
+
+O modelo não inventa contato, disponibilidade ou preço de fornecedor. Os dados regionais que não têm telefone ou e-mail confirmados continuam exibindo “Contato a confirmar”. O snapshot também preserva o que foi apresentado no momento da proposta, de modo que uma alteração futura no cadastro do fornecedor não reescreva silenciosamente um documento já enviado.
+
+O modelo não reserva automaticamente espaço ou fornecedor, não substitui contrato e não altera a `main`. A implementação operacional atual está isolada na branch `feat/eve-commercial-operations-v1` e deve ser revisada em Preview antes de qualquer promoção.

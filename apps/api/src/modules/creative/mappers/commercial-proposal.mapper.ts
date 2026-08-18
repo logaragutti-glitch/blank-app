@@ -1,6 +1,7 @@
 import type {
   CommercialProposal as CommercialProposalPrismaModel,
   CommercialProposalVersion as CommercialProposalVersionPrismaModel,
+  CommercialPayment as CommercialPaymentPrismaModel,
 } from "@prisma/client";
 import type { CommercialEventSnapshot } from "../repositories/commercial-proposal.repository";
 import type {
@@ -12,6 +13,7 @@ import type {
   CommercialPaymentTerm,
   CommercialLineItem,
   CommercialLogisticsItem,
+  CommercialPayment,
   CommercialSupplierSelection,
   CommercialVenueSnapshot,
 } from "@eve-os/types";
@@ -21,7 +23,9 @@ function decimalToNumber(value: { toNumber(): number } | number | null | undefin
   return typeof value === "number" ? value : value.toNumber();
 }
 
-export function toCommercialProposalDomain(model: CommercialProposalPrismaModel): CommercialProposal {
+type CommercialProposalRecord = CommercialProposalPrismaModel & { payments?: CommercialPaymentPrismaModel[] };
+
+export function toCommercialProposalDomain(model: CommercialProposalRecord): CommercialProposal {
   const event = model.eventSnapshot as unknown as CommercialEventSnapshot;
   const venue = model.venueSnapshot as unknown as CommercialVenueSnapshot;
 
@@ -40,11 +44,25 @@ export function toCommercialProposalDomain(model: CommercialProposalPrismaModel)
     suppliers: model.supplierSelections as unknown as CommercialSupplierSelection[],
     lineItems: model.lineItems as unknown as CommercialLineItem[],
     logisticsItems: (model.logisticsItems ?? []) as unknown as CommercialLogisticsItem[],
+    packages: (model.packages ?? []) as unknown as CommercialProposal["packages"],
     subtotal: decimalToNumber(model.subtotal),
     contingencyAmount: decimalToNumber(model.contingencyAmount),
     managementFee: decimalToNumber(model.managementFee),
     discount: decimalToNumber(model.discount),
+    internalCost: decimalToNumber(model.internalCost),
+    marginAmount: decimalToNumber(model.marginAmount),
+    marginPercent: decimalToNumber(model.marginPercent),
     totalInvestment: decimalToNumber(model.totalInvestment),
+    payments: (model.payments ?? []).map((payment) => ({
+      id: payment.id,
+      label: payment.label,
+      amount: decimalToNumber(payment.amount),
+      dueDate: payment.dueDate.toISOString(),
+      paidAt: payment.paidAt?.toISOString() ?? null,
+      status: payment.status,
+      method: payment.method,
+      notes: payment.notes,
+    })) as CommercialPayment[],
     currency: "BRL",
     validityDays: model.validityDays,
     validUntil: model.validUntil?.toISOString() ?? null,

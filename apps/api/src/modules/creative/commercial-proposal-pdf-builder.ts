@@ -263,6 +263,21 @@ function renderInvestmentPage(doc: PDFKit.PDFDocument, proposal: CommercialPropo
     doc.y = y + 46;
   });
 
+  if (proposal.packages.length > 0) {
+    ensureSpace(doc, 120);
+    doc.moveDown(0.5);
+    doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.accent).text("OPÇÕES DE PACOTE");
+    doc.moveDown(0.45);
+    proposal.packages.forEach((pkg) => {
+      ensureSpace(doc, 38);
+      const packageLabel = `${pkg.name}${pkg.selected ? " · recomendado" : ""}`;
+      doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.ink).text(packageLabel, 54, doc.y, { width: 230 });
+      doc.font(FONT_BODY).fontSize(8).fillColor(COLORS.muted).text(`${pkg.description} · ${statusLabel(pkg.pricingStatus)}`, 54, doc.y + 14, { width: 350 });
+      doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.ink).text(money(pkg.totalInvestment), 466, doc.y + 5, { width: 75, align: "right" });
+      doc.moveDown(0.9);
+    });
+  }
+
   ensureSpace(doc, 145);
   doc.moveDown(0.5);
   const rows = [
@@ -295,6 +310,20 @@ function renderConditionsPage(doc: PDFKit.PDFDocument, proposal: CommercialPropo
     doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.ink).text(term.amount == null ? "A definir" : money(term.amount), 466, doc.y, { width: 75, align: "right" });
     doc.moveDown(0.8);
   });
+
+  if (proposal.payments.length > 0) {
+    doc.moveDown(0.8);
+    doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.accent).text("AGENDA FINANCEIRA");
+    doc.moveDown(0.45);
+    proposal.payments.forEach((payment) => {
+      ensureSpace(doc, 28);
+      doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.ink).text(payment.label, 54, doc.y, { width: 220 });
+      doc.font(FONT_BODY).fontSize(9).fillColor(COLORS.muted).text(new Date(payment.dueDate).toLocaleDateString("pt-BR"), 286, doc.y, { width: 90 });
+      doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.ink).text(money(payment.amount), 382, doc.y, { width: 90, align: "right" });
+      doc.font(FONT_BODY).fontSize(8).fillColor(COLORS.muted).text(payment.status, 480, doc.y, { width: 60, align: "right" });
+      doc.moveDown(0.6);
+    });
+  }
 
   doc.moveDown(0.8);
   doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.accent).text("CONDIÇÕES COMERCIAIS");

@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { CommercialQuoteStatus as PrismaCommercialQuoteStatus, Prisma } from "@prisma/client";
+import {
+  CommercialPaymentStatus as PrismaCommercialPaymentStatus,
+  CommercialQuoteStatus as PrismaCommercialQuoteStatus,
+  Prisma,
+} from "@prisma/client";
 import {
   BadRequestException,
   Body,
@@ -23,6 +27,7 @@ import type {
   CommercialProposalStatus,
   CommercialProposalVersion,
   CommercialQuote,
+  CommercialPayment,
 } from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
@@ -53,7 +58,9 @@ import {
 } from "./commercial-proposal-builder";
 import { buildCommercialProposalPdf } from "./commercial-proposal-pdf-builder";
 import {
+  CreateCommercialPaymentDto,
   CreateCommercialQuoteDto,
+  UpdateCommercialPaymentDto,
   UpdateCommercialQuoteStatusDto,
   UpsertCommercialProposalDto,
 } from "./dto/upsert-commercial-proposal.dto";
@@ -741,6 +748,106 @@ export class CreativeController {
       status: updated.status,
       notes: updated.notes,
       createdAt: updated.createdAt.toISOString(),
+    };
+  }
+
+  @Get("proposals/:proposalId/commercial/payments")
+  async getCommercialPayments(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ): Promise<CommercialPayment[]> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    const payments = await this.prisma.commercialPayment.findMany({
+      where: { commercialProposalId: commercial.id, organizationId: user.organizationId },
+      orderBy: { dueDate: "asc" },
+    });
+    return payments.map((payment) => ({
+      id: payment.id,
+      label: payment.label,
+      amount: Number(payment.amount),
+      dueDate: payment.dueDate.toISOString(),
+      paidAt: payment.paidAt?.toISOString() ?? null,
+      status: payment.status,
+      method: payment.method,
+      notes: payment.notes,
+    }));
+  }
+
+  @Post("proposals/:proposalId/commercial/payments")
+  async createCommercialPayment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Body() dto: CreateCommercialPaymentDto,
+  ): Promise<CommercialPayment> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    const status = dto.status ?? "PENDING";
+    const payment = await this.prisma.commercialPayment.create({
+      data: {
+        tenantId: user.tenantId,
+        organizationId: user.organizationId,
+        eventId: proposal.eventId,
+        commercialProposalId: commercial.id,
+        createdBy: user.sub,
+        label: dto.label,
+        amount: dto.amount,
+        dueDate: new Date(dto.dueDate),
+        paidAt: status === "PAID" ? new Date() : null,
+        status: status as PrismaCommercialPaymentStatus,
+        method: dto.method ?? null,
+        notes: dto.notes ?? null,
+      },
+    });
+    return {
+      id: payment.id,
+      label: payment.label,
+      amount: Number(payment.amount),
+      dueDate: payment.dueDate.toISOString(),
+      paidAt: payment.paidAt?.toISOString() ?? null,
+      status: payment.status,
+      method: payment.method,
+      notes: payment.notes,
+    };
+  }
+
+  @Patch("proposals/:proposalId/commercial/payments/:paymentId")
+  async updateCommercialPayment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Param("paymentId") paymentId: string,
+    @Body() dto: UpdateCommercialPaymentDto,
+  ): Promise<CommercialPayment> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    const existing = await this.prisma.commercialPayment.findFirst({
+      where: { id: paymentId, commercialProposalId: commercial.id, organizationId: user.organizationId },
+    });
+    if (!existing) throw new NotFoundException("Commercial payment not found");
+    const updated = await this.prisma.commercialPayment.update({
+      where: { id: existing.id },
+      data: {
+        status: dto.status as PrismaCommercialPaymentStatus,
+        paidAt: dto.paidAt ? new Date(dto.paidAt) : dto.status === "PAID" ? existing.paidAt ?? new Date() : null,
+        method: dto.method ?? existing.method,
+        notes: dto.notes ?? existing.notes,
+      },
+    });
+    return {
+      id: updated.id,
+      label: updated.label,
+      amount: Number(updated.amount),
+      dueDate: updated.dueDate.toISOString(),
+      paidAt: updated.paidAt?.toISOString() ?? null,
+      status: updated.status,
+      method: updated.method,
+      notes: updated.notes,
     };
   }
 

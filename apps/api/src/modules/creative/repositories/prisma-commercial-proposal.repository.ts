@@ -20,7 +20,10 @@ export class PrismaCommercialProposalRepository implements CommercialProposalRep
   constructor(private readonly prisma: PrismaService) {}
 
   async findByProposal(proposalId: string): Promise<CommercialProposal | null> {
-    const record = await this.prisma.commercialProposal.findUnique({ where: { proposalId } });
+    const record = await this.prisma.commercialProposal.findUnique({
+      where: { proposalId },
+      include: { payments: { orderBy: { dueDate: "asc" } } },
+    });
     return record ? toCommercialProposalDomain(record) : null;
   }
 
@@ -48,10 +51,14 @@ export class PrismaCommercialProposalRepository implements CommercialProposalRep
         supplierSelections: input.supplierSelections as unknown as Prisma.InputJsonValue,
         lineItems: input.lineItems as unknown as Prisma.InputJsonValue,
         logisticsItems: input.logisticsItems as unknown as Prisma.InputJsonValue,
+        packages: input.packages as unknown as Prisma.InputJsonValue,
         subtotal: input.subtotal,
         contingencyAmount: input.contingencyAmount,
         managementFee: input.managementFee,
         discount: input.discount,
+        internalCost: input.internalCost,
+        marginAmount: input.marginAmount,
+        marginPercent: input.marginPercent,
         totalInvestment: input.totalInvestment,
         validityDays: input.validityDays,
         validUntil: input.validUntil,
@@ -97,7 +104,11 @@ export class PrismaCommercialProposalRepository implements CommercialProposalRep
       return record;
     });
 
-    return toCommercialProposalDomain(record);
+    const hydrated = await this.prisma.commercialProposal.findUnique({
+      where: { id: record.id },
+      include: { payments: { orderBy: { dueDate: "asc" } } },
+    });
+    return toCommercialProposalDomain(hydrated ?? record);
   }
 
   async updateStatus(input: {
@@ -143,6 +154,10 @@ export class PrismaCommercialProposalRepository implements CommercialProposalRep
       return updated;
     });
 
-    return toCommercialProposalDomain(record);
+    const hydrated = await this.prisma.commercialProposal.findUnique({
+      where: { id: record.id },
+      include: { payments: { orderBy: { dueDate: "asc" } } },
+    });
+    return toCommercialProposalDomain(hydrated ?? record);
   }
 }

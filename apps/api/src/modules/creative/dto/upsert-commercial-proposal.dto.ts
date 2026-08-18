@@ -47,6 +47,48 @@ export enum CommercialQuoteStatusDto {
   EXPIRED = "EXPIRED",
 }
 
+export enum CommercialPaymentStatusDto {
+  PENDING = "PENDING",
+  SCHEDULED = "SCHEDULED",
+  PAID = "PAID",
+  OVERDUE = "OVERDUE",
+  CANCELLED = "CANCELLED",
+}
+
+export enum CommercialPackageTierDto {
+  ESSENTIAL = "ESSENTIAL",
+  RECOMMENDED = "RECOMMENDED",
+  COMPLETE = "COMPLETE",
+}
+
+export class CommercialPackageDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsEnum(CommercialPackageTierDto)
+  tier!: CommercialPackageTierDto;
+
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  description!: string;
+
+  @IsNumber()
+  @Min(0)
+  totalInvestment!: number;
+
+  @IsEnum(CommercialPricingStatusDto)
+  @IsOptional()
+  pricingStatus?: CommercialPricingStatusDto;
+
+  @IsOptional()
+  selected?: boolean;
+}
+
 export enum CommercialProposalScopeDto {
   FULL_EVENT = "FULL_EVENT",
   DECORATION_ONLY = "DECORATION_ONLY",
@@ -122,6 +164,48 @@ export class CommercialLineItemDto {
 
   @IsOptional()
   included?: boolean;
+
+  @IsString()
+  @IsOptional()
+  notes?: string | null;
+}
+
+export class CreateCommercialPaymentDto {
+  @IsString()
+  @IsNotEmpty()
+  label!: string;
+
+  @IsNumber()
+  @Min(0)
+  amount!: number;
+
+  @IsISO8601()
+  dueDate!: string;
+
+  @IsEnum(CommercialPaymentStatusDto)
+  @IsOptional()
+  status?: CommercialPaymentStatusDto;
+
+  @IsString()
+  @IsOptional()
+  method?: string | null;
+
+  @IsString()
+  @IsOptional()
+  notes?: string | null;
+}
+
+export class UpdateCommercialPaymentDto {
+  @IsEnum(CommercialPaymentStatusDto)
+  status!: CommercialPaymentStatusDto;
+
+  @IsISO8601()
+  @IsOptional()
+  paidAt?: string | null;
+
+  @IsString()
+  @IsOptional()
+  method?: string | null;
 
   @IsString()
   @IsOptional()
@@ -275,6 +359,17 @@ export class UpsertCommercialProposalDto {
   @Min(0)
   @IsOptional()
   discount?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  internalCost?: number | null;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CommercialPackageDto)
+  @IsOptional()
+  packages?: CommercialPackageDto[];
 
   @IsInt()
   @Min(1)
