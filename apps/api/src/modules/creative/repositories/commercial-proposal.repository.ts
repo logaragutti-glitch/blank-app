@@ -6,6 +6,7 @@ import type {
   CommercialProposalVersionAction,
   CommercialPaymentTerm,
   CommercialLineItem,
+  CommercialLogisticsItem,
   CommercialSupplierSelection,
   CommercialVenueSnapshot,
 } from "@eve-os/types";
@@ -28,6 +29,7 @@ export interface UpsertCommercialProposalRecordInput {
   venueSnapshot: CommercialVenueSnapshot;
   supplierSelections: CommercialSupplierSelection[];
   lineItems: CommercialLineItem[];
+  logisticsItems: CommercialLogisticsItem[];
   subtotal: number;
   contingencyAmount: number;
   managementFee: number;

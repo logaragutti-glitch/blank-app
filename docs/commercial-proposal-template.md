@@ -25,6 +25,8 @@ Na modalidade `DECORATION_ONLY`, o sistema não permite incluir buffet, bebidas,
 | Espaço e premissas | Município, tipo, capacidade, hospedagem, serviços, notas e evidências | WeddingVenueResearch ou Venue |
 | Equipe e fornecedores | Categoria, nome, contatos, área, escopo, status de contato e status do preço | Supplier e ProjectSupplier |
 | Investimento | Itens, quantidade, valor unitário, subtotal, contingência, gestão, desconto e total | CommercialProposal.lineItems |
+| Logística | Deslocamento, transporte de peças, pedágios, montagem, desmontagem, hospedagem e custos incluídos | CommercialProposal.logisticsItems |
+| Cotações | Alternativas recebidas, fornecedor, fonte, validade, valor e status da decisão | CommercialQuote |
 | Condições | Forma de pagamento, validade, ressalvas, cotações pendentes e próximos passos | CommercialProposal.paymentTerms, conditions e nextSteps |
 
 ## Categorias comerciais
@@ -52,10 +54,13 @@ Para cada fornecedor, o sistema cria um item de serviço com o escopo informado,
 O cálculo utilizado é:
 
 ```text
-subtotal = soma dos itens incluídos
+logística adicional = soma dos itens de logística com tratamento `ADDITIONAL`
+subtotal = soma dos itens de serviço incluídos + logística adicional
 contingência = subtotal × percentual de contingência ÷ 100
 total = subtotal + contingência + taxa de gestão − desconto
 ```
+
+Itens de logística com tratamento `INCLUDED` ou `NOT_APPLICABLE` são exibidos para transparência, mas têm valor zero no cálculo. A assessora deve evitar duplicidade quando o fornecedor já tiver incluído transporte ou montagem na cotação principal.
 
 Os valores monetários são armazenados em reais brasileiros, arredondados para duas casas decimais e sincronizados com `Proposal.investmentAmount` para manter compatibilidade com o fluxo de proposta existente.
 
@@ -73,7 +78,7 @@ A proposta fica marcada com `hasUnconfirmedData = true` quando houver fornecedor
 
 Na tela de projeto, abra a proposta criativa e clique em **“Montar proposta comercial integrada”**. Primeiro escolha **“Evento completo”** ou **“Somente decoração”**. Em seguida, selecione um espaço do catálogo pesquisado ou mantenha o espaço interno do projeto. Marque os fornecedores disponíveis para a modalidade, revise o escopo, substitua estimativas por valores de cotações recebidas e escolha o status de preço correspondente.
 
-Depois, informe contingência, taxa de gestão, desconto e validade. Salve a composição comercial. O sistema recalcula o investimento, grava um snapshot dos dados selecionados e disponibiliza o botão **“Baixar PDF comercial”**. Antes de enviar ao casal, confirme disponibilidade, escopo, deslocamento, montagem, taxas do espaço, impostos, direitos de imagem, gerador, licenças e demais condições contratuais.
+Depois, adicione itens personalizados quando necessário, registre os custos de logística por fornecedor e espaço e cadastre as cotações recebidas. As cotações permanecem no histórico mesmo quando uma alternativa é marcada como selecionada, rejeitada ou expirada. Em seguida, informe contingência, taxa de gestão, desconto e validade. Salve a composição comercial. O sistema recalcula o investimento, grava um snapshot dos dados selecionados e disponibiliza o botão **“Baixar PDF comercial”**. Antes de enviar ao casal, confirme disponibilidade, escopo, deslocamento, montagem, taxas do espaço, impostos, direitos de imagem, gerador, licenças e demais condições contratuais.
 
 ## Endpoints
 
@@ -82,6 +87,9 @@ Depois, informe contingência, taxa de gestão, desconto e validade. Salve a com
 | `POST` | `/creative/proposals/:proposalId/commercial` | Cria ou atualiza a composição comercial |
 | `GET` | `/creative/proposals/:proposalId/commercial` | Consulta o snapshot salvo |
 | `GET` | `/creative/proposals/:proposalId/commercial/pdf` | Gera o PDF comercial para download |
+| `GET` | `/creative/proposals/:proposalId/commercial/quotes` | Lista o histórico de cotações |
+| `POST` | `/creative/proposals/:proposalId/commercial/quotes` | Registra uma cotação recebida |
+| `PATCH` | `/creative/proposals/:proposalId/commercial/quotes/:quoteId/status` | Atualiza o status da cotação |
 | `GET` | `/knowledge-graph/wedding-knowledge` | Lista espaços pesquisados, formatos e tendências |
 | `GET` | `/knowledge-graph/suppliers` | Lista fornecedores cadastrados |
 
@@ -99,6 +107,17 @@ Depois, informe contingência, taxa de gestão, desconto e validade. Salve a com
       "pricingStatus": "ESTIMATE"
     }
   ],
+  "logisticsItems": [
+    {
+      "supplierId": "id-da-decoracao",
+      "label": "Transporte de peças e montagem",
+      "treatment": "ADDITIONAL",
+      "quantity": 1,
+      "unit": "serviço",
+      "unitPrice": 1800,
+      "pricingStatus": "QUOTE_PENDING"
+    }
+  ],
   "contingencyPercent": 5,
   "managementFee": 3500,
   "discount": 0,
@@ -111,4 +130,4 @@ Depois, informe contingência, taxa de gestão, desconto e validade. Salve a com
 
 O modelo não inventa contato, disponibilidade ou preço de fornecedor. Os dados regionais que não têm telefone ou e-mail confirmados continuam exibindo “Contato a confirmar”. O snapshot também preserva o que foi apresentado no momento da proposta, de modo que uma alteração futura no cadastro do fornecedor não reescreva silenciosamente um documento já enviado.
 
-O modelo não reserva automaticamente espaço ou fornecedor, não substitui contrato e não altera a `main`. A implementação foi isolada na branch `feat/commercial-proposal-template` e deve ser revisada em Preview antes de qualquer promoção.
+O modelo não reserva automaticamente espaço ou fornecedor, não substitui contrato e não altera a `main`. A implementação operacional atual está isolada na branch `feat/eve-commercial-operations-v1` e deve ser revisada em Preview antes de qualquer promoção.

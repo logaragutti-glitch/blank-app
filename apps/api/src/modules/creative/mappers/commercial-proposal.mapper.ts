@@ -11,6 +11,7 @@ import type {
   CommercialProposalVersionAction,
   CommercialPaymentTerm,
   CommercialLineItem,
+  CommercialLogisticsItem,
   CommercialSupplierSelection,
   CommercialVenueSnapshot,
 } from "@eve-os/types";
@@ -38,6 +39,7 @@ export function toCommercialProposalDomain(model: CommercialProposalPrismaModel)
     venue,
     suppliers: model.supplierSelections as unknown as CommercialSupplierSelection[],
     lineItems: model.lineItems as unknown as CommercialLineItem[],
+    logisticsItems: (model.logisticsItems ?? []) as unknown as CommercialLogisticsItem[],
     subtotal: decimalToNumber(model.subtotal),
     contingencyAmount: decimalToNumber(model.contingencyAmount),
     managementFee: decimalToNumber(model.managementFee),

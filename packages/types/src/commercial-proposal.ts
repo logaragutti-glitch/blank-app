@@ -19,6 +19,8 @@ export type CommercialProposalVersionAction =
 export type CommercialVenueSource = "INTERNAL_VENUE" | "RESEARCH_CATALOG";
 
 export type CommercialPricingStatus = "ESTIMATE" | "QUOTE_PENDING" | "CONFIRMED";
+export type CommercialLogisticsTreatment = "INCLUDED" | "ADDITIONAL" | "NOT_APPLICABLE";
+export type CommercialQuoteStatus = "DRAFT" | "RECEIVED" | "SELECTED" | "REJECTED" | "EXPIRED";
 
 export type CommercialSupplierCategory =
   | "VENUE"
@@ -71,6 +73,7 @@ export interface CommercialSupplierSelection {
 export interface CommercialLineItem {
   id: string;
   category: CommercialSupplierCategory;
+  kind?: "SUPPLIER" | "CUSTOM";
   categoryLabel: string;
   description: string;
   supplierId: string | null;
@@ -81,6 +84,35 @@ export interface CommercialLineItem {
   total: number;
   pricingStatus: CommercialPricingStatus;
   included: boolean;
+  notes: string | null;
+}
+
+export interface CommercialQuote {
+  id: string;
+  supplierId: string | null;
+  supplierName: string | null;
+  category: string;
+  title: string;
+  amount: number;
+  currency: string;
+  source: string | null;
+  validUntil: string | null;
+  status: CommercialQuoteStatus;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface CommercialLogisticsItem {
+  id: string;
+  supplierId: string | null;
+  supplierName: string | null;
+  label: string;
+  treatment: CommercialLogisticsTreatment;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  total: number;
+  pricingStatus: CommercialPricingStatus;
   notes: string | null;
 }
 
@@ -105,6 +137,7 @@ export interface CommercialProposal {
   venue: CommercialVenueSnapshot;
   suppliers: CommercialSupplierSelection[];
   lineItems: CommercialLineItem[];
+  logisticsItems: CommercialLogisticsItem[];
   subtotal: number;
   contingencyAmount: number;
   managementFee: number;
@@ -157,6 +190,7 @@ export interface UpsertCommercialProposalInput {
   lineItems?: Array<{
     id?: string;
     category: CommercialSupplierCategory;
+    kind?: "SUPPLIER" | "CUSTOM";
     description: string;
     supplierId?: string | null;
     quantity?: number;
@@ -164,6 +198,17 @@ export interface UpsertCommercialProposalInput {
     unitPrice?: number;
     pricingStatus?: CommercialPricingStatus;
     included?: boolean;
+    notes?: string | null;
+  }>;
+  logisticsItems?: Array<{
+    id?: string;
+    supplierId?: string | null;
+    label: string;
+    treatment?: CommercialLogisticsTreatment;
+    quantity?: number;
+    unit?: string;
+    unitPrice?: number;
+    pricingStatus?: CommercialPricingStatus;
     notes?: string | null;
   }>;
   contingencyPercent?: number;

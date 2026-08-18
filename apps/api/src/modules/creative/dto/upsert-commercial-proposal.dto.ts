@@ -33,6 +33,20 @@ export enum CommercialPricingStatusDto {
   CONFIRMED = "CONFIRMED",
 }
 
+export enum CommercialLogisticsTreatmentDto {
+  INCLUDED = "INCLUDED",
+  ADDITIONAL = "ADDITIONAL",
+  NOT_APPLICABLE = "NOT_APPLICABLE",
+}
+
+export enum CommercialQuoteStatusDto {
+  DRAFT = "DRAFT",
+  RECEIVED = "RECEIVED",
+  SELECTED = "SELECTED",
+  REJECTED = "REJECTED",
+  EXPIRED = "EXPIRED",
+}
+
 export enum CommercialProposalScopeDto {
   FULL_EVENT = "FULL_EVENT",
   DECORATION_ONLY = "DECORATION_ONLY",
@@ -74,6 +88,9 @@ export class CommercialLineItemDto {
   @IsOptional()
   id?: string;
 
+  @IsOptional()
+  kind?: "SUPPLIER" | "CUSTOM";
+
   @IsEnum(CommercialSupplierCategoryDto)
   category!: CommercialSupplierCategory;
 
@@ -105,6 +122,93 @@ export class CommercialLineItemDto {
 
   @IsOptional()
   included?: boolean;
+
+  @IsString()
+  @IsOptional()
+  notes?: string | null;
+}
+
+export class CreateCommercialQuoteDto {
+  @IsUUID()
+  @IsOptional()
+  supplierId?: string | null;
+
+  @IsString()
+  @IsNotEmpty()
+  category!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  title!: string;
+
+  @IsNumber()
+  @Min(0)
+  amount!: number;
+
+  @IsString()
+  @IsOptional()
+  currency?: string;
+
+  @IsString()
+  @IsOptional()
+  source?: string | null;
+
+  @IsISO8601()
+  @IsOptional()
+  validUntil?: string | null;
+
+  @IsEnum(CommercialQuoteStatusDto)
+  @IsOptional()
+  status?: CommercialQuoteStatusDto;
+
+  @IsString()
+  @IsOptional()
+  notes?: string | null;
+}
+
+export class UpdateCommercialQuoteStatusDto {
+  @IsEnum(CommercialQuoteStatusDto)
+  status!: CommercialQuoteStatusDto;
+
+  @IsString()
+  @IsOptional()
+  notes?: string | null;
+}
+
+export class CommercialLogisticsItemDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsUUID()
+  @IsOptional()
+  supplierId?: string | null;
+
+  @IsString()
+  @IsNotEmpty()
+  label!: string;
+
+  @IsEnum(CommercialLogisticsTreatmentDto)
+  @IsOptional()
+  treatment?: "INCLUDED" | "ADDITIONAL" | "NOT_APPLICABLE";
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  quantity?: number;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  unitPrice?: number;
+
+  @IsEnum(CommercialPricingStatusDto)
+  @IsOptional()
+  pricingStatus?: CommercialPricingStatus;
 
   @IsString()
   @IsOptional()
@@ -149,6 +253,12 @@ export class UpsertCommercialProposalDto {
   @Type(() => CommercialLineItemDto)
   @IsOptional()
   lineItems?: CommercialLineItemDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CommercialLogisticsItemDto)
+  @IsOptional()
+  logisticsItems?: CommercialLogisticsItemDto[];
 
   @IsNumber()
   @Min(0)

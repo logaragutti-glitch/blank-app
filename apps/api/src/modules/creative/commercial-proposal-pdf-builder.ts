@@ -230,7 +230,28 @@ function renderInvestmentPage(doc: PDFKit.PDFDocument, proposal: CommercialPropo
   doc.moveTo(54, doc.y).lineTo(541, doc.y).strokeColor(COLORS.border).stroke();
   doc.moveDown(0.5);
 
-  proposal.lineItems.forEach((item) => {
+  const investmentItems = [
+    ...proposal.lineItems.map((item) => ({
+      description: item.description,
+      categoryLabel: item.categoryLabel,
+      pricingStatus: item.pricingStatus,
+      quantity: item.quantity,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      total: item.total,
+    })),
+    ...proposal.logisticsItems.map((item) => ({
+      description: `${item.label}${item.supplierName ? ` · ${item.supplierName}` : ""}`,
+      categoryLabel: `Logística e deslocamento · ${item.treatment === "INCLUDED" ? "incluído" : item.treatment === "NOT_APPLICABLE" ? "não se aplica" : "adicional"}`,
+      pricingStatus: item.pricingStatus,
+      quantity: item.quantity,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      total: item.total,
+    })),
+  ];
+
+  investmentItems.forEach((item) => {
     ensureSpace(doc, 48);
     const y = doc.y;
     doc.font(FONT_BODY_MEDIUM).fontSize(9).fillColor(COLORS.ink).text(item.description, 54, y, { width: 235 });

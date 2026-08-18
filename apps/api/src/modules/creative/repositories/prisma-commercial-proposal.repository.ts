@@ -47,6 +47,7 @@ export class PrismaCommercialProposalRepository implements CommercialProposalRep
         venueSnapshot: input.venueSnapshot as unknown as Prisma.InputJsonValue,
         supplierSelections: input.supplierSelections as unknown as Prisma.InputJsonValue,
         lineItems: input.lineItems as unknown as Prisma.InputJsonValue,
+        logisticsItems: input.logisticsItems as unknown as Prisma.InputJsonValue,
         subtotal: input.subtotal,
         contingencyAmount: input.contingencyAmount,
         managementFee: input.managementFee,

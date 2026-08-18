@@ -141,6 +141,49 @@ describe("buildCommercialProposalRecord", () => {
     expect(isCommercialCategoryAllowed("FULL_EVENT", "CATERING")).toBe(true);
   });
 
+  it("adds additional logistics and does not double-charge included transport", () => {
+    const result = buildCommercialProposalRecord({
+      tenantId: "tenant-1",
+      organizationId: "org-1",
+      proposalId: "proposal-logistics-1",
+      createdBy: null,
+      event,
+      client,
+      venue,
+      suppliers: [suppliers[1]!],
+      assignments: [],
+      dto: {
+        supplierSelections: [{ supplierId: "supplier-lighting", pricingStatus: "CONFIRMED" }],
+        logisticsItems: [
+          {
+            supplierId: "supplier-lighting",
+            label: "Transporte de equipamentos",
+            treatment: "ADDITIONAL",
+            quantity: 2,
+            unit: "viagem",
+            unitPrice: 500,
+            pricingStatus: "QUOTE_PENDING",
+          },
+          {
+            supplierId: "supplier-lighting",
+            label: "Montagem já incluída na cotação",
+            treatment: "INCLUDED",
+            quantity: 1,
+            unit: "serviço",
+            unitPrice: 2000,
+            pricingStatus: "CONFIRMED",
+          },
+        ],
+      },
+    });
+
+    expect(result.logisticsItems).toHaveLength(2);
+    expect(result.logisticsItems[0]?.total).toBe(1000);
+    expect(result.logisticsItems[1]?.total).toBe(0);
+    expect(result.subtotal).toBe(6000);
+    expect(result.hasUnconfirmedData).toBe(true);
+  });
+
   it("keeps a catalog estimate marked as an estimate until a quote is confirmed", () => {
     const result = buildCommercialProposalRecord({
       tenantId: "tenant-1",

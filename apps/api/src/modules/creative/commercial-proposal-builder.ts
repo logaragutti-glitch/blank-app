@@ -1,6 +1,8 @@
 import type {
   Client,
   CommercialLineItem,
+  CommercialLogisticsItem,
+  CommercialLogisticsTreatment,
   CommercialProposalScope,
   CommercialPaymentTerm,
   CommercialProposalSupplierInput,
@@ -228,6 +230,7 @@ function lineItemsFromSuppliers(
     const unitPrice = input?.unitPrice ?? supplier.estimatedCost ?? 0;
     return {
       id: `supplier-${supplier.supplierId}-${index}`,
+      kind: "SUPPLIER",
       category: supplier.category,
       categoryLabel: supplier.categoryLabel,
       description: supplier.scope,
@@ -258,6 +261,7 @@ function buildLineItems(
     const category = item.category;
     return {
       id: item.id ?? `custom-${index + 1}`,
+      kind: item.kind ?? "CUSTOM",
       category,
       categoryLabel: CATEGORY_LABELS[category],
       description: item.description,
@@ -273,6 +277,32 @@ function buildLineItems(
     };
   });
   return [...baseItems, ...additions];
+}
+
+function buildLogisticsItems(
+  inputs: UpsertCommercialProposalDto["logisticsItems"],
+  suppliers: CommercialSupplierSelection[],
+): CommercialLogisticsItem[] {
+  return (inputs ?? []).map((item, index) => {
+    const treatment: CommercialLogisticsTreatment = item.treatment ?? "ADDITIONAL";
+    const quantity = item.quantity ?? 1;
+    const unitPrice = item.unitPrice ?? 0;
+    const supplier = item.supplierId ? suppliers.find((selection) => selection.supplierId === item.supplierId) : undefined;
+    const isBillable = treatment === "ADDITIONAL";
+    return {
+      id: item.id ?? `logistics-${index + 1}`,
+      supplierId: item.supplierId ?? null,
+      supplierName: supplier?.name ?? null,
+      label: item.label,
+      treatment,
+      quantity,
+      unit: item.unit ?? "serviço",
+      unitPrice: roundMoney(isBillable ? unitPrice : 0),
+      total: roundMoney(isBillable ? quantity * unitPrice : 0),
+      pricingStatus: isBillable ? item.pricingStatus ?? "QUOTE_PENDING" : "CONFIRMED",
+      notes: item.notes ?? null,
+    };
+  });
 }
 
 function defaultPaymentTerms(totalInvestment: number): CommercialPaymentTerm[] {
@@ -311,9 +341,11 @@ export function buildCommercialProposalRecord(input: {
     input.dto.lineItems,
     input.event.guestsExpected,
   );
+  const logisticsItems = buildLogisticsItems(input.dto.logisticsItems, selections);
 
   const subtotal = roundMoney(
-    lineItems.filter((item) => item.included).reduce((sum, item) => sum + item.total, 0),
+    lineItems.filter((item) => item.included).reduce((sum, item) => sum + item.total, 0) +
+      logisticsItems.reduce((sum, item) => sum + item.total, 0),
   );
   const contingencyAmount = roundMoney(subtotal * ((input.dto.contingencyPercent ?? 0) / 100));
   const managementFee = roundMoney(input.dto.managementFee ?? 0);
@@ -332,7 +364,8 @@ export function buildCommercialProposalRecord(input: {
     selections.some(
       (supplier) => !isConfirmedContact(supplier.contactStatus) || supplier.pricingStatus !== "CONFIRMED",
     ) ||
-    lineItems.some((item) => item.pricingStatus !== "CONFIRMED");
+    lineItems.some((item) => item.pricingStatus !== "CONFIRMED") ||
+    logisticsItems.some((item) => item.treatment === "ADDITIONAL" && item.pricingStatus !== "CONFIRMED");
 
   return {
     tenantId: input.tenantId,
@@ -344,6 +377,7 @@ export function buildCommercialProposalRecord(input: {
     venueSnapshot: venueSnapshot(input.venue, input.researchedVenue),
     supplierSelections: selections,
     lineItems,
+    logisticsItems,
     subtotal,
     contingencyAmount,
     managementFee,

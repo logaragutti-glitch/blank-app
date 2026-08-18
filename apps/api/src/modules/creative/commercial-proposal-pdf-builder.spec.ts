@@ -51,6 +51,7 @@ describe("buildCommercialProposalPdf", () => {
           pricingStatus: "ESTIMATE",
         },
       ],
+      logisticsItems: [],
       lineItems: [
         {
           id: "item-1",

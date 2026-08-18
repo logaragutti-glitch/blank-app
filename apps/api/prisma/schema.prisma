@@ -332,9 +332,10 @@ model Supplier {
 
   catalogCategories SupplierCatalogCategory[]
 
-  organization Organization             @relation(fields: [organizationId], references: [id])
-  venues       VenuePreferredSupplier[]
-  projects     ProjectSupplier[]
+  organization     Organization             @relation(fields: [organizationId], references: [id])
+  venues           VenuePreferredSupplier[]
+  projects         ProjectSupplier[]
+  commercialQuotes CommercialQuote[]
 
   @@unique([organizationId, name])
   @@index([tenantId])
@@ -695,6 +696,7 @@ model Event {
   files               ProjectFile[]
   suppliers           ProjectSupplier[]
   chatMessages        ChatMessage[]
+  commercialQuotes    CommercialQuote[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -1033,6 +1035,7 @@ model CommercialProposal {
   venueSnapshot      Json                     @map("venue_snapshot")
   supplierSelections Json                     @map("supplier_selections")
   lineItems          Json                     @map("line_items")
+  logisticsItems     Json                     @default("[]") @map("logistics_items")
   subtotal           Decimal                  @db.Decimal(12, 2)
   contingencyAmount  Decimal                  @default(0) @map("contingency_amount") @db.Decimal(12, 2)
   managementFee      Decimal                  @default(0) @map("management_fee") @db.Decimal(12, 2)
@@ -1054,6 +1057,7 @@ model CommercialProposal {
 
   proposal Proposal                    @relation(fields: [proposalId], references: [id])
   versions CommercialProposalVersion[]
+  quotes   CommercialQuote[]
 
   event Event @relation(fields: [eventId], references: [id])
 
@@ -1061,6 +1065,46 @@ model CommercialProposal {
   @@index([organizationId])
   @@index([eventId])
   @@map("commercial_proposals")
+}
+
+enum CommercialQuoteStatus {
+  DRAFT
+  RECEIVED
+  SELECTED
+  REJECTED
+  EXPIRED
+}
+
+model CommercialQuote {
+  id                   String   @id @default(uuid()) @db.Uuid
+  tenantId             String   @map("tenant_id") @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  eventId              String   @map("event_id") @db.Uuid
+  commercialProposalId String   @map("commercial_proposal_id") @db.Uuid
+  supplierId           String?  @map("supplier_id") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy            String?  @map("created_by") @db.Uuid
+
+  category   String
+  title      String
+  amount     Decimal               @db.Decimal(12, 2)
+  currency   String                @default("BRL")
+  source     String?
+  validUntil DateTime?             @map("valid_until") @db.Timestamptz(6)
+  status     CommercialQuoteStatus @default(DRAFT)
+  notes      String?
+
+  event              Event              @relation(fields: [eventId], references: [id])
+  commercialProposal CommercialProposal @relation(fields: [commercialProposalId], references: [id], onDelete: Cascade)
+  supplier           Supplier?          @relation(fields: [supplierId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([eventId])
+  @@index([commercialProposalId])
+  @@index([supplierId])
+  @@map("commercial_quotes")
 }
 
 model CommercialProposalVersion {

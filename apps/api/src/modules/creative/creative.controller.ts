@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { CommercialQuoteStatus as PrismaCommercialQuoteStatus, Prisma } from "@prisma/client";
 import {
   BadRequestException,
   Body,
@@ -21,6 +22,7 @@ import type {
   CommercialProposal,
   CommercialProposalStatus,
   CommercialProposalVersion,
+  CommercialQuote,
 } from "@eve-os/types";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload";
@@ -50,7 +52,11 @@ import {
   isCommercialCategoryAllowed,
 } from "./commercial-proposal-builder";
 import { buildCommercialProposalPdf } from "./commercial-proposal-pdf-builder";
-import { UpsertCommercialProposalDto } from "./dto/upsert-commercial-proposal.dto";
+import {
+  CreateCommercialQuoteDto,
+  UpdateCommercialQuoteStatusDto,
+  UpsertCommercialProposalDto,
+} from "./dto/upsert-commercial-proposal.dto";
 import { UpdateCommercialStatusDto } from "./dto/update-commercial-status.dto";
 import { buildProposalPdf, type ProposalPdfComponent } from "./proposal-pdf-builder";
 import {
@@ -617,6 +623,127 @@ export class CreativeController {
     return { commercialProposal: updatedCommercial, proposal: updatedProposal };
   }
 
+  @Get("proposals/:proposalId/commercial/quotes")
+  async getCommercialQuotes(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ): Promise<CommercialQuote[]> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    const quotes = await this.prisma.commercialQuote.findMany({
+      where: { commercialProposalId: commercial.id, organizationId: user.organizationId },
+      include: { supplier: { select: { name: true } } },
+      orderBy: [{ category: "asc" }, { amount: "asc" }, { createdAt: "desc" }],
+    });
+    return quotes.map((quote) => ({
+      id: quote.id,
+      supplierId: quote.supplierId,
+      supplierName: quote.supplier?.name ?? null,
+      category: quote.category,
+      title: quote.title,
+      amount: Number(quote.amount),
+      currency: quote.currency,
+      source: quote.source,
+      validUntil: quote.validUntil?.toISOString() ?? null,
+      status: quote.status,
+      notes: quote.notes,
+      createdAt: quote.createdAt.toISOString(),
+    }));
+  }
+
+  @Post("proposals/:proposalId/commercial/quotes")
+  async createCommercialQuote(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Body() dto: CreateCommercialQuoteDto,
+  ): Promise<CommercialQuote> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    let supplierName: string | null = null;
+    if (dto.supplierId) {
+      const supplier = await this.prisma.supplier.findFirst({
+        where: { id: dto.supplierId, organizationId: user.organizationId, deletedAt: null },
+        select: { name: true },
+      });
+      if (!supplier) throw new NotFoundException("Fornecedor da cotação não encontrado no catálogo da organização.");
+      supplierName = supplier.name;
+    }
+    const quote = await this.prisma.commercialQuote.create({
+      data: {
+        tenantId: user.tenantId,
+        organizationId: user.organizationId,
+        eventId: proposal.eventId,
+        commercialProposalId: commercial.id,
+        supplierId: dto.supplierId ?? null,
+        createdBy: user.sub,
+        category: dto.category,
+        title: dto.title,
+        amount: dto.amount,
+        currency: dto.currency ?? "BRL",
+        source: dto.source ?? null,
+        validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
+        status: dto.status as PrismaCommercialQuoteStatus ?? "DRAFT",
+        notes: dto.notes ?? null,
+      },
+      include: { supplier: { select: { name: true } } },
+    });
+    return {
+      id: quote.id,
+      supplierId: quote.supplierId,
+      supplierName: supplierName ?? quote.supplier?.name ?? null,
+      category: quote.category,
+      title: quote.title,
+      amount: Number(quote.amount),
+      currency: quote.currency,
+      source: quote.source,
+      validUntil: quote.validUntil?.toISOString() ?? null,
+      status: quote.status,
+      notes: quote.notes,
+      createdAt: quote.createdAt.toISOString(),
+    };
+  }
+
+  @Patch("proposals/:proposalId/commercial/quotes/:quoteId/status")
+  async updateCommercialQuoteStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Param("quoteId") quoteId: string,
+    @Body() dto: UpdateCommercialQuoteStatusDto,
+  ): Promise<CommercialQuote> {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    const quote = await this.prisma.commercialQuote.findFirst({
+      where: { id: quoteId, commercialProposalId: commercial.id, organizationId: user.organizationId },
+      include: { supplier: { select: { name: true } } },
+    });
+    if (!quote) throw new NotFoundException("Commercial quote not found");
+    const updated = await this.prisma.commercialQuote.update({
+      where: { id: quote.id },
+      data: { status: dto.status as PrismaCommercialQuoteStatus, notes: dto.notes ?? quote.notes },
+      include: { supplier: { select: { name: true } } },
+    });
+    return {
+      id: updated.id,
+      supplierId: updated.supplierId,
+      supplierName: updated.supplier?.name ?? null,
+      category: updated.category,
+      title: updated.title,
+      amount: Number(updated.amount),
+      currency: updated.currency,
+      source: updated.source,
+      validUntil: updated.validUntil?.toISOString() ?? null,
+      status: updated.status,
+      notes: updated.notes,
+      createdAt: updated.createdAt.toISOString(),
+    };
+  }
+
   @Get("proposals/:proposalId/commercial/pdf")
   async getCommercialProposalPdf(
     @CurrentUser() user: AuthenticatedUser,
@@ -726,6 +853,15 @@ export class CreativeController {
     if (invalidLineItemSupplierIds.length > 0) {
       throw new BadRequestException(
         "Every custom line item supplierId must also be present in supplierSelections.",
+      );
+    }
+
+    const invalidLogisticsSupplierIds = (dto.logisticsItems ?? [])
+      .map((item) => item.supplierId)
+      .filter((supplierId): supplierId is string => Boolean(supplierId && !selectedSupplierIds.has(supplierId)));
+    if (invalidLogisticsSupplierIds.length > 0) {
+      throw new BadRequestException(
+        "Every logistics item supplierId must also be present in supplierSelections.",
       );
     }
 

@@ -12,7 +12,11 @@ import type {
   CommercialProposal,
   CommercialProposalScope,
   CommercialProposalVersion,
+  CommercialLogisticsTreatment,
   CommercialPricingStatus,
+  CommercialQuote,
+  CommercialQuoteStatus,
+  CommercialSupplierCategory,
   Supplier,
   WeddingKnowledgeResponse,
 } from "../../../../lib/api-types";
@@ -24,6 +28,30 @@ type SupplierDraft = {
   pricingStatus: CommercialPricingStatus;
 };
 
+type CustomItemDraft = {
+  id?: string;
+  category: CommercialSupplierCategory;
+  description: string;
+  supplierId: string;
+  quantity: string;
+  unit: string;
+  unitPrice: string;
+  pricingStatus: CommercialPricingStatus;
+  notes: string;
+};
+
+type LogisticsDraft = {
+  id?: string;
+  supplierId: string;
+  label: string;
+  treatment: CommercialLogisticsTreatment;
+  quantity: string;
+  unit: string;
+  unitPrice: string;
+  pricingStatus: CommercialPricingStatus;
+  notes: string;
+};
+
 const CATEGORY_LABELS: Record<string, string> = {
   CATERING: "Buffet e gastronomia",
   FURNITURE_RENTAL: "Móveis e locações",
@@ -33,6 +61,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   FLORIST: "Flores e folhagens",
   ASSEMBLY_CREW: "Montagem e desmontagem",
   OTHER: "Objetos, tecidos e itens complementares",
+  DECOR: "Flores e ambientação",
 };
 
 const CATEGORY_ORDER = [
@@ -92,6 +121,15 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
   const [scope, setScope] = useState<CommercialProposalScope>("FULL_EVENT");
   const [venueResearchId, setVenueResearchId] = useState("");
   const [supplierDrafts, setSupplierDrafts] = useState<Record<string, SupplierDraft>>({});
+  const [customItems, setCustomItems] = useState<CustomItemDraft[]>([]);
+  const [logisticsDrafts, setLogisticsDrafts] = useState<LogisticsDraft[]>([]);
+  const [quotes, setQuotes] = useState<CommercialQuote[]>([]);
+  const [quoteTitle, setQuoteTitle] = useState("");
+  const [quoteCategory, setQuoteCategory] = useState<CommercialSupplierCategory>("DECOR");
+  const [quoteSupplierId, setQuoteSupplierId] = useState("");
+  const [quoteAmount, setQuoteAmount] = useState("");
+  const [quoteSource, setQuoteSource] = useState("");
+  const [quoteStatus, setQuoteStatus] = useState<CommercialQuoteStatus>("RECEIVED");
   const [contingencyPercent, setContingencyPercent] = useState("0");
   const [managementFee, setManagementFee] = useState("0");
   const [discount, setDiscount] = useState("0");
@@ -118,13 +156,17 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       apiClient
         .get<CommercialProposalVersion[]>(`/creative/proposals/${proposalId}/commercial/versions`, accessToken)
         .catch(() => []),
+      apiClient
+        .get<CommercialQuote[]>(`/creative/proposals/${proposalId}/commercial/quotes`, accessToken)
+        .catch(() => []),
     ])
-      .then(([knowledgeResponse, supplierResponse, commercialResponse, versionResponse]) => {
+      .then(([knowledgeResponse, supplierResponse, commercialResponse, versionResponse, quoteResponse]) => {
         setKnowledge(knowledgeResponse);
         setSuppliers(supplierResponse.filter(isRegionalSupplier));
         setCommercialProposal(commercialResponse);
         setScope(commercialResponse?.scope ?? "FULL_EVENT");
         setVersions(versionResponse);
+        setQuotes(quoteResponse);
         if (commercialResponse) {
           setVenueResearchId(
             commercialResponse.venue.source === "RESEARCH_CATALOG" ? commercialResponse.venue.id ?? "" : "",
@@ -148,6 +190,34 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
             };
           });
           setSupplierDrafts(existingDrafts);
+          setCustomItems(
+            commercialResponse.lineItems
+              .filter((item) => item.kind === "CUSTOM" || item.supplierId === null)
+              .map((item) => ({
+                id: item.id,
+                category: item.category,
+                description: item.description,
+                supplierId: item.supplierId ?? "",
+                quantity: String(item.quantity),
+                unit: item.unit,
+                unitPrice: String(item.unitPrice),
+                pricingStatus: item.pricingStatus,
+                notes: item.notes ?? "",
+              })),
+          );
+          setLogisticsDrafts(
+            commercialResponse.logisticsItems.map((item) => ({
+              id: item.id,
+              supplierId: item.supplierId ?? "",
+              label: item.label,
+              treatment: item.treatment,
+              quantity: String(item.quantity),
+              unit: item.unit,
+              unitPrice: String(item.unitPrice),
+              pricingStatus: item.pricingStatus,
+              notes: item.notes ?? "",
+            })),
+          );
         }
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Não conseguimos carregar os dados comerciais."))
@@ -157,6 +227,18 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
   const visibleSuppliers = useMemo(
     () => suppliers.filter((supplier) => scope === "FULL_EVENT" || DECORATION_ONLY_CATEGORIES.has(supplier.category)),
     [scope, suppliers],
+  );
+
+  const selectedSupplierOptions = useMemo(
+    () => visibleSuppliers.filter((supplier) => supplierDrafts[supplier.id]?.selected),
+    [supplierDrafts, visibleSuppliers],
+  );
+
+  const customCategoryOptions = useMemo<CommercialSupplierCategory[]>(
+    () => (scope === "DECORATION_ONLY"
+      ? ["DECOR", "FURNITURE_RENTAL", "LIGHTING", "ASSEMBLY_CREW", "OTHER"]
+      : ["DECOR", "CATERING", "FURNITURE_RENTAL", "PHOTOGRAPHY", "LIGHTING", "MUSIC", "ASSEMBLY_CREW", "OTHER"]),
+    [scope],
   );
 
   const groupedSuppliers = useMemo(() => {
@@ -196,6 +278,97 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
     }));
   }
 
+  function addCustomItem() {
+    setCustomItems((current) => [
+      ...current,
+      {
+        category: customCategoryOptions[0] ?? "DECOR",
+        description: "",
+        supplierId: "",
+        quantity: "1",
+        unit: "unidade",
+        unitPrice: "",
+        pricingStatus: "QUOTE_PENDING",
+        notes: "",
+      },
+    ]);
+  }
+
+  function updateCustomItem(index: number, patch: Partial<CustomItemDraft>) {
+    setCustomItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  }
+
+  function removeCustomItem(index: number) {
+    setCustomItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function addLogisticsItem() {
+    setLogisticsDrafts((current) => [
+      ...current,
+      {
+        supplierId: "",
+        label: "",
+        treatment: "ADDITIONAL",
+        quantity: "1",
+        unit: "serviço",
+        unitPrice: "",
+        pricingStatus: "QUOTE_PENDING",
+        notes: "",
+      },
+    ]);
+  }
+
+  function updateLogisticsItem(index: number, patch: Partial<LogisticsDraft>) {
+    setLogisticsDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  }
+
+  function removeLogisticsItem(index: number) {
+    setLogisticsDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  async function handleAddQuote() {
+    if (!proposalId || !quoteTitle.trim() || quoteAmount === "") {
+      setError("Informe título e valor da cotação antes de salvar.");
+      return;
+    }
+    try {
+      const quote = await apiClient.post<CommercialQuote>(
+        `/creative/proposals/${proposalId}/commercial/quotes`,
+        {
+          supplierId: quoteSupplierId || null,
+          category: quoteCategory,
+          title: quoteTitle.trim(),
+          amount: Number(quoteAmount),
+          source: quoteSource || null,
+          status: quoteStatus,
+        },
+        accessToken,
+      );
+      setQuotes((current) => [quote, ...current]);
+      setQuoteTitle("");
+      setQuoteAmount("");
+      setQuoteSource("");
+      setSuccess("Cotação registrada no histórico comercial.");
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não conseguimos registrar a cotação.");
+    }
+  }
+
+  async function handleQuoteStatus(quote: CommercialQuote, status: CommercialQuoteStatus) {
+    if (!proposalId) return;
+    try {
+      const updated = await apiClient.patch<CommercialQuote>(
+        `/creative/proposals/${proposalId}/commercial/quotes/${quote.id}/status`,
+        { status },
+        accessToken,
+      );
+      setQuotes((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não conseguimos atualizar a cotação.");
+    }
+  }
+
   async function refreshVersions() {
     if (!proposalId) return;
     try {
@@ -227,12 +400,42 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
           };
         })
         .filter((selection): selection is NonNullable<typeof selection> => selection !== null);
+      const lineItems = customItems
+        .filter((item) => item.description.trim())
+        .map((item) => ({
+          id: item.id,
+          kind: "CUSTOM" as const,
+          category: item.category,
+          description: item.description.trim(),
+          supplierId: item.supplierId || null,
+          quantity: Number(item.quantity || 1),
+          unit: item.unit || "unidade",
+          unitPrice: Number(item.unitPrice || 0),
+          pricingStatus: item.pricingStatus,
+          included: true,
+          notes: item.notes || null,
+        }));
+      const logisticsItems = logisticsDrafts
+        .filter((item) => item.label.trim())
+        .map((item) => ({
+          id: item.id,
+          supplierId: item.supplierId || null,
+          label: item.label.trim(),
+          treatment: item.treatment,
+          quantity: Number(item.quantity || 1),
+          unit: item.unit || "serviço",
+          unitPrice: Number(item.unitPrice || 0),
+          pricingStatus: item.pricingStatus,
+          notes: item.notes || null,
+        }));
       const saved = await apiClient.post<CommercialProposal>(
         `/creative/proposals/${proposalId}/commercial`,
         {
           scope,
           venueResearchId: venueResearchId || null,
           supplierSelections,
+          lineItems,
+          logisticsItems,
           contingencyPercent: Number(contingencyPercent || 0),
           managementFee: Number(managementFee || 0),
           discount: Number(discount || 0),
@@ -434,7 +637,128 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       </section>
 
       <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-        <h2>4. Ajustes comerciais</h2>
+        <h2>4. Itens personalizados</h2>
+        <p style={{ color: colors.textMuted, fontSize: 13 }}>
+          Adicione flores, velas, tapetes, tecidos, painéis, mesa posta, transporte de peças ou qualquer item que precise aparecer separadamente no orçamento.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: spacing.sm }}>
+          {customItems.map((item, index) => (
+            <div key={item.id ?? `custom-${index}`} style={{ border: `1px solid ${colors.border}`, borderRadius: 8, padding: spacing.sm }}>
+              <div style={{ display: "grid", gridTemplateColumns: "180px minmax(0, 1fr) 160px", gap: 8 }}>
+                <select value={item.category} onChange={(event) => updateCustomItem(index, { category: event.target.value as CommercialSupplierCategory })} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                  {customCategoryOptions.map((category) => <option key={category} value={category}>{CATEGORY_LABELS[category] ?? category}</option>)}
+                </select>
+                <input value={item.description} onChange={(event) => updateCustomItem(index, { description: event.target.value })} placeholder="Descrição do item" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <select value={item.supplierId} onChange={(event) => updateCustomItem(index, { supplierId: event.target.value })} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                  <option value="">Sem fornecedor específico</option>
+                  {selectedSupplierOptions.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "100px 120px 150px 170px minmax(0, 1fr) auto", gap: 8, marginTop: 8 }}>
+                <input value={item.quantity} onChange={(event) => updateCustomItem(index, { quantity: event.target.value })} placeholder="Qtd." inputMode="decimal" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <input value={item.unit} onChange={(event) => updateCustomItem(index, { unit: event.target.value })} placeholder="Unidade" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <input value={item.unitPrice} onChange={(event) => updateCustomItem(index, { unitPrice: event.target.value })} placeholder="Valor unitário" inputMode="decimal" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <select value={item.pricingStatus} onChange={(event) => updateCustomItem(index, { pricingStatus: event.target.value as CommercialPricingStatus })} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                  <option value="ESTIMATE">Estimativa</option>
+                  <option value="QUOTE_PENDING">Cotação pendente</option>
+                  <option value="CONFIRMED">Confirmado</option>
+                </select>
+                <input value={item.notes} onChange={(event) => updateCustomItem(index, { notes: event.target.value })} placeholder="Observação" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <Button variant="ghost" onClick={() => removeCustomItem(index)}>Remover</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button variant="ghost" onClick={addCustomItem} style={{ marginTop: spacing.sm }}>Adicionar item personalizado</Button>
+      </section>
+
+      <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
+        <h2>5. Logística e deslocamento</h2>
+        <p style={{ color: colors.textMuted, fontSize: 13 }}>
+          Registre custos por fornecedor e espaço. Se o fornecedor informar que o transporte ou a montagem já estão incluídos, use “Incluído” para evitar cobrança duplicada.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: spacing.sm }}>
+          {logisticsDrafts.map((item, index) => (
+            <div key={item.id ?? `logistics-${index}`} style={{ border: `1px solid ${colors.border}`, borderRadius: 8, padding: spacing.sm }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 180px 170px", gap: 8 }}>
+                <input value={item.label} onChange={(event) => updateLogisticsItem(index, { label: event.target.value })} placeholder="Deslocamento, transporte de peças, pedágio, montagem..." style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <select value={item.supplierId} onChange={(event) => updateLogisticsItem(index, { supplierId: event.target.value })} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                  <option value="">Logística geral do evento</option>
+                  {selectedSupplierOptions.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+                </select>
+                <select value={item.treatment} onChange={(event) => updateLogisticsItem(index, { treatment: event.target.value as CommercialLogisticsTreatment })} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                  <option value="ADDITIONAL">Cobrado à parte</option>
+                  <option value="INCLUDED">Já incluído</option>
+                  <option value="NOT_APPLICABLE">Não se aplica</option>
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "100px 120px 150px 170px minmax(0, 1fr) auto", gap: 8, marginTop: 8 }}>
+                <input value={item.quantity} onChange={(event) => updateLogisticsItem(index, { quantity: event.target.value })} placeholder="Qtd." inputMode="decimal" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <input value={item.unit} onChange={(event) => updateLogisticsItem(index, { unit: event.target.value })} placeholder="Unidade" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <input value={item.unitPrice} onChange={(event) => updateLogisticsItem(index, { unitPrice: event.target.value })} placeholder="Valor" inputMode="decimal" disabled={item.treatment !== "ADDITIONAL"} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}`, opacity: item.treatment === "ADDITIONAL" ? 1 : 0.55 }} />
+                <select value={item.pricingStatus} onChange={(event) => updateLogisticsItem(index, { pricingStatus: event.target.value as CommercialPricingStatus })} disabled={item.treatment !== "ADDITIONAL"} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}`, opacity: item.treatment === "ADDITIONAL" ? 1 : 0.55 }}>
+                  <option value="ESTIMATE">Estimativa</option>
+                  <option value="QUOTE_PENDING">Cotação pendente</option>
+                  <option value="CONFIRMED">Confirmado</option>
+                </select>
+                <input value={item.notes} onChange={(event) => updateLogisticsItem(index, { notes: event.target.value })} placeholder="Observação e regra do espaço" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                <Button variant="ghost" onClick={() => removeLogisticsItem(index)}>Remover</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button variant="ghost" onClick={addLogisticsItem} style={{ marginTop: spacing.sm }}>Adicionar custo de logística</Button>
+      </section>
+
+      <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
+        <h2>6. Cotações e comparação</h2>
+        <p style={{ color: colors.textMuted, fontSize: 13 }}>
+          Registre cotações recebidas por WhatsApp, e-mail ou outro canal. O EVE OS preserva as alternativas e permite marcar a escolhida sem apagar as demais.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 170px 170px 150px", gap: 8 }}>
+          <input value={quoteTitle} onChange={(event) => setQuoteTitle(event.target.value)} placeholder="Título da cotação" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+          <select value={quoteCategory} onChange={(event) => setQuoteCategory(event.target.value as CommercialSupplierCategory)} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+            {customCategoryOptions.map((category) => <option key={category} value={category}>{CATEGORY_LABELS[category] ?? category}</option>)}
+          </select>
+          <select value={quoteSupplierId} onChange={(event) => setQuoteSupplierId(event.target.value)} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+            <option value="">Fornecedor não vinculado</option>
+            {visibleSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+          </select>
+          <input value={quoteAmount} onChange={(event) => setQuoteAmount(event.target.value)} placeholder="Valor" inputMode="decimal" style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 180px auto", gap: 8, marginTop: 8 }}>
+          <input value={quoteSource} onChange={(event) => setQuoteSource(event.target.value)} placeholder="Fonte: WhatsApp, e-mail, proposta PDF..." style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+          <select value={quoteStatus} onChange={(event) => setQuoteStatus(event.target.value as CommercialQuoteStatus)} style={{ padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+            <option value="DRAFT">Rascunho</option>
+            <option value="RECEIVED">Recebida</option>
+            <option value="SELECTED">Selecionada</option>
+            <option value="REJECTED">Rejeitada</option>
+            <option value="EXPIRED">Expirada</option>
+          </select>
+          <Button variant="ghost" onClick={handleAddQuote}>Registrar cotação</Button>
+        </div>
+        {quotes.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: spacing.sm }}>
+            {quotes.map((quote) => (
+              <div key={quote.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 120px 150px 150px", gap: 8, alignItems: "center", borderTop: `1px solid ${colors.border}`, paddingTop: 8 }}>
+                <span><strong>{quote.title}</strong><br /><small style={{ color: colors.textMuted }}>{CATEGORY_LABELS[quote.category] ?? quote.category}{quote.supplierName ? ` · ${quote.supplierName}` : ""}{quote.source ? ` · ${quote.source}` : ""}</small></span>
+                <strong>{formatMoney(quote.amount)}</strong>
+                <span style={{ color: colors.textMuted, fontSize: 12 }}>{quote.status}</span>
+                <select value={quote.status} onChange={(event) => handleQuoteStatus(quote, event.target.value as CommercialQuoteStatus)} style={{ padding: 7, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                  <option value="DRAFT">Rascunho</option>
+                  <option value="RECEIVED">Recebida</option>
+                  <option value="SELECTED">Selecionada</option>
+                  <option value="REJECTED">Rejeitada</option>
+                  <option value="EXPIRED">Expirada</option>
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
+        <h2>7. Ajustes comerciais</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: spacing.sm }}>
           <label style={{ color: colors.textMuted, fontSize: 13 }}>Contingência (%)<input value={contingencyPercent} onChange={(event) => setContingencyPercent(event.target.value)} inputMode="decimal" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
           <label style={{ color: colors.textMuted, fontSize: 13 }}>Taxa de gestão<input value={managementFee} onChange={(event) => setManagementFee(event.target.value)} inputMode="decimal" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
@@ -451,7 +775,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
 
       {commercialProposal && (
         <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-          <h2>5. Revisão e aprovação</h2>
+          <h2>8. Revisão e aprovação</h2>
           <p style={{ color: colors.textMuted, fontSize: 13, marginTop: 0 }}>
             A proposta passa por revisão interna antes de ser enviada. A produção só é liberada depois do status <strong>APROVADA</strong>.
           </p>
@@ -486,6 +810,18 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
               </div>
             ))}
           </div>
+          {commercialProposal.logisticsItems.length > 0 && (
+            <div style={{ marginTop: spacing.sm, paddingTop: spacing.sm, borderTop: `1px solid ${colors.border}` }}>
+              <p style={{ color: colors.textMuted, margin: 0, fontSize: 12, textTransform: "uppercase" }}>Logística e deslocamento</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 6 }}>
+                {commercialProposal.logisticsItems.map((item) => (
+                  <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: spacing.sm, fontSize: 13 }}>
+                    <span>{item.label}{item.supplierName ? ` · ${item.supplierName}` : ""}</span><strong>{item.treatment === "ADDITIONAL" ? formatMoney(item.total) : "Incluído"}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {versions.length > 0 && (
             <div style={{ marginTop: spacing.md, paddingTop: spacing.sm, borderTop: `1px solid ${colors.border}` }}>
               <p style={{ color: colors.textMuted, margin: 0, fontSize: 12, textTransform: "uppercase" }}>Histórico da proposta</p>
