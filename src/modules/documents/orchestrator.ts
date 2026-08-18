@@ -1,5 +1,6 @@
 import { withTenant } from "@/lib/tenant";
 import { NotFoundError } from "@/lib/api";
+import { mapWithConcurrency } from "@/lib/async";
 import { enforceAiRateLimit } from "@/lib/rate-limit";
 import { toAnswersMap } from "@/modules/interview/questions";
 import { OpenAiProvider } from "@/modules/ai/openai-provider";
@@ -7,6 +8,16 @@ import { DOCUMENT_REGISTRY, type DocumentSpec, type GenerationContext } from "./
 import type { DocumentContent } from "./schemas";
 import type { GenerationResult } from "./orchestrator-types";
 import { calculateMemScore } from "./score";
+
+const DEFAULT_DOCUMENT_GENERATION_CONCURRENCY = 3;
+
+function getDocumentGenerationConcurrency(): number {
+  const configured = Number.parseInt(process.env.DOCUMENT_GENERATION_CONCURRENCY ?? "", 10);
+  if (Number.isInteger(configured) && configured > 0) {
+    return Math.min(configured, DOCUMENT_REGISTRY.length);
+  }
+  return DEFAULT_DOCUMENT_GENERATION_CONCURRENCY;
+}
 
 /**
  * Recalcula o MEM Score a partir do estado atual dos documentos (última versão de
@@ -115,11 +126,12 @@ export async function syncTimeline(tx: Tx, eventId: string, result: GenerationRe
 }
 
 /**
- * Dispara a geração dos documentos MEM em paralelo. As chamadas de IA acontecem
+ * Dispara a geração dos documentos MEM em paralelo limitado. As chamadas de IA acontecem
  * FORA de transação de banco (podem levar segundos cada; segurar uma transação
- * Postgres aberta por todo esse tempo prenderia conexões à toa). O resultado é
- * persistido de uma vez ao final. Ver docs/ARCHITECTURE.md sobre o gatilho para
- * migrar isso para uma fila de workers, caso o volume justifique.
+ * Postgres aberta por todo esse tempo prenderia conexões à toa). O limite de três chamadas
+ * simultâneas reduz picos de 429 sem transformar o fluxo em uma fila persistente. O resultado
+ * é persistido de uma vez ao final. Ver docs/ARCHITECTURE.md sobre o gatilho para migrar isso
+ * para uma fila de workers, caso o volume justifique.
  */
 export async function generateDocuments(organizationId: string, eventId: string) {
   await enforceAiRateLimit(organizationId, "documents.generate");
@@ -149,7 +161,11 @@ export async function generateDocuments(organizationId: string, eventId: string)
     }
   });
 
-  const results = await Promise.all(DOCUMENT_REGISTRY.map((spec) => generateOne(spec, context)));
+  const results = await mapWithConcurrency(
+    DOCUMENT_REGISTRY,
+    getDocumentGenerationConcurrency(),
+    (spec) => generateOne(spec, context),
+  );
 
   await withTenant(organizationId, async (tx) => {
     for (const result of results) {
