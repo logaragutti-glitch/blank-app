@@ -29,8 +29,8 @@ infraestrutura ociosa:
 | --- | --- | --- |
 | Postgres + pgvector | Sim (todo o domínio + busca semântica de estilos) | **Sim** |
 | Armazenamento S3-compatível (MinIO local) | Sim (imagens de inspiração, renders conceituais) | **Sim** (via um provedor real) |
-| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | Sim (Agentes 1/3/4, embeddings) | **Sim** |
-| `GOOGLE_AI_API_KEY` | Sim (renders conceituais — `GeminiConceptualRenderProvider`) | **Sim, só para esse endpoint** — sem ela, o resto do sistema funciona normalmente, só o render falha com um erro claro |
+| `ANTHROPIC_API_KEY` | Sim (Agentes 1/3/4) | **Sim** |
+| `OPENAI_API_KEY` | Sim (embeddings e renders conceituais — `OpenAIConceptualRenderProvider`) | **Sim**, para embeddings e renders conceituais |
 | E-mail real (Gmail/Google Workspace via SMTP) | Sim, se `GMAIL_USER`/`GMAIL_APP_PASSWORD` estiverem configuradas — `EmailModule` escolhe `GmailEmailProvider` nesse caso, senão cai em `ConsoleEmailProvider` (só loga o link) | **Sim, para recuperação de senha e convite de equipe entregarem e-mail de verdade** — ver seção abaixo para gerar a App Password |
 | Redis | Não — nenhum módulo o injeta ainda | Não, por enquanto |
 | RabbitMQ | Não — cogitado em `07-architecture-book.md` para geração assíncrona de PDF/propostas, mas todo esse fluxo hoje é HTTP síncrono | Não, por enquanto |
@@ -74,7 +74,7 @@ Railway/Render, os dois mais simples para uma API NestJS + Postgres:
    `apps/api`).
 2. Variáveis de ambiente obrigatórias (ver `apps/api/.env.example`):
    `DATABASE_URL`, `S3_ENDPOINT`/`S3_ACCESS_KEY`/`S3_SECRET_KEY`/
-   `S3_BUCKET`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`,
+   `S3_BUCKET`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
    `JWT_SECRET` (gerar
    um valor aleatório real — o `.env.example` só tem um placeholder, nunca
    usar `change-me-in-production` de verdade), `WEB_APP_URL` (usada para
