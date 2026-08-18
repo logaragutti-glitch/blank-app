@@ -44,7 +44,11 @@ import {
 } from "./ai/proposal-components.port";
 import { UpdateProposalComponentDto } from "./dto/update-proposal-component.dto";
 import { buildProposalComponents } from "./proposal-component-builder";
-import { buildCommercialProposalRecord } from "./commercial-proposal-builder";
+import {
+  buildCommercialProposalRecord,
+  commercialSupplierCategoryFor,
+  isCommercialCategoryAllowed,
+} from "./commercial-proposal-builder";
 import { buildCommercialProposalPdf } from "./commercial-proposal-pdf-builder";
 import { UpsertCommercialProposalDto } from "./dto/upsert-commercial-proposal.dto";
 import { UpdateCommercialStatusDto } from "./dto/update-commercial-status.dto";
@@ -681,6 +685,7 @@ export class CreativeController {
     if (!client) throw new NotFoundException("Client not found for this event");
     if (!venue) throw new NotFoundException("Venue not found for this event");
 
+    const scope = dto.scope ?? "FULL_EVENT";
     const suppliersById = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
     const unknownSupplierIds = dto.supplierSelections
       .map((selection) => selection.supplierId)
@@ -688,6 +693,29 @@ export class CreativeController {
     if (unknownSupplierIds.length > 0) {
       throw new BadRequestException(
         `Fornecedor não disponível no catálogo regional ou removido: ${unknownSupplierIds.join(", ")}. Selecione novamente um fornecedor listado na tela.`,
+      );
+    }
+
+    const excludedSupplierIds = dto.supplierSelections
+      .filter((selection) => {
+        const supplier = suppliersById.get(selection.supplierId);
+        return Boolean(
+          supplier && !isCommercialCategoryAllowed(scope, commercialSupplierCategoryFor(supplier.category)),
+        );
+      })
+      .map((selection) => selection.supplierId);
+    if (excludedSupplierIds.length > 0) {
+      throw new BadRequestException(
+        "O orçamento somente de decoração aceita flores, móveis, iluminação decorativa, itens complementares e montagem; remova fornecedores de buffet, foto/filme, DJ ou sonorização técnica.",
+      );
+    }
+
+    const invalidCustomCategories = (dto.lineItems ?? [])
+      .map((item) => item.category)
+      .filter((category) => !isCommercialCategoryAllowed(scope, category));
+    if (invalidCustomCategories.length > 0) {
+      throw new BadRequestException(
+        "O orçamento somente de decoração não aceita itens personalizados fora da ambientação decorativa.",
       );
     }
 

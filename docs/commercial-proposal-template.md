@@ -6,11 +6,22 @@ Este modelo transforma a proposta criativa em uma composição comercial apresen
 
 O documento é deliberadamente transparente: um valor cadastrado como estimativa não é apresentado como preço confirmado. A proposta também sinaliza quando o contato do fornecedor, a disponibilidade do espaço ou o preço ainda precisam ser confirmados.
 
+## Modalidades comerciais
+
+A assessora pode escolher entre duas modalidades:
+
+| Modalidade | O que contempla |
+|---|---|
+| `FULL_EVENT` — Evento completo | Espaço, buffet e gastronomia, decoração, flores, móveis, iluminação, foto/filme, música, DJ, estrutura, montagem e demais categorias selecionadas para o evento. |
+| `DECORATION_ONLY` — Somente decoração | Ambientação decorativa com flores e folhagens, móveis e locações, iluminação decorativa, objetos, tecidos, mesa posta, estruturas decorativas, montagem e desmontagem. |
+
+Na modalidade `DECORATION_ONLY`, o sistema não permite incluir buffet, bebidas, fotografia, filmagem, DJ ou sonorização técnica como fornecedores ou itens personalizados. O espaço continua sendo usado como referência de ambientação, logística e áreas de montagem, mas não significa que o aluguel do espaço esteja incluído no orçamento decorativo.
+
 ## Estrutura apresentada ao cliente
 
 | Seção | Conteúdo integrado | Origem no EVE OS |
 |---|---|---|
-| Capa | Nomes do casal, tipo do evento, data, convidados, espaço e validade | Client, Event, Venue e CommercialProposal |
+| Capa | Nomes do casal, modalidade, tipo do evento, data, convidados, espaço e validade | Client, Event, Venue e CommercialProposal |
 | Espaço e premissas | Município, tipo, capacidade, hospedagem, serviços, notas e evidências | WeddingVenueResearch ou Venue |
 | Equipe e fornecedores | Categoria, nome, contatos, área, escopo, status de contato e status do preço | Supplier e ProjectSupplier |
 | Investimento | Itens, quantidade, valor unitário, subtotal, contingência, gestão, desconto e total | CommercialProposal.lineItems |
@@ -34,7 +45,9 @@ A categoria `OTHER` é exibida como decoração e serviços complementares porqu
 
 ## Regras de composição e cálculo
 
-A proposta começa pelos fornecedores marcados pela assessora. Para cada fornecedor, o sistema cria um item de serviço com o escopo informado, quantidade padrão igual a 1 e valor unitário igual ao valor digitado pela assessora. Quando nenhum valor é digitado, o sistema usa `estimatedCost` se estiver preenchido no cadastro; caso contrário, o item permanece com valor zero e status `QUOTE_PENDING`.
+A proposta começa pelos fornecedores marcados pela assessora. Na modalidade `FULL_EVENT`, todas as categorias comerciais podem ser selecionadas. Na modalidade `DECORATION_ONLY`, ficam disponíveis somente flores e folhagens, móveis e locações, iluminação decorativa, itens complementares e montagem/desmontagem.
+
+Para cada fornecedor, o sistema cria um item de serviço com o escopo informado, quantidade padrão igual a 1 e valor unitário igual ao valor digitado pela assessora. Quando nenhum valor é digitado, o sistema usa `estimatedCost` se estiver preenchido no cadastro; caso contrário, o item permanece com valor zero e status `QUOTE_PENDING`.
 
 O cálculo utilizado é:
 
@@ -58,7 +71,7 @@ A proposta fica marcada com `hasUnconfirmedData = true` quando houver fornecedor
 
 ## Fluxo de uso
 
-Na tela de projeto, abra a proposta criativa e clique em **“Montar proposta comercial integrada”**. Em seguida, selecione um espaço do catálogo pesquisado ou mantenha o espaço interno do projeto. Marque os fornecedores desejados, revise o escopo, substitua estimativas por valores de cotações recebidas e escolha o status de preço correspondente.
+Na tela de projeto, abra a proposta criativa e clique em **“Montar proposta comercial integrada”**. Primeiro escolha **“Evento completo”** ou **“Somente decoração”**. Em seguida, selecione um espaço do catálogo pesquisado ou mantenha o espaço interno do projeto. Marque os fornecedores disponíveis para a modalidade, revise o escopo, substitua estimativas por valores de cotações recebidas e escolha o status de preço correspondente.
 
 Depois, informe contingência, taxa de gestão, desconto e validade. Salve a composição comercial. O sistema recalcula o investimento, grava um snapshot dos dados selecionados e disponibiliza o botão **“Baixar PDF comercial”**. Antes de enviar ao casal, confirme disponibilidade, escopo, deslocamento, montagem, taxas do espaço, impostos, direitos de imagem, gerador, licenças e demais condições contratuais.
 
@@ -76,17 +89,12 @@ Depois, informe contingência, taxa de gestão, desconto e validade. Salve a com
 
 ```json
 {
+  "scope": "DECORATION_ONLY",
   "venueResearchId": "id-do-espaco-pesquisado",
   "supplierSelections": [
     {
-      "supplierId": "id-do-buffet",
-      "scope": "Buffet completo para 120 convidados, bebidas e equipe de serviço.",
-      "unitPrice": 28500,
-      "pricingStatus": "QUOTE_PENDING"
-    },
-    {
       "supplierId": "id-da-decoracao",
-      "scope": "Ambientação da cerimônia, recepção, mesa do bolo e lounges.",
+      "scope": "Flores, móveis, iluminação decorativa, mesa posta, objetos, montagem e desmontagem.",
       "unitPrice": 12000,
       "pricingStatus": "ESTIMATE"
     }

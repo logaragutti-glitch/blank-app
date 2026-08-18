@@ -1,6 +1,7 @@
 import type {
   BudgetAnalysis,
   CommercialProposal,
+  CommercialProposalScope,
   CommercialProposalVersion,
   CommercialPricingStatus,
   CommercialProposalSupplierInput,
@@ -143,6 +144,7 @@ export interface ProjectOverview extends ProjectSummary {
     id: string;
     version: number;
     status: "DRAFT" | "READY" | "SENT" | "APPROVED" | "REJECTED" | "EXPIRED";
+    scope: CommercialProposalScope;
     totalInvestment: number;
     hasUnconfirmedData: boolean;
     suppliersCount: number;
@@ -259,6 +261,7 @@ export interface FinancialSummary {
 export type {
   BudgetAnalysis,
   CommercialProposal,
+  CommercialProposalScope,
   CommercialProposalVersion,
   CommercialPricingStatus,
   CommercialProposalSupplierInput,

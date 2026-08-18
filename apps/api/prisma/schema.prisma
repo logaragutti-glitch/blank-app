@@ -932,6 +932,11 @@ enum CommercialProposalStatus {
   EXPIRED
 }
 
+enum CommercialProposalScope {
+  FULL_EVENT
+  DECORATION_ONLY
+}
+
 enum CommercialProposalVersionAction {
   CREATED
   UPDATED
@@ -1023,6 +1028,7 @@ model CommercialProposal {
 
   version            Int                      @default(1)
   status             CommercialProposalStatus @default(DRAFT)
+  scope              CommercialProposalScope  @default(FULL_EVENT)
   eventSnapshot      Json                     @map("event_snapshot")
   venueSnapshot      Json                     @map("venue_snapshot")
   supplierSelections Json                     @map("supplier_selections")

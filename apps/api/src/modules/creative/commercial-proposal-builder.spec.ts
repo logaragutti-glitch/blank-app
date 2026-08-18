@@ -1,5 +1,8 @@
 import type { Client, Event, Supplier, Venue } from "@eve-os/types";
-import { buildCommercialProposalRecord } from "./commercial-proposal-builder";
+import {
+  buildCommercialProposalRecord,
+  isCommercialCategoryAllowed,
+} from "./commercial-proposal-builder";
 
 const client = {
   partnerOneName: "Ana",
@@ -97,6 +100,45 @@ describe("buildCommercialProposalRecord", () => {
     expect(result.validityDays).toBe(15);
     expect(result.hasUnconfirmedData).toBe(true);
     expect(result.paymentTerms[0]?.amount).toBe(5400);
+  });
+
+  it("supports a decoration-only budget with decoration-specific conditions", () => {
+    const result = buildCommercialProposalRecord({
+      tenantId: "tenant-1",
+      organizationId: "org-1",
+      proposalId: "proposal-decoration-1",
+      createdBy: null,
+      event,
+      client,
+      venue,
+      suppliers: [suppliers[1]!],
+      assignments: [],
+      dto: {
+        scope: "DECORATION_ONLY",
+        supplierSelections: [{ supplierId: "supplier-lighting", pricingStatus: "QUOTE_PENDING" }],
+        lineItems: [
+          {
+            category: "DECOR",
+            description: "Flores e ambientação das mesas",
+            unitPrice: 2500,
+            pricingStatus: "QUOTE_PENDING",
+          },
+        ],
+      },
+    });
+
+    expect(result.scope).toBe("DECORATION_ONLY");
+    expect(result.subtotal).toBe(7500);
+    expect(result.conditions[0]).toContain("ambientação decorativa");
+    expect(result.conditions[1]).toContain("Não estão incluídos buffet");
+    expect(result.nextSteps[3]).toContain("decoração");
+  });
+
+  it("allows decoration categories only in decoration scope", () => {
+    expect(isCommercialCategoryAllowed("DECORATION_ONLY", "LIGHTING")).toBe(true);
+    expect(isCommercialCategoryAllowed("DECORATION_ONLY", "FURNITURE_RENTAL")).toBe(true);
+    expect(isCommercialCategoryAllowed("DECORATION_ONLY", "CATERING")).toBe(false);
+    expect(isCommercialCategoryAllowed("FULL_EVENT", "CATERING")).toBe(true);
   });
 
   it("keeps a catalog estimate marked as an estimate until a quote is confirmed", () => {

@@ -42,6 +42,7 @@ export class PrismaCommercialProposalRepository implements CommercialProposalRep
       const version = (existing?.version ?? 0) + 1;
       const status = input.status ?? "DRAFT";
       const base = {
+        scope: input.scope,
         eventSnapshot: input.eventSnapshot as unknown as Prisma.InputJsonValue,
         venueSnapshot: input.venueSnapshot as unknown as Prisma.InputJsonValue,
         supplierSelections: input.supplierSelections as unknown as Prisma.InputJsonValue,

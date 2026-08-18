@@ -192,6 +192,7 @@ export class ProjectsController {
             id: commercial.id,
             version: commercial.version,
             status: commercial.status,
+            scope: commercial.scope,
             totalInvestment: commercial.totalInvestment,
             hasUnconfirmedData: commercial.hasUnconfirmedData,
             suppliersCount: commercial.suppliers.length,

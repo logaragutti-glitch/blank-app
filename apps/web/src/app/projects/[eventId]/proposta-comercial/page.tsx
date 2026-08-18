@@ -10,6 +10,7 @@ import { useLatestProposalId } from "../../../../lib/use-latest-proposal-id";
 import { Button, colors, spacing } from "@eve-os/ui";
 import type {
   CommercialProposal,
+  CommercialProposalScope,
   CommercialProposalVersion,
   CommercialPricingStatus,
   Supplier,
@@ -25,24 +26,38 @@ type SupplierDraft = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   CATERING: "Buffet e gastronomia",
-  FURNITURE_RENTAL: "Mobiliário e locação",
+  FURNITURE_RENTAL: "Móveis e locações",
   LIGHTING: "Som, iluminação e estrutura",
   MUSIC: "Música e DJ",
   PHOTOGRAPHY: "Fotografia e filmagem",
-  FLORIST: "Flores e paisagismo",
+  FLORIST: "Flores e folhagens",
   ASSEMBLY_CREW: "Montagem e desmontagem",
-  OTHER: "Decoração e serviços complementares",
+  OTHER: "Objetos, tecidos e itens complementares",
 };
 
 const CATEGORY_ORDER = [
-  "CATERING",
+  "FLORIST",
   "OTHER",
   "FURNITURE_RENTAL",
-  "PHOTOGRAPHY",
   "LIGHTING",
-  "MUSIC",
   "ASSEMBLY_CREW",
+  "CATERING",
+  "PHOTOGRAPHY",
+  "MUSIC",
 ];
+
+const DECORATION_ONLY_CATEGORIES = new Set([
+  "FLORIST",
+  "FURNITURE_RENTAL",
+  "LIGHTING",
+  "ASSEMBLY_CREW",
+  "OTHER",
+]);
+
+const SCOPE_LABELS: Record<CommercialProposalScope, string> = {
+  FULL_EVENT: "Evento completo",
+  DECORATION_ONLY: "Somente decoração",
+};
 
 const REGIONAL_SERVICE_AREA_TOKENS = [
   "regiao dos lagos",
@@ -74,6 +89,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [commercialProposal, setCommercialProposal] = useState<CommercialProposal | null>(null);
   const [versions, setVersions] = useState<CommercialProposalVersion[]>([]);
+  const [scope, setScope] = useState<CommercialProposalScope>("FULL_EVENT");
   const [venueResearchId, setVenueResearchId] = useState("");
   const [supplierDrafts, setSupplierDrafts] = useState<Record<string, SupplierDraft>>({});
   const [contingencyPercent, setContingencyPercent] = useState("0");
@@ -107,6 +123,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
         setKnowledge(knowledgeResponse);
         setSuppliers(supplierResponse.filter(isRegionalSupplier));
         setCommercialProposal(commercialResponse);
+        setScope(commercialResponse?.scope ?? "FULL_EVENT");
         setVersions(versionResponse);
         if (commercialResponse) {
           setVenueResearchId(
@@ -137,9 +154,14 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       .finally(() => setLoading(false));
   }, [accessToken, proposalId]);
 
+  const visibleSuppliers = useMemo(
+    () => suppliers.filter((supplier) => scope === "FULL_EVENT" || DECORATION_ONLY_CATEGORIES.has(supplier.category)),
+    [scope, suppliers],
+  );
+
   const groupedSuppliers = useMemo(() => {
     const groups = new Map<string, Supplier[]>();
-    suppliers.forEach((supplier) => {
+    visibleSuppliers.forEach((supplier) => {
       const current = groups.get(supplier.category) ?? [];
       current.push(supplier);
       groups.set(supplier.category, current);
@@ -147,7 +169,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
     return [...groups.entries()].sort(
       ([categoryA], [categoryB]) => CATEGORY_ORDER.indexOf(categoryA) - CATEGORY_ORDER.indexOf(categoryB),
     );
-  }, [suppliers]);
+  }, [visibleSuppliers]);
 
   function toggleSupplier(supplier: Supplier) {
     setSupplierDrafts((current) => ({
@@ -193,7 +215,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
     setError(null);
     setSuccess(null);
     try {
-      const supplierSelections = suppliers
+      const supplierSelections = visibleSuppliers
         .map((supplier) => {
           const draft = supplierDrafts[supplier.id];
           if (!draft?.selected) return null;
@@ -208,6 +230,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       const saved = await apiClient.post<CommercialProposal>(
         `/creative/proposals/${proposalId}/commercial`,
         {
+          scope,
           venueResearchId: venueResearchId || null,
           supplierSelections,
           contingencyPercent: Number(contingencyPercent || 0),
@@ -219,6 +242,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
         accessToken,
       );
       setCommercialProposal(saved);
+      setScope(saved.scope);
       await refreshVersions();
       setSuccess("Modelo comercial salvo. Você já pode revisar os valores ou avançar na aprovação.");
     } catch (err) {
@@ -315,7 +339,27 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       {success && <p style={{ color: "#54745A" }}>{success}</p>}
 
       <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-        <h2>1. Espaço de evento</h2>
+        <h2>1. Tipo de orçamento</h2>
+        <label style={{ display: "block", color: colors.textMuted, fontSize: 13 }}>
+          Modalidade comercial
+          <select
+            value={scope}
+            onChange={(event) => setScope(event.target.value as CommercialProposalScope)}
+            style={{ display: "block", width: "100%", marginTop: 6, padding: 10, borderRadius: 8, border: `1px solid ${colors.border}` }}
+          >
+            <option value="FULL_EVENT">Evento completo</option>
+            <option value="DECORATION_ONLY">Somente decoração</option>
+          </select>
+        </label>
+        <p style={{ color: colors.textMuted, fontSize: 13, marginBottom: 0 }}>
+          {scope === "DECORATION_ONLY"
+            ? "Inclui flores e folhagens, móveis e locações, iluminação decorativa, objetos, tecidos, mesa posta, estruturas decorativas e montagem/desmontagem. Não inclui buffet, foto/filme, DJ ou sonorização técnica."
+            : "Inclui a composição completa do evento, com espaço, buffet, decoração, foto/filme, música, iluminação, estrutura e demais categorias selecionadas."}
+        </p>
+      </section>
+
+      <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
+        <h2>2. Espaço de evento</h2>
         <label style={{ display: "block", color: colors.textMuted, fontSize: 13 }}>
           Espaço pesquisado
           <select
@@ -339,12 +383,21 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       </section>
 
       <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-        <h2>2. Fornecedores e escopo</h2>
-        <p style={{ color: colors.textMuted, fontSize: 13 }}>Marque os fornecedores que entram na composição. O valor inicial usa `estimatedCost` apenas quando ele existir; caso contrário, fica como cotação pendente.</p>
+        <h2>3. Fornecedores e escopo</h2>
+        <p style={{ color: colors.textMuted, fontSize: 13 }}>
+          {scope === "DECORATION_ONLY"
+            ? "Selecione fornecedores de flores, móveis, iluminação decorativa, itens complementares e montagem. O valor inicial usa `estimatedCost` apenas quando ele existir."
+            : "Marque os fornecedores que entram na composição. O valor inicial usa `estimatedCost` apenas quando ele existir; caso contrário, fica como cotação pendente."}
+        </p>
         <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
           {groupedSuppliers.map(([category, categorySuppliers]) => (
             <div key={category}>
-              <h3 style={{ marginBottom: spacing.xs }}>{CATEGORY_LABELS[category] ?? category}</h3>
+                              <h3 style={{ marginBottom: spacing.xs }}>
+                  {scope === "DECORATION_ONLY" && category === "LIGHTING"
+                    ? "Iluminação decorativa"
+                    : CATEGORY_LABELS[category] ?? category}
+                </h3>
+
               <div style={{ display: "flex", flexDirection: "column", gap: spacing.xs }}>
                 {categorySuppliers.map((supplier) => {
                   const draft = supplierDrafts[supplier.id] ?? {
@@ -381,7 +434,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       </section>
 
       <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-        <h2>3. Ajustes comerciais</h2>
+        <h2>4. Ajustes comerciais</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: spacing.sm }}>
           <label style={{ color: colors.textMuted, fontSize: 13 }}>Contingência (%)<input value={contingencyPercent} onChange={(event) => setContingencyPercent(event.target.value)} inputMode="decimal" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
           <label style={{ color: colors.textMuted, fontSize: 13 }}>Taxa de gestão<input value={managementFee} onChange={(event) => setManagementFee(event.target.value)} inputMode="decimal" style={{ display: "block", width: "100%", marginTop: 5, padding: 9, borderRadius: 6, border: `1px solid ${colors.border}` }} /></label>
@@ -398,7 +451,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
 
       {commercialProposal && (
         <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-          <h2>4. Revisão e aprovação</h2>
+          <h2>5. Revisão e aprovação</h2>
           <p style={{ color: colors.textMuted, fontSize: 13, marginTop: 0 }}>
             A proposta passa por revisão interna antes de ser enviada. A produção só é liberada depois do status <strong>APROVADA</strong>.
           </p>
@@ -423,7 +476,7 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
 
       {commercialProposal && (
         <section style={{ background: "#F8F3EC", borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>
-          <h2>Resumo salvo · versão {commercialProposal.version}</h2>
+          <h2>Resumo salvo · {SCOPE_LABELS[commercialProposal.scope]} · versão {commercialProposal.version}</h2>
           <p style={{ color: colors.textMuted }}>Status: <strong>{commercialProposal.status}</strong>{commercialProposal.hasUnconfirmedData ? " · contém dados a confirmar" : " · dados confirmados"}</p>
           <p style={{ fontSize: 24, fontWeight: 700 }}>{formatMoney(commercialProposal.totalInvestment)}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>

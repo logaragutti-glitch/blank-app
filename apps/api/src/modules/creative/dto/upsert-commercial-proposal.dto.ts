@@ -33,6 +33,11 @@ export enum CommercialPricingStatusDto {
   CONFIRMED = "CONFIRMED",
 }
 
+export enum CommercialProposalScopeDto {
+  FULL_EVENT = "FULL_EVENT",
+  DECORATION_ONLY = "DECORATION_ONLY",
+}
+
 export class CommercialSupplierSelectionDto implements CommercialProposalSupplierInput {
   @IsUUID()
   supplierId!: string;
@@ -126,6 +131,10 @@ export class CommercialPaymentTermDto {
 }
 
 export class UpsertCommercialProposalDto {
+  @IsEnum(CommercialProposalScopeDto)
+  @IsOptional()
+  scope?: "FULL_EVENT" | "DECORATION_ONLY";
+
   @IsUUID()
   @IsOptional()
   venueResearchId?: string | null;

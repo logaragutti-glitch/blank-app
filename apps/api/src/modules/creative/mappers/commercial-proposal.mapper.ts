@@ -5,6 +5,7 @@ import type {
 import type { CommercialEventSnapshot } from "../repositories/commercial-proposal.repository";
 import type {
   CommercialProposal,
+  CommercialProposalScope,
   CommercialProposalStatus,
   CommercialProposalVersion,
   CommercialProposalVersionAction,
@@ -29,6 +30,7 @@ export function toCommercialProposalDomain(model: CommercialProposalPrismaModel)
     eventId: model.eventId,
     version: model.version,
     status: model.status as CommercialProposalStatus,
+    scope: model.scope as CommercialProposalScope,
     clientNames: event.clientNames,
     eventType: event.eventType,
     eventDate: event.eventDate,

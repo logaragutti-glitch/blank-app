@@ -9,6 +9,7 @@ describe("buildCommercialProposalPdf", () => {
       eventId: "event-1",
       version: 1,
       status: "DRAFT",
+      scope: "FULL_EVENT",
       clientNames: "Ana & Bruno",
       eventType: "WEDDING",
       eventDate: "2026-11-21T18:00:00.000Z",

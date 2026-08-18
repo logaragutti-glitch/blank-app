@@ -1,5 +1,6 @@
 import type {
   CommercialProposal,
+  CommercialProposalScope,
   CommercialProposalStatus,
   CommercialProposalVersion,
   CommercialProposalVersionAction,
@@ -22,6 +23,7 @@ export interface UpsertCommercialProposalRecordInput {
   proposalId: string;
   eventId: string;
   status?: CommercialProposalStatus;
+  scope: CommercialProposalScope;
   eventSnapshot: CommercialEventSnapshot;
   venueSnapshot: CommercialVenueSnapshot;
   supplierSelections: CommercialSupplierSelection[];

@@ -70,6 +70,10 @@ function commercialStatusLabel(value: string): string {
   return labels[value] ?? value;
 }
 
+function scopeLabel(value: CommercialProposal["scope"]): string {
+  return value === "DECORATION_ONLY" ? "Orçamento somente de decoração" : "Orçamento completo do evento";
+}
+
 function pageRule(doc: PDFKit.PDFDocument): void {
   doc.save().strokeColor(COLORS.border).lineWidth(0.7).moveTo(54, 43).lineTo(541, 43).stroke().restore();
 }
@@ -112,6 +116,7 @@ function renderCover(doc: PDFKit.PDFDocument, proposal: CommercialProposal): voi
     286,
     { width: 430 },
   );
+  doc.fillColor(COLORS.accent).font(FONT_BODY_MEDIUM).fontSize(10).text(scopeLabel(proposal.scope), 54, 322, { width: 430 });
   doc.roundedRect(54, 360, 487, 118, 8).fill("#FFFFFF");
   doc.fillColor(COLORS.accent).font(FONT_BODY_MEDIUM).fontSize(9).text("COMPOSIÇÃO SELECIONADA", 78, 386);
   doc.fillColor(COLORS.ink).font(FONT_HEADING).fontSize(24).text(proposal.venue.name, 78, 411, { width: 430 });
@@ -170,9 +175,11 @@ function renderVenuePage(doc: PDFKit.PDFDocument, proposal: CommercialProposal):
 function renderSuppliersPage(doc: PDFKit.PDFDocument, proposal: CommercialProposal): void {
   doc.addPage();
   pageRule(doc);
-  sectionHeading(doc, "02", "Equipe e fornecedores");
+  sectionHeading(doc, "02", proposal.scope === "DECORATION_ONLY" ? "Ambientação decorativa" : "Equipe e fornecedores");
   doc.font(FONT_BODY).fontSize(10).fillColor(COLORS.muted).text(
-    "A composição abaixo integra os fornecedores selecionados para este evento. O escopo deve ser confirmado em orçamento e contrato próprios.",
+    proposal.scope === "DECORATION_ONLY"
+      ? "A composição abaixo contempla flores e folhagens, móveis e locações, iluminação decorativa, objetos, tecidos, mesa posta, estruturas decorativas e montagem."
+      : "A composição abaixo integra os fornecedores selecionados para este evento. O escopo deve ser confirmado em orçamento e contrato próprios.",
     { width: 470 },
   );
   doc.moveDown(1);
@@ -203,11 +210,13 @@ function renderSuppliersPage(doc: PDFKit.PDFDocument, proposal: CommercialPropos
 function renderInvestmentPage(doc: PDFKit.PDFDocument, proposal: CommercialProposal): void {
   doc.addPage();
   pageRule(doc);
-  sectionHeading(doc, "03", "Investimento estimado");
+  sectionHeading(doc, "03", proposal.scope === "DECORATION_ONLY" ? "Investimento da decoração" : "Investimento estimado");
   doc.font(FONT_BODY).fontSize(9).fillColor(COLORS.muted).text(
-    proposal.hasUnconfirmedData
-      ? "Atenção: esta composição contém dados estimados, pendentes de cotação ou contatos ainda não confirmados."
-      : "Os itens abaixo foram marcados como confirmados no cadastro comercial.",
+    proposal.scope === "DECORATION_ONLY"
+      ? "Este total corresponde somente à ambientação decorativa selecionada; serviços de buffet, foto/filme, DJ e sonorização técnica não fazem parte desta modalidade."
+      : proposal.hasUnconfirmedData
+        ? "Atenção: esta composição contém dados estimados, pendentes de cotação ou contatos ainda não confirmados."
+        : "Os itens abaixo foram marcados como confirmados no cadastro comercial.",
     { width: 470 },
   );
   doc.moveDown(1);

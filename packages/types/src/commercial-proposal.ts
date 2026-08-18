@@ -6,6 +6,8 @@ export type CommercialProposalStatus =
   | "REJECTED"
   | "EXPIRED";
 
+export type CommercialProposalScope = "FULL_EVENT" | "DECORATION_ONLY";
+
 export type CommercialProposalVersionAction =
   | "CREATED"
   | "UPDATED"
@@ -95,6 +97,7 @@ export interface CommercialProposal {
   eventId: string;
   version: number;
   status: CommercialProposalStatus;
+  scope: CommercialProposalScope;
   clientNames: string;
   eventType: string;
   eventDate: string | null;
@@ -148,6 +151,7 @@ export interface CommercialProposalSupplierInput {
 }
 
 export interface UpsertCommercialProposalInput {
+  scope?: CommercialProposalScope;
   venueResearchId?: string | null;
   supplierSelections: CommercialProposalSupplierInput[];
   lineItems?: Array<{

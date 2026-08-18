@@ -1,6 +1,7 @@
 import type {
   Client,
   CommercialLineItem,
+  CommercialProposalScope,
   CommercialPaymentTerm,
   CommercialProposalSupplierInput,
   CommercialSupplierCategory,
@@ -70,6 +71,24 @@ const SUPPLIER_CATEGORY_MAP: Record<Supplier["category"], CommercialSupplierCate
   OTHER: "DECOR",
 };
 
+export const DECORATION_ALLOWED_CATEGORIES: ReadonlySet<CommercialSupplierCategory> = new Set([
+  "DECOR",
+  "FURNITURE_RENTAL",
+  "LIGHTING",
+  "ASSEMBLY_CREW",
+]);
+
+export function commercialSupplierCategoryFor(category: Supplier["category"]): CommercialSupplierCategory {
+  return SUPPLIER_CATEGORY_MAP[category];
+}
+
+export function isCommercialCategoryAllowed(
+  scope: CommercialProposalScope,
+  category: CommercialSupplierCategory,
+): boolean {
+  return scope === "FULL_EVENT" || DECORATION_ALLOWED_CATEGORIES.has(category);
+}
+
 const DEFAULT_PAYMENT_TERMS: CommercialPaymentTerm[] = [
   {
     label: "Reserva e início do planejamento",
@@ -103,6 +122,19 @@ const DEFAULT_NEXT_STEPS = [
   "Validar o escopo de cada fornecedor e solicitar as cotações finais.",
   "Aprovar a composição comercial e ajustar os itens opcionais.",
   "Formalizar contratos, pagamentos e cronograma de produção.",
+];
+
+const DECORATION_CONDITIONS = [
+  "Este orçamento contempla exclusivamente ambientação decorativa: flores e folhagens, móveis e locações, iluminação decorativa, objetos, tecidos, mesa posta, estruturas decorativas e montagem.",
+  "Não estão incluídos buffet, bebidas, fotografia, filmagem, DJ, sonorização técnica ou outros serviços não decorativos, salvo quando descritos expressamente como item de ambientação.",
+  ...DEFAULT_CONDITIONS.slice(1),
+];
+
+const DECORATION_NEXT_STEPS = [
+  "Confirmar o espaço, a data e as áreas que receberão ambientação.",
+  "Validar referências, paleta, flores, móveis, iluminação decorativa e itens de mesa.",
+  "Solicitar a cotação final de montagem, desmontagem, logística e eventuais substituições.",
+  "Aprovar o escopo decorativo e formalizar o contrato específico de decoração.",
 ];
 
 function roundMoney(value: number): number {
@@ -163,7 +195,7 @@ function buildSupplierSelection(
   assignment: ProjectSupplier | undefined,
   input: CommercialProposalSupplierInput | undefined,
 ): CommercialSupplierSelection {
-  const category = SUPPLIER_CATEGORY_MAP[supplier.category];
+  const category = commercialSupplierCategoryFor(supplier.category);
   return {
     supplierId: supplier.id,
     name: supplier.name,
@@ -268,6 +300,7 @@ export function buildCommercialProposalRecord(input: {
   const selectionInputBySupplierId = new Map(
     input.dto.supplierSelections.map((selection) => [selection.supplierId, selection]),
   );
+  const scope = input.dto.scope ?? "FULL_EVENT";
   const selectedSuppliers = input.suppliers.filter((supplier) => selectionInputBySupplierId.has(supplier.id));
   const selections = selectedSuppliers.map((supplier) =>
     buildSupplierSelection(supplier, assignmentBySupplierId.get(supplier.id), selectionInputBySupplierId.get(supplier.id)),
@@ -320,8 +353,17 @@ export function buildCommercialProposalRecord(input: {
     validUntil,
     approvalDeadline: input.dto.approvalDeadline ? new Date(input.dto.approvalDeadline) : null,
     paymentTerms,
-    conditions: input.dto.conditions?.length ? input.dto.conditions : DEFAULT_CONDITIONS,
-    nextSteps: input.dto.nextSteps?.length ? input.dto.nextSteps : DEFAULT_NEXT_STEPS,
+    scope,
+    conditions: input.dto.conditions?.length
+      ? input.dto.conditions
+      : scope === "DECORATION_ONLY"
+        ? DECORATION_CONDITIONS
+        : DEFAULT_CONDITIONS,
+    nextSteps: input.dto.nextSteps?.length
+      ? input.dto.nextSteps
+      : scope === "DECORATION_ONLY"
+        ? DECORATION_NEXT_STEPS
+        : DEFAULT_NEXT_STEPS,
     commercialNotes: input.dto.commercialNotes ?? null,
     hasUnconfirmedData,
   };

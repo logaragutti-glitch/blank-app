@@ -51,7 +51,8 @@ function WorkflowRail({ project }: { project: ProjectOverview }) {
 }
 
 function ProjectMetrics({ eventId, project }: { eventId: string; project: ProjectOverview }) {
-  const commercialLabel = project.commercial ? `Versão ${project.commercial.version} · ${project.commercial.status}` : "Ainda não criada";
+  const commercialScopeLabel = project.commercial?.scope === "DECORATION_ONLY" ? "Somente decoração" : "Evento completo";
+  const commercialLabel = project.commercial ? `${commercialScopeLabel} · versão ${project.commercial.version} · ${project.commercial.status}` : "Ainda não criada";
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: spacing.sm, marginTop: spacing.md }}>
       <Card>
