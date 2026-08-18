@@ -147,6 +147,8 @@ function ProducaoContent({ eventId }: { eventId: string }) {
   const [budgetAnalysis, setBudgetAnalysis] = useState<BudgetAnalysis | null | undefined>(undefined);
   const [generatingBudget, setGeneratingBudget] = useState(false);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [activationMessage, setActivationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!accessToken || !proposalId) return;
@@ -200,6 +202,25 @@ function ProducaoContent({ eventId }: { eventId: string }) {
     }
   }
 
+  async function handleActivateOperation() {
+    if (!proposalId) return;
+    setActivating(true);
+    setActivationMessage(null);
+    setError(null);
+    try {
+      const result = await apiClient.post<{ tasks: Array<unknown>; suppliersBooked: number }>(
+        `/production/proposals/${proposalId}/activate`,
+        undefined,
+        accessToken,
+      );
+      setActivationMessage(`${result.tasks.length} tarefas operacionais disponíveis e ${result.suppliersBooked} fornecedor(es) sincronizado(s).`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não conseguimos ativar o checklist operacional.");
+    } finally {
+      setActivating(false);
+    }
+  }
+
   async function handleGenerateBudget() {
     if (!proposalId) return;
     setBudgetError(null);
@@ -244,6 +265,14 @@ function ProducaoContent({ eventId }: { eventId: string }) {
 
       {generating && <AiThought thoughts={THOUGHTS} />}
       {error && <p style={{ color: colors.danger }}>{error}</p>}
+      {activationMessage && <p style={{ color: "#3D7045" }}>{activationMessage}</p>}
+      {proposalStatus === "APPROVED" && (
+        <Card style={{ marginBottom: spacing.md }}>
+          <h3 style={{ marginTop: 0 }}>Ativação operacional</h3>
+          <p style={{ color: colors.textMuted }}>Converte a aprovação comercial em tarefas de contratos, logística, pagamentos, ambientação e revisão final. A ação é idempotente e pode ser repetida sem duplicar o checklist automático.</p>
+          <Button onClick={handleActivateOperation} disabled={activating}>{activating ? "Ativando..." : "Ativar checklist operacional"}</Button>
+        </Card>
+      )}
 
       {!generating && plan === undefined && (
         <p style={{ color: colors.textMuted }}>Reunindo o plano de produção já gerado...</p>

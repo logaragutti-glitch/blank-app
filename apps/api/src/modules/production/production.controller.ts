@@ -17,6 +17,8 @@ import { CommercialProposalRepository } from "../creative/repositories/commercia
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
+import { ProjectSupplierRepository } from "../project-suppliers/repositories/project-supplier.repository";
+import { ProjectTaskRepository } from "../tasks/repositories/project-task.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
 import { BudgetAnalysisPort } from "./ai/budget-analysis.port";
 import { ProductionPlanPort } from "./ai/production-plan.port";
@@ -39,6 +41,8 @@ export class ProductionController {
     private readonly productionPlans: ProductionPlanRepository,
     private readonly budgetAnalysisAi: BudgetAnalysisPort,
     private readonly budgetAnalyses: BudgetAnalysisRepository,
+    private readonly projectSuppliers: ProjectSupplierRepository,
+    private readonly projectTasks: ProjectTaskRepository,
   ) {}
 
   // Real financial rollup across every event/proposal in the org — no
@@ -99,6 +103,55 @@ export class ProductionController {
   // and operational checklist. Re-running this replaces the previous
   // production plan wholesale (see ProductionPlanRepository.upsert), so
   // it's safe to call again after the proposal's components change.
+  @Post("proposals/:proposalId/activate")
+  async activateOperationalChecklist(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+  ) {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    await this.assertProductionUnlocked(proposalId, proposal.status);
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial || commercial.status !== "APPROVED") {
+      throw new BadRequestException("A proposta comercial precisa estar aprovada antes de ativar a operação.");
+    }
+
+    const existingTasks = await this.projectTasks.findByEvent(proposal.eventId);
+    const automaticTasks = [
+      { key: "venue-confirmation", title: "Confirmar espaço e regras de acesso", description: "Validar disponibilidade, carga/descarga, gerador, estacionamento, horários e regras do espaço." },
+      { key: "commercial-contracts", title: "Solicitar contratos dos fornecedores aprovados", description: "Reunir contratos, dados fiscais, contatos de emergência e condições comerciais." },
+      { key: "payment-agenda", title: "Revisar agenda financeira da proposta", description: `Conferir ${commercial.payments.length} parcela(s), vencimentos e registros de recebimento.` },
+      { key: "logistics-review", title: "Confirmar logística e deslocamentos", description: `Revisar ${commercial.logisticsItems.length} item(ns) de transporte, montagem, desmontagem ou deslocamento.` },
+      { key: "decorative-checklist", title: "Validar itens personalizados e ambientação", description: `Conferir ${commercial.lineItems.filter((item) => item.kind === "CUSTOM").length} item(ns) personalizados da composição.` },
+      { key: "final-production-review", title: "Revisar plano operacional antes do evento", description: "Gerar ou atualizar o plano de produção e validar materiais, cronograma e checklist." },
+    ];
+    const createdTasks = [];
+    for (const task of automaticTasks) {
+      const marker = `[EVE_AUTO:${task.key}]`;
+      const existing = existingTasks.find((item) => item.description?.includes(marker));
+      if (existing) {
+        createdTasks.push(existing);
+        continue;
+      }
+      createdTasks.push(await this.projectTasks.create(user.tenantId, user.organizationId, proposal.eventId, {
+        title: task.title,
+        description: `${marker} ${task.description}`,
+        createdBy: user.sub,
+      }));
+    }
+
+    const supplierSelections = commercial.suppliers.filter((supplier) => supplier.supplierId);
+    await Promise.all(
+      supplierSelections.map((supplier) => this.projectSuppliers.addOrUpdate(proposal.eventId, {
+        supplierId: supplier.supplierId,
+        status: "BOOKED",
+        notes: supplier.scope ?? "Fornecedor aprovado na proposta comercial.",
+      })),
+    );
+
+    return { eventId: proposal.eventId, proposalId, tasks: createdTasks, suppliersBooked: supplierSelections.length };
+  }
+
   @Post("proposals/:proposalId/plan")
   async generateProductionPlan(
     @CurrentUser() user: AuthenticatedUser,

@@ -85,6 +85,24 @@ function ProjectMetrics({ eventId, project }: { eventId: string; project: Projec
  * changes shape to foreground checklist, fornecedores, horários and
  * montagem instead of the creative workflow steps.
  */
+function ProjectAlerts({ project }: { project: ProjectOverview }) {
+  if (project.alerts.length === 0) return null;
+  const severityColor = { CRITICAL: colors.danger, WARNING: colors.primary, INFO: colors.textMuted } as const;
+  return (
+    <Card style={{ marginTop: spacing.md }}>
+      <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>Alertas do projeto</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: spacing.xs, marginTop: spacing.sm }}>
+        {project.alerts.map((alert) => (
+          <Link key={alert.id} href={alert.href} style={{ textDecoration: "none", color: "inherit", borderLeft: `3px solid ${severityColor[alert.severity]}`, padding: "8px 10px", background: "#FBF7F2" }}>
+            <strong style={{ color: severityColor[alert.severity], fontSize: "0.84rem" }}>{alert.title}</strong>
+            <span style={{ display: "block", color: colors.textMuted, fontSize: "0.8rem", marginTop: 3 }}>{alert.message}</span>
+          </Link>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function ModoProducao({ eventId, project }: { eventId: string; project: ProjectOverview }) {
   const { accessToken } = useAuth();
   const [plan, setPlan] = useState<ProductionPlan | null | undefined>(undefined);
@@ -271,6 +289,7 @@ function ProjectHubContent({ eventId }: { eventId: string }) {
       <p style={{ color: colors.textMuted, marginTop: 0 }}>{project.venueName ?? "Espaço não definido"}</p>
       <WorkflowRail project={project} />
       <ProjectMetrics eventId={eventId} project={project} />
+      <ProjectAlerts project={project} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: spacing.md, marginTop: spacing.lg }}>
         <Card>

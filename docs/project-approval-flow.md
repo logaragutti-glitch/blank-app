@@ -58,3 +58,11 @@ A assessora deve abrir o painel do projeto, seguir a próxima ação destacada, 
 A implementação está isolada na branch de feature `feat/commercial-proposal-template`. Antes de qualquer promoção, é necessário aplicar as migrations `20260817210000_add_commercial_proposals` e `20260817220000_add_commercial_proposal_versions` no banco da API, executar o seed compatível, validar um projeto de teste e publicar apenas um Preview Deployment.
 
 A `main` não foi alterada e nenhuma variável secreta foi modificada.
+
+## Ativação operacional após a aprovação
+
+Depois que a proposta criativa e a proposta comercial forem aprovadas, a tela de Produção oferece a ação **Ativar checklist operacional**. Essa ação é idempotente: pode ser repetida sem duplicar as tarefas automáticas.
+
+A ativação cria ou reutiliza tarefas para confirmar o espaço, solicitar contratos, revisar pagamentos, confirmar logística, validar itens personalizados e revisar o plano operacional final. Também sincroniza os fornecedores da proposta aprovada com o vínculo do evento no status `BOOKED`.
+
+A ativação não substitui a geração do plano de produção por IA. Ela cria a camada operacional editável do projeto; depois, a assessora pode gerar ou atualizar o plano de materiais, cronograma e checklist do Agente 4.

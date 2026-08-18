@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { BriefingModule } from "../briefing/briefing.module";
 import { CreativeModule } from "../creative/creative.module";
 import { KnowledgeGraphModule } from "../knowledge-graph/knowledge-graph.module";
+import { ProjectSuppliersModule } from "../project-suppliers/project-suppliers.module";
+import { TasksModule } from "../tasks/tasks.module";
 import { AnthropicBudgetAnalysisProvider } from "./ai/anthropic-budget-analysis.provider";
 import { AnthropicProductionPlanProvider } from "./ai/anthropic-production-plan.provider";
 import { BudgetAnalysisPort } from "./ai/budget-analysis.port";
@@ -13,7 +15,7 @@ import { PrismaProductionPlanRepository } from "./repositories/prisma-production
 import { ProductionPlanRepository } from "./repositories/production-plan.repository";
 
 @Module({
-  imports: [BriefingModule, CreativeModule, KnowledgeGraphModule],
+  imports: [BriefingModule, CreativeModule, KnowledgeGraphModule, ProjectSuppliersModule, TasksModule],
   controllers: [ProductionController],
   providers: [
     { provide: ProductionPlanRepository, useClass: PrismaProductionPlanRepository },

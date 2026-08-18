@@ -164,6 +164,31 @@ export class ProjectsController {
       return summary;
     }, {});
 
+    const alerts: Array<{ id: string; severity: "CRITICAL" | "WARNING" | "INFO"; title: string; message: string; href: string; source: "COMMERCIAL" | "PAYMENT" | "PRODUCTION" | "TASK" | "VENUE" }> = [];
+    if (!commercial) {
+      alerts.push({ id: "commercial-missing", severity: "WARNING", title: "Proposta comercial ainda não criada", message: "Monte uma proposta para registrar espaço, fornecedores, escopo e investimento.", href: `/projects/${eventId}/proposta-comercial`, source: "COMMERCIAL" });
+    } else {
+      if (commercial.hasUnconfirmedData) {
+        alerts.push({ id: "commercial-pending-data", severity: "WARNING", title: "Dados comerciais pendentes", message: "Há preços, contatos, disponibilidade ou logística que ainda precisam de confirmação.", href: `/projects/${eventId}/proposta-comercial`, source: "COMMERCIAL" });
+      }
+      if (commercial.status === "READY") {
+        alerts.push({ id: "commercial-ready-to-send", severity: "INFO", title: "Proposta pronta para envio", message: "A revisão interna foi concluída; registre o envio ao cliente.", href: `/projects/${eventId}/proposta-comercial`, source: "COMMERCIAL" });
+      }
+      if (commercial.status === "SENT") {
+        alerts.push({ id: "commercial-awaiting-approval", severity: "WARNING", title: "Aguardando aprovação do cliente", message: "A proposta foi enviada e ainda não possui decisão registrada.", href: `/projects/${eventId}/proposta-comercial`, source: "COMMERCIAL" });
+      }
+      const overduePayments = (commercial.payments ?? []).filter((payment) => payment.status === "OVERDUE");
+      if (overduePayments.length > 0) {
+        alerts.push({ id: "payments-overdue", severity: "CRITICAL", title: "Parcelas vencidas", message: `${overduePayments.length} parcela(s) estão marcadas como vencidas na agenda financeira.`, href: `/projects/${eventId}/proposta-comercial`, source: "PAYMENT" });
+      }
+    }
+    if (commercialStatus === "APPROVED" && !productionPlan) {
+      alerts.push({ id: "production-not-activated", severity: "WARNING", title: "Produção ainda não ativada", message: "Ative o checklist operacional e gere o plano de produção para continuar.", href: `/projects/${eventId}/producao`, source: "PRODUCTION" });
+    }
+    if (tasks.filter((task) => task.status !== "DONE").length > 0 && commercialStatus === "APPROVED") {
+      alerts.push({ id: "tasks-open", severity: "INFO", title: "Tarefas operacionais abertas", message: `${tasks.filter((task) => task.status !== "DONE").length} tarefa(s) ainda precisam de acompanhamento.`, href: `/projects/${eventId}/tarefas`, source: "TASK" });
+    }
+
     return {
       eventId,
       clientId: event.clientId,
@@ -216,6 +241,7 @@ export class ProjectsController {
         total: assignments.length,
         byStatus: suppliersByStatus,
       },
+      alerts,
     };
   }
 

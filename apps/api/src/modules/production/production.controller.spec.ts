@@ -8,6 +8,8 @@ import { CommercialProposalRepository } from "../creative/repositories/commercia
 import { ProposalRepository } from "../creative/repositories/proposal.repository";
 import { MaterialRepository } from "../knowledge-graph/repositories/material.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
+import { ProjectSupplierRepository } from "../project-suppliers/repositories/project-supplier.repository";
+import { ProjectTaskRepository } from "../tasks/repositories/project-task.repository";
 import { VenueRepository } from "../knowledge-graph/repositories/venue.repository";
 import { BudgetAnalysisPort } from "./ai/budget-analysis.port";
 import type { BudgetAnalysisResult } from "./ai/budget-analysis.port";
@@ -132,6 +134,8 @@ describe("ProductionController", () => {
   let productionPlans: jest.Mocked<ProductionPlanRepository>;
   let budgetAnalysisAi: jest.Mocked<BudgetAnalysisPort>;
   let budgetAnalyses: jest.Mocked<BudgetAnalysisRepository>;
+  let projectSuppliers: jest.Mocked<ProjectSupplierRepository>;
+  let projectTasks: jest.Mocked<ProjectTaskRepository>;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -148,6 +152,8 @@ describe("ProductionController", () => {
         { provide: ProductionPlanRepository, useValue: { upsert: jest.fn(), findByProposal: jest.fn() } },
         { provide: BudgetAnalysisPort, useValue: { generate: jest.fn() } },
         { provide: BudgetAnalysisRepository, useValue: { upsert: jest.fn(), findByProposal: jest.fn() } },
+        { provide: ProjectSupplierRepository, useValue: { addOrUpdate: jest.fn(), findByEvent: jest.fn() } },
+        { provide: ProjectTaskRepository, useValue: { create: jest.fn(), findByEvent: jest.fn() } },
       ],
     }).compile();
 
@@ -163,8 +169,11 @@ describe("ProductionController", () => {
     productionPlans = moduleRef.get(ProductionPlanRepository);
     budgetAnalysisAi = moduleRef.get(BudgetAnalysisPort);
     budgetAnalyses = moduleRef.get(BudgetAnalysisRepository);
+    projectSuppliers = moduleRef.get(ProjectSupplierRepository);
+    projectTasks = moduleRef.get(ProjectTaskRepository);
 
     proposals.findById.mockResolvedValue(fakeProposal);
+    projectTasks.findByEvent.mockResolvedValue([]);
     commercialProposals.findByProposal.mockResolvedValue({ status: "APPROVED" } as never);
     events.findById.mockResolvedValue(fakeEvent);
     venues.findById.mockResolvedValue(fakeVenue);
@@ -223,6 +232,25 @@ describe("ProductionController", () => {
         ServiceUnavailableException,
       );
       expect(productionPlans.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("activateOperationalChecklist", () => {
+    it("creates the automatic checklist and syncs approved suppliers", async () => {
+      commercialProposals.findByProposal.mockResolvedValue({
+        status: "APPROVED",
+        payments: [],
+        logisticsItems: [],
+        lineItems: [],
+        suppliers: [{ supplierId: "supplier-1", scope: "Flores e ambientação" }],
+      } as never);
+
+      const result = await controller.activateOperationalChecklist(user, proposalId);
+
+      expect(result.tasks).toHaveLength(6);
+      expect(result.suppliersBooked).toBe(1);
+      expect(projectTasks.create).toHaveBeenCalledTimes(6);
+      expect(projectSuppliers.addOrUpdate).toHaveBeenCalledWith("event-1", expect.objectContaining({ supplierId: "supplier-1", status: "BOOKED" }));
     });
   });
 

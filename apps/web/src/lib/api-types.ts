@@ -143,6 +143,17 @@ export interface ProjectWorkflowStep {
 }
 
 /** GET /projects/:eventId/overview — read model for the project control panel. */
+export type ProjectAlertSeverity = "CRITICAL" | "WARNING" | "INFO";
+
+export interface ProjectAlert {
+  id: string;
+  severity: ProjectAlertSeverity;
+  title: string;
+  message: string;
+  href: string;
+  source: "COMMERCIAL" | "PAYMENT" | "PRODUCTION" | "TASK" | "VENUE";
+}
+
 export interface ProjectOverview extends ProjectSummary {
   workflow: ProjectWorkflowStep[];
   nextAction: { label: string; href: string };
@@ -166,6 +177,7 @@ export interface ProjectOverview extends ProjectSummary {
   };
   tasks: { total: number; open: number; done: number };
   suppliers: { total: number; byStatus: Record<string, number> };
+  alerts: ProjectAlert[];
 }
 
 /** GET /projects — a read model, not a single domain entity (see apps/api/src/modules/projects). */
