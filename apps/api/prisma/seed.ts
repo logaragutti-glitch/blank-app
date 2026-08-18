@@ -10,6 +10,7 @@ import { WEDDING_VENUE_IMAGE_RESEARCH } from "./wedding-venue-image-research";
 import { RESEARCHED_EVENT_STYLES } from "./wedding-style-palette-research";
 import { REGIONAL_BUFFET_DECOR_SUPPLIERS } from "./regional-buffet-decor-suppliers";
 import { REGIONAL_TECHNICAL_SUPPLIERS } from "./regional-technical-suppliers";
+import { REGIONAL_PHOTO_VIDEO_SUPPLIERS } from "./regional-photo-video-suppliers";
 
 try {
   process.loadEnvFile(new URL("../.env", import.meta.url));
@@ -620,6 +621,53 @@ async function seedRegionalBuffetDecorSuppliers(tenantId: string, organizationId
   console.log(`Fornecedores regionais de buffet e decoração: ${REGIONAL_BUFFET_DECOR_SUPPLIERS.length} registros catalogados.`);
 }
 
+async function seedRegionalPhotoVideoSuppliers(tenantId: string, organizationId: string) {
+  const lastValidatedAt = new Date("2026-08-18T00:00:00.000Z");
+
+  for (const supplier of REGIONAL_PHOTO_VIDEO_SUPPLIERS) {
+    const performanceNotes = [
+      `Serviços pesquisados: ${supplier.services.join(", ")}.`,
+      supplier.notes,
+      `Nível de validação: ${supplier.validationLevel}. Status do contato: ${supplier.contactStatus}.`,
+    ].join("\\n");
+
+    await prisma.supplier.upsert({
+      where: { organizationId_name: { organizationId, name: supplier.name } },
+      update: {
+        category: supplier.category as SupplierCategory,
+        phone: supplier.phone ?? null,
+        email: supplier.email ?? null,
+        website: supplier.website ?? null,
+        instagramUrl: supplier.instagramUrl ?? null,
+        serviceArea: supplier.serviceArea,
+        sourceUrl: supplier.sourceUrl,
+        validationLevel: supplier.validationLevel,
+        contactStatus: supplier.contactStatus,
+        lastValidatedAt,
+        performanceNotes,
+      },
+      create: {
+        tenantId,
+        organizationId,
+        name: supplier.name,
+        category: supplier.category as SupplierCategory,
+        phone: supplier.phone ?? null,
+        email: supplier.email ?? null,
+        website: supplier.website ?? null,
+        instagramUrl: supplier.instagramUrl ?? null,
+        serviceArea: supplier.serviceArea,
+        sourceUrl: supplier.sourceUrl,
+        validationLevel: supplier.validationLevel,
+        contactStatus: supplier.contactStatus,
+        lastValidatedAt,
+        performanceNotes,
+      },
+    });
+  }
+
+  console.log(`Fornecedores regionais de foto e filmagem: ${REGIONAL_PHOTO_VIDEO_SUPPLIERS.length} registros catalogados.`);
+}
+
 async function seedRegionalTechnicalSuppliers(tenantId: string, organizationId: string) {
   const lastValidatedAt = new Date("2026-08-17T00:00:00.000Z");
 
@@ -1002,6 +1050,7 @@ async function main() {
   await seedMineirartSupplierCatalog(tenantId, organizationId);
   await seedRegionalBuffetDecorSuppliers(tenantId, organizationId);
   await seedRegionalTechnicalSuppliers(tenantId, organizationId);
+  await seedRegionalPhotoVideoSuppliers(tenantId, organizationId);
   await seedWeddingKnowledgeCatalog(tenantId, organizationId);
   await seedWeddingVenueResearch(tenantId, organizationId);
   await seedWeddingVenueImages(tenantId, organizationId);
