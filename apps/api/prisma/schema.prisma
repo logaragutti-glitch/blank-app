@@ -1060,10 +1060,11 @@ model CommercialProposal {
   approvedBy         String?                  @map("approved_by") @db.Uuid
   rejectionReason    String?                  @map("rejection_reason")
 
-  proposal Proposal                    @relation(fields: [proposalId], references: [id])
-  versions CommercialProposalVersion[]
-  quotes   CommercialQuote[]
-  payments CommercialPayment[]
+  proposal      Proposal                    @relation(fields: [proposalId], references: [id])
+  versions      CommercialProposalVersion[]
+  quotes        CommercialQuote[]
+  payments      CommercialPayment[]
+  approvalLinks CommercialApprovalLink[]
 
   event Event @relation(fields: [eventId], references: [id])
 
@@ -1148,6 +1149,32 @@ model CommercialPayment {
   @@index([commercialProposalId])
   @@index([status])
   @@map("commercial_payments")
+}
+
+enum CommercialApprovalDecision {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model CommercialApprovalLink {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  commercialProposalId String                     @map("commercial_proposal_id") @db.Uuid
+  tokenHash            String                     @unique @map("token_hash")
+  createdAt            DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt            DateTime                   @map("expires_at") @db.Timestamptz(6)
+  revokedAt            DateTime?                  @map("revoked_at") @db.Timestamptz(6)
+  lastAccessedAt       DateTime?                  @map("last_accessed_at") @db.Timestamptz(6)
+  decidedAt            DateTime?                  @map("decided_at") @db.Timestamptz(6)
+  decision             CommercialApprovalDecision @default(PENDING)
+  recipientName        String?                    @map("recipient_name")
+  recipientEmail       String?                    @map("recipient_email")
+
+  commercialProposal CommercialProposal @relation(fields: [commercialProposalId], references: [id], onDelete: Cascade)
+
+  @@index([commercialProposalId])
+  @@index([expiresAt])
+  @@map("commercial_approval_links")
 }
 
 model CommercialProposalVersion {

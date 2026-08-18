@@ -162,6 +162,8 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [statusPending, setStatusPending] = useState(false);
   const [acknowledgeUnconfirmedData, setAcknowledgeUnconfirmedData] = useState(false);
   const [statusNotes, setStatusNotes] = useState("");
@@ -582,6 +584,25 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
     }
   }
 
+  async function handleCreateShare() {
+    if (!proposalId) return;
+    setSharing(true);
+    setError(null);
+    try {
+      const response = await apiClient.post<{ url: string; expiresAt: string; version: number }>(
+        `/creative/proposals/${proposalId}/commercial/share`,
+        { expiresInDays: Number(validityDays || 10) },
+        accessToken,
+      );
+      setShareUrl(response.url);
+      setSuccess(`Link de aprovação criado para a versão ${response.version}.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não conseguimos gerar o link de aprovação.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
   async function handleDownload() {
     if (!proposalId) return;
     setDownloading(true);
@@ -881,7 +902,15 @@ function PropostaComercialContent({ eventId }: { eventId: string }) {
       <div style={{ display: "flex", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md }}>
         <Button onClick={handleSave} disabled={saving}>{saving ? "Salvando..." : "Salvar composição comercial"}</Button>
         <Button variant="ghost" onClick={handleDownload} disabled={!commercialProposal || downloading}>{downloading ? "Gerando PDF..." : "Baixar PDF comercial"}</Button>
+        <Button variant="ghost" onClick={handleCreateShare} disabled={!commercialProposal || sharing || !["READY", "SENT"].includes(commercialProposal?.status ?? "")}>{sharing ? "Gerando link..." : "Gerar link para o casal"}</Button>
       </div>
+      {shareUrl && (
+        <div style={{ padding: spacing.sm, borderRadius: 8, background: "#F8F3EC", marginTop: spacing.sm }}>
+          <strong>Link de aprovação</strong>
+          <input readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} style={{ display: "block", width: "100%", marginTop: 6, padding: 8, borderRadius: 6, border: `1px solid ${colors.border}` }} />
+          <small style={{ color: colors.textMuted }}>Envie este link por um canal seguro. Ele expira conforme a validade da proposta e pode ser revogado ao gerar outro.</small>
+        </div>
+      )}
 
       {commercialProposal && (
         <section style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: spacing.md, marginTop: spacing.md }}>

@@ -9,6 +9,7 @@ import { DiagnosticoCriativoPort } from "./ai/diagnostico-criativo.port";
 import { GeminiConceptualRenderProvider } from "./ai/gemini-conceptual-render.provider";
 import { ProposalComponentsPort } from "./ai/proposal-components.port";
 import { CreativeController } from "./creative.controller";
+import { PublicCommercialApprovalController } from "./public-commercial-approval.controller";
 import { PrismaProposalComponentRepository } from "./repositories/prisma-proposal-component.repository";
 import { PrismaProposalRepository } from "./repositories/prisma-proposal.repository";
 import { CommercialProposalRepository } from "./repositories/commercial-proposal.repository";
@@ -18,7 +19,7 @@ import { ProposalRepository } from "./repositories/proposal.repository";
 
 @Module({
   imports: [BriefingModule, KnowledgeGraphModule, ProjectSuppliersModule],
-  controllers: [CreativeController],
+  controllers: [CreativeController, PublicCommercialApprovalController],
   providers: [
     { provide: ProposalRepository, useClass: PrismaProposalRepository },
     { provide: ProposalComponentRepository, useClass: PrismaProposalComponentRepository },

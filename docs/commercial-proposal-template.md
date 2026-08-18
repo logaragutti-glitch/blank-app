@@ -184,3 +184,13 @@ O lint do frontend ainda apresenta dois avisos preexistentes sobre uso de `<img>
 O modelo não inventa contato, disponibilidade ou preço de fornecedor. Os dados regionais que não têm telefone ou e-mail confirmados continuam exibindo “Contato a confirmar”. O snapshot também preserva o que foi apresentado no momento da proposta, de modo que uma alteração futura no cadastro do fornecedor não reescreva silenciosamente um documento já enviado.
 
 O modelo não reserva automaticamente espaço ou fornecedor, não substitui contrato e não altera a `main`. A implementação operacional atual está isolada na branch `feat/eve-commercial-operations-v1` e deve ser revisada em Preview antes de qualquer promoção.
+
+## Portal público de aprovação
+
+A assessora pode gerar um link para o casal quando a proposta estiver nos estados `READY` ou `SENT`. O link usa um token aleatório, mas a API armazena apenas o hash SHA-256 do token. O link expira conforme a validade informada e gerar um novo link revoga os links pendentes anteriores.
+
+O casal visualiza somente os dados necessários para decisão: espaço, modalidade, fornecedores selecionados, itens, logística, pacotes, investimento, condições e alertas de confirmação. O custo interno e a margem não são expostos no portal público.
+
+A decisão pode ser `APPROVED` ou `REJECTED`. Aprovar atualiza a proposta comercial, cria uma versão de auditoria e sincroniza os fornecedores selecionados como `BOOKED`. Solicitar ajustes devolve a proposta para revisão e registra o comentário informado.
+
+O link não substitui assinatura eletrônica, contrato ou confirmação de pagamento. Para uma contratação juridicamente formal, o EVE OS deverá ser integrado posteriormente a um provedor de assinatura e a um mecanismo de confirmação de identidade.

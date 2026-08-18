@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   CommercialPaymentStatus as PrismaCommercialPaymentStatus,
   CommercialQuoteStatus as PrismaCommercialQuoteStatus,
@@ -64,6 +64,7 @@ import {
   UpdateCommercialQuoteStatusDto,
   UpsertCommercialProposalDto,
 } from "./dto/upsert-commercial-proposal.dto";
+import { CreateCommercialApprovalLinkDto } from "./dto/create-commercial-approval-link.dto";
 import { UpdateCommercialStatusDto } from "./dto/update-commercial-status.dto";
 import { buildProposalPdf, type ProposalPdfComponent } from "./proposal-pdf-builder";
 import {
@@ -628,6 +629,44 @@ export class CreativeController {
       );
     }
     return { commercialProposal: updatedCommercial, proposal: updatedProposal };
+  }
+
+  @Post("proposals/:proposalId/commercial/share")
+  async createCommercialApprovalLink(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("proposalId") proposalId: string,
+    @Body() dto: CreateCommercialApprovalLinkDto,
+  ) {
+    const proposal = await this.proposals.findById(user.organizationId, proposalId);
+    if (!proposal) throw new NotFoundException("Proposal not found");
+    const commercial = await this.commercialProposals.findByProposal(proposalId);
+    if (!commercial) throw new NotFoundException("Commercial proposal not found");
+    if (!["READY", "SENT"].includes(commercial.status)) {
+      throw new BadRequestException("A proposta precisa estar pronta ou enviada antes de gerar o link de aprovação.");
+    }
+    const rawToken = randomBytes(32).toString("base64url");
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const expiresInDays = dto.expiresInDays ?? commercial.validityDays;
+    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+    await this.prisma.commercialApprovalLink.updateMany({
+      where: { commercialProposalId: commercial.id, revokedAt: null, decision: "PENDING" },
+      data: { revokedAt: new Date() },
+    });
+    await this.prisma.commercialApprovalLink.create({
+      data: {
+        commercialProposalId: commercial.id,
+        tokenHash,
+        expiresAt,
+        recipientName: dto.recipientName ?? null,
+        recipientEmail: dto.recipientEmail ?? null,
+      },
+    });
+    const webAppUrl = process.env.WEB_APP_URL ?? "http://localhost:3000";
+    return {
+      url: `${webAppUrl}/aprovar-proposta?token=${encodeURIComponent(rawToken)}`,
+      expiresAt: expiresAt.toISOString(),
+      version: commercial.version,
+    };
   }
 
   @Get("proposals/:proposalId/commercial/quotes")
