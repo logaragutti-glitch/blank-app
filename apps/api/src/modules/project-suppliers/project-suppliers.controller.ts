@@ -5,7 +5,9 @@ import type { AuthenticatedUser } from "../auth/jwt-payload";
 import { EventRepository } from "../briefing/repositories/event.repository";
 import { SupplierRepository } from "../knowledge-graph/repositories/supplier.repository";
 import { AddProjectSupplierDto } from "./dto/add-project-supplier.dto";
+import { UpsertSupplierPerformanceReviewDto } from "./dto/upsert-supplier-performance-review.dto";
 import { ProjectSupplierRepository } from "./repositories/project-supplier.repository";
+import { SupplierPerformanceReviewRepository } from "./repositories/supplier-performance-review.repository";
 
 // Fornecedores do Projeto (Bucket C) — which Knowledge Graph Suppliers are
 // actually engaged for a given Event, and at what stage. Separate from
@@ -20,6 +22,7 @@ export class ProjectSuppliersController {
     private readonly events: EventRepository,
     private readonly assignments: ProjectSupplierRepository,
     private readonly suppliers: SupplierRepository,
+    private readonly reviews: SupplierPerformanceReviewRepository,
   ) {}
 
   private async requireEvent(organizationId: string, eventId: string) {
@@ -46,6 +49,30 @@ export class ProjectSuppliersController {
         };
       }),
     );
+  }
+
+  @Get("reviews")
+  async listReviews(@CurrentUser() user: AuthenticatedUser, @Param("eventId") eventId: string) {
+    await this.requireEvent(user.organizationId, eventId);
+    return this.reviews.findByEvent(eventId);
+  }
+
+  @Post(":supplierId/review")
+  async upsertReview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("eventId") eventId: string,
+    @Param("supplierId") supplierId: string,
+    @Body() dto: UpsertSupplierPerformanceReviewDto,
+  ) {
+    await this.requireEvent(user.organizationId, eventId);
+    const assignment = await this.assignments.findOne(eventId, supplierId);
+    if (!assignment) throw new BadRequestException("O fornecedor precisa estar vinculado ao projeto antes da avaliação.");
+    const supplier = await this.suppliers.findById(user.organizationId, supplierId);
+    if (!supplier) throw new NotFoundException("Fornecedor não encontrado");
+    return this.reviews.upsert(user.tenantId, user.organizationId, eventId, supplierId, {
+      ...dto,
+      createdBy: user.sub,
+    });
   }
 
   @Post()

@@ -32,6 +32,7 @@ import type {
   ProposalStatus,
   Supplier,
   SupplierCategory,
+  SupplierPerformanceReview,
   User,
   Venue,
 } from "@eve-os/types";
@@ -310,6 +311,7 @@ export type {
   ProposalStatus,
   Supplier,
   SupplierCategory,
+  SupplierPerformanceReview,
   User,
   Venue,
 };

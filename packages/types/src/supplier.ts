@@ -14,6 +14,20 @@ export type SupplierCategory =
   | "ASSEMBLY_CREW"
   | "OTHER";
 
+export interface SupplierPerformanceReview {
+  id: string;
+  eventId: string;
+  supplierId: string;
+  overallRating: number | null;
+  qualityRating: number | null;
+  punctualityRating: number | null;
+  communicationRating: number | null;
+  scopeFulfillment: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Supplier extends AuditedEntity {
   name: string;
   category: SupplierCategory;

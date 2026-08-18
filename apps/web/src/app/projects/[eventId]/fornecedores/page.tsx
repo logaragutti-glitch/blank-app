@@ -9,7 +9,7 @@ import { AuthGuard } from "../../../../lib/auth-guard";
 import { apiClient, ApiError } from "../../../../lib/api-client";
 import { useAuth } from "../../../../lib/auth-context";
 import { useProject } from "../../../../lib/use-project";
-import type { ProjectSupplierAssignment, ProjectSupplierStatus, Supplier } from "../../../../lib/api-types";
+import type { ProjectSupplierAssignment, ProjectSupplierStatus, Supplier, SupplierPerformanceReview } from "../../../../lib/api-types";
 import {
   PROJECT_SUPPLIER_STATUS_COLOR,
   PROJECT_SUPPLIER_STATUS_LABEL,
@@ -34,6 +34,61 @@ function StatusPill({ status }: { status: ProjectSupplierStatus }) {
     >
       {PROJECT_SUPPLIER_STATUS_LABEL[status]}
     </span>
+  );
+}
+
+type SupplierReviewInput = {
+  overallRating?: number;
+  qualityRating?: number;
+  punctualityRating?: number;
+  communicationRating?: number;
+  scopeFulfillment?: number;
+  notes?: string;
+};
+
+function SupplierReviewForm({ review, onSave }: { review?: SupplierPerformanceReview; onSave: (input: SupplierReviewInput) => Promise<void> }) {
+  const [input, setInput] = useState<SupplierReviewInput>({
+    overallRating: review?.overallRating ?? undefined,
+    qualityRating: review?.qualityRating ?? undefined,
+    punctualityRating: review?.punctualityRating ?? undefined,
+    communicationRating: review?.communicationRating ?? undefined,
+    scopeFulfillment: review?.scopeFulfillment ?? undefined,
+    notes: review?.notes ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const selectStyle = { backgroundColor: colors.surface, color: colors.textPrimary, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding: "6px 8px", fontSize: "0.8rem" };
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(input);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não conseguimos salvar a avaliação.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: spacing.sm, paddingTop: spacing.sm, borderTop: `1px solid ${colors.border}` }}>
+      <p style={{ color: colors.textMuted, margin: 0, fontSize: "0.75rem", textTransform: "uppercase" }}>Avaliação pós-evento</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
+        {(["overallRating", "qualityRating", "punctualityRating", "communicationRating", "scopeFulfillment"] as const).map((key) => (
+          <label key={key} style={{ display: "flex", flexDirection: "column", gap: 3, color: colors.textMuted, fontSize: "0.72rem" }}>
+            {key === "overallRating" ? "Geral" : key === "qualityRating" ? "Qualidade" : key === "punctualityRating" ? "Pontualidade" : key === "communicationRating" ? "Comunicação" : "Escopo"}
+            <select value={input[key] ?? ""} onChange={(event) => setInput((current) => ({ ...current, [key]: event.target.value ? Number(event.target.value) : undefined }))} style={selectStyle}>
+              <option value="">—</option>
+              {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}/5</option>)}
+            </select>
+          </label>
+        ))}
+        <Input placeholder="Observação pós-evento" value={input.notes ?? ""} onChange={(event) => setInput((current) => ({ ...current, notes: event.target.value }))} style={{ flex: "1 1 220px" }} />
+        <Button type="button" onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar avaliação"}</Button>
+      </div>
+      {error && <p style={{ color: colors.danger, margin: `${spacing.xs} 0 0`, fontSize: "0.8rem" }}>{error}</p>}
+    </div>
   );
 }
 
@@ -132,10 +187,14 @@ function SupplierRow({
   assignment,
   onChangeStatus,
   onRemove,
+  review,
+  onSaveReview,
 }: {
   assignment: ProjectSupplierAssignment;
   onChangeStatus: (status: ProjectSupplierStatus) => void;
   onRemove: () => void;
+  review?: SupplierPerformanceReview;
+  onSaveReview: (input: SupplierReviewInput) => Promise<void>;
 }) {
   return (
     <Card style={{ marginBottom: spacing.sm }}>
@@ -180,6 +239,7 @@ function SupplierRow({
           </button>
         </div>
       </div>
+      <SupplierReviewForm review={review} onSave={onSaveReview} />
     </Card>
   );
 }
@@ -189,6 +249,7 @@ function FornecedoresProjetoContent({ eventId }: { eventId: string }) {
   const { project } = useProject(eventId);
   const [assignments, setAssignments] = useState<ProjectSupplierAssignment[] | null>(null);
   const [candidates, setCandidates] = useState<Supplier[]>([]);
+  const [reviews, setReviews] = useState<Record<string, SupplierPerformanceReview>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -201,6 +262,10 @@ function FornecedoresProjetoContent({ eventId }: { eventId: string }) {
       .get<Supplier[]>("/knowledge-graph/suppliers", accessToken)
       .then(setCandidates)
       .catch(() => setCandidates([]));
+    apiClient
+      .get<SupplierPerformanceReview[]>(`/events/${eventId}/suppliers/reviews`, accessToken)
+      .then((items) => setReviews(Object.fromEntries(items.map((item) => [item.supplierId, item]))))
+      .catch(() => setReviews({}));
   }, [accessToken, eventId]);
 
   async function handleAdd(input: { supplierId: string; status: ProjectSupplierStatus; notes: string }) {
@@ -224,6 +289,11 @@ function FornecedoresProjetoContent({ eventId }: { eventId: string }) {
   async function handleRemove(supplierId: string) {
     await apiClient.delete(`/events/${eventId}/suppliers/${supplierId}`, accessToken);
     setAssignments((current) => (current ?? []).filter((a) => a.supplierId !== supplierId));
+  }
+
+  async function handleSaveReview(supplierId: string, input: SupplierReviewInput) {
+    const review = await apiClient.post<SupplierPerformanceReview>(`/events/${eventId}/suppliers/${supplierId}/review`, input, accessToken);
+    setReviews((current) => ({ ...current, [supplierId]: review }));
   }
 
   if (error) return <p style={{ color: colors.danger }}>{error}</p>;
@@ -258,6 +328,8 @@ function FornecedoresProjetoContent({ eventId }: { eventId: string }) {
             assignment={assignment}
             onChangeStatus={(status) => handleChangeStatus(assignment.supplierId, status)}
             onRemove={() => handleRemove(assignment.supplierId)}
+            review={reviews[assignment.supplierId]}
+            onSaveReview={(input) => handleSaveReview(assignment.supplierId, input)}
           />
         ))
       )}

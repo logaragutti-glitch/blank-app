@@ -9,6 +9,7 @@ import {
   ProjectSupplierRepository,
   type ProjectSupplier,
 } from "./repositories/project-supplier.repository";
+import { SupplierPerformanceReviewRepository } from "./repositories/supplier-performance-review.repository";
 
 describe("ProjectSuppliersController", () => {
   const authUser: AuthenticatedUser = {
@@ -32,6 +33,7 @@ describe("ProjectSuppliersController", () => {
   let events: jest.Mocked<EventRepository>;
   let assignments: jest.Mocked<ProjectSupplierRepository>;
   let suppliers: jest.Mocked<SupplierRepository>;
+  let reviews: jest.Mocked<SupplierPerformanceReviewRepository>;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -42,6 +44,7 @@ describe("ProjectSuppliersController", () => {
           provide: ProjectSupplierRepository,
           useValue: { findByEvent: jest.fn(), findOne: jest.fn(), addOrUpdate: jest.fn(), remove: jest.fn() },
         },
+        { provide: SupplierPerformanceReviewRepository, useValue: { findByEvent: jest.fn(), findByEventAndSupplier: jest.fn(), upsert: jest.fn() } },
         {
           provide: SupplierRepository,
           useValue: {
@@ -60,6 +63,7 @@ describe("ProjectSuppliersController", () => {
     events = moduleRef.get(EventRepository);
     assignments = moduleRef.get(ProjectSupplierRepository);
     suppliers = moduleRef.get(SupplierRepository);
+    reviews = moduleRef.get(SupplierPerformanceReviewRepository);
   });
 
   describe("listSuppliers", () => {
@@ -76,6 +80,56 @@ describe("ProjectSuppliersController", () => {
     it("throws NotFoundException when the event doesn't exist", async () => {
       events.findById.mockResolvedValue(null);
       await expect(controller.listSuppliers(authUser, "missing")).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe("reviews", () => {
+    const review = {
+      id: "review-1",
+      eventId: "event-1",
+      supplierId: "supplier-1",
+      overallRating: 5,
+      qualityRating: 5,
+      punctualityRating: 4,
+      communicationRating: 5,
+      scopeFulfillment: 5,
+      notes: "Entrega consistente.",
+      createdAt: "2026-08-18T00:00:00.000Z",
+      updatedAt: "2026-08-18T00:00:00.000Z",
+    };
+
+    it("lists reviews for the event", async () => {
+      events.findById.mockResolvedValue(fakeEvent);
+      reviews.findByEvent.mockResolvedValue([review]);
+
+      await expect(controller.listReviews(authUser, "event-1")).resolves.toEqual([review]);
+    });
+
+    it("upserts a review only for a supplier assigned to the event", async () => {
+      events.findById.mockResolvedValue(fakeEvent);
+      assignments.findOne.mockResolvedValue(assignment);
+      suppliers.findById.mockResolvedValue(fakeSupplier);
+      reviews.upsert.mockResolvedValue(review);
+
+      const result = await controller.upsertReview(authUser, "event-1", "supplier-1", {
+        overallRating: 5,
+        qualityRating: 5,
+        punctualityRating: 4,
+        communicationRating: 5,
+        scopeFulfillment: 5,
+        notes: "Entrega consistente.",
+      });
+
+      expect(reviews.upsert).toHaveBeenCalledWith("tenant-1", "org-1", "event-1", "supplier-1", {
+        overallRating: 5,
+        qualityRating: 5,
+        punctualityRating: 4,
+        communicationRating: 5,
+        scopeFulfillment: 5,
+        notes: "Entrega consistente.",
+        createdBy: "user-1",
+      });
+      expect(result).toEqual(review);
     });
   });
 

@@ -66,3 +66,9 @@ Depois que a proposta criativa e a proposta comercial forem aprovadas, a tela de
 A ativação cria ou reutiliza tarefas para confirmar o espaço, solicitar contratos, revisar pagamentos, confirmar logística, validar itens personalizados e revisar o plano operacional final. Também sincroniza os fornecedores da proposta aprovada com o vínculo do evento no status `BOOKED`.
 
 A ativação não substitui a geração do plano de produção por IA. Ela cria a camada operacional editável do projeto; depois, a assessora pode gerar ou atualizar o plano de materiais, cronograma e checklist do Agente 4.
+
+## Avaliação pós-evento de fornecedores
+
+Na tela de Fornecedores do Projeto, cada fornecedor vinculado possui uma seção de avaliação pós-evento. A assessora pode registrar notas de 1 a 5 para qualidade, pontualidade, comunicação, cumprimento do escopo e avaliação geral, além de observações.
+
+A avaliação é única por fornecedor e evento e pode ser atualizada. Ela não altera automaticamente a validação pública do fornecedor nem transforma uma recomendação em garantia. Em uma etapa futura, as avaliações poderão alimentar rankings internos por categoria, espaço e tipo de evento, sempre separando experiência histórica da disponibilidade atual.
