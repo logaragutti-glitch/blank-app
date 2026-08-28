@@ -13,6 +13,19 @@ import { useAuth } from "../../../../lib/auth-context";
 import { useLatestProposalId } from "../../../../lib/use-latest-proposal-id";
 import { isRenderableComponentType } from "../../../../lib/renderable-component-types";
 
+function renderErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === 401) {
+    return "Sua sessão expirou. Faça login novamente para continuar.";
+  }
+
+  const rawMessage = error instanceof ApiError ? error.message : "";
+  if (/credit|prepay|quota|resource exhausted|billing|rate limit|429/i.test(rawMessage)) {
+    return "O render conceitual está temporariamente indisponível porque a cota da IA acabou ou atingiu o limite. A proposta continua disponível; tente novamente após regularizar a cota.";
+  }
+
+  return "Não consegui gerar o render conceitual agora. Você pode continuar editando a proposta e tentar novamente depois.";
+}
+
 const THOUGHTS = [
   "Estou nomeando o conceito deste projeto...",
   "Estou desenhando cada ambiente com a história do casal em mente...",
@@ -183,10 +196,7 @@ function EditorContent({ eventId }: { eventId: string }) {
     } catch (err) {
       setRenderErrors((previous) => ({
         ...previous,
-        [componentType]:
-          err instanceof ApiError
-            ? `Encontrei um ponto que merece atenção: ${err.message}`
-            : "Não consegui gerar o render agora.",
+        [componentType]: renderErrorMessage(err),
       }));
     } finally {
       setRenderingType(null);

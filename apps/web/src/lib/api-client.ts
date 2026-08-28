@@ -10,6 +10,12 @@ export class ApiError extends Error {
   }
 }
 
+function notifyUnauthorized(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("eve:auth:unauthorized"));
+  }
+}
+
 interface RequestOptions {
   method: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
@@ -27,9 +33,12 @@ async function request<T>(path: string, { method, body, token }: RequestOptions)
   });
 
   if (!response.ok) {
+    if (response.status === 401) notifyUnauthorized();
     const payload = await response.json().catch(() => null);
     const rawMessage = (payload as { message?: string | string[] } | null)?.message;
-    const message = Array.isArray(rawMessage) ? rawMessage.join(", ") : (rawMessage ?? response.statusText);
+    const message = Array.isArray(rawMessage)
+      ? rawMessage.join(", ")
+      : (rawMessage ?? response.statusText);
     throw new ApiError(message, response.status);
   }
 
@@ -51,9 +60,12 @@ async function uploadFile<T>(path: string, file: File, token?: string | null): P
   });
 
   if (!response.ok) {
+    if (response.status === 401) notifyUnauthorized();
     const payload = await response.json().catch(() => null);
     const rawMessage = (payload as { message?: string | string[] } | null)?.message;
-    const message = Array.isArray(rawMessage) ? rawMessage.join(", ") : (rawMessage ?? response.statusText);
+    const message = Array.isArray(rawMessage)
+      ? rawMessage.join(", ")
+      : (rawMessage ?? response.statusText);
     throw new ApiError(message, response.status);
   }
 
@@ -65,9 +77,12 @@ async function downloadBlob(path: string, token?: string | null): Promise<Blob> 
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
   if (!response.ok) {
+    if (response.status === 401) notifyUnauthorized();
     const payload = await response.json().catch(() => null);
     const rawMessage = (payload as { message?: string | string[] } | null)?.message;
-    const message = Array.isArray(rawMessage) ? rawMessage.join(", ") : (rawMessage ?? response.statusText);
+    const message = Array.isArray(rawMessage)
+      ? rawMessage.join(", ")
+      : (rawMessage ?? response.statusText);
     throw new ApiError(message, response.status);
   }
   return response.blob();

@@ -18,7 +18,12 @@ interface AuthContextValue {
   /** True until the initial read from localStorage completes — avoids a login-page flash on refresh. */
   loading: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
-  register: (input: { organizationId: string; email: string; password: string; name: string }) => Promise<void>;
+  register: (input: {
+    organizationId: string;
+    email: string;
+    password: string;
+    name: string;
+  }) => Promise<void>;
   acceptInvite: (input: { token: string; name: string; password: string }) => Promise<void>;
   logout: () => void;
 }
@@ -45,6 +50,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    function handleUnauthorized() {
+      setAuth(null);
+      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+
+    window.addEventListener("eve:auth:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("eve:auth:unauthorized", handleUnauthorized);
+  }, []);
+
   function persist(result: AuthResponse, remember: boolean) {
     const next: StoredAuth = { user: result.user, accessToken: result.accessToken };
     setAuth(next);
@@ -59,7 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist(result, remember);
   }
 
-  async function register(input: { organizationId: string; email: string; password: string; name: string }) {
+  async function register(input: {
+    organizationId: string;
+    email: string;
+    password: string;
+    name: string;
+  }) {
     const result = await apiClient.post<AuthResponse>("/auth/register", input);
     persist(result, true);
   }
